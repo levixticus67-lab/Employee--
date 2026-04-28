@@ -1,0 +1,681 @@
+openapi: 3.1.0
+info:
+  # Do not change the title, if the title changes, the import paths will be broken
+  title: Api
+  version: 0.1.0
+  description: Jojo Collections perfume e-commerce API
+servers:
+  - url: /api
+    description: Base API path
+tags:
+  - name: health
+  - name: auth
+  - name: products
+  - name: reviews
+  - name: orders
+  - name: admin
+  - name: storage
+paths:
+  /healthz:
+    get:
+      operationId: healthCheck
+      tags: [health]
+      summary: Health check
+      responses:
+        "200":
+          description: Healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+
+  # ---------- Auth (customer) ----------
+  /auth/signup:
+    post:
+      operationId: signup
+      tags: [auth]
+      summary: Create a customer account
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SignupBody"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AuthUser" }
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+  /auth/login:
+    post:
+      operationId: login
+      tags: [auth]
+      summary: Log in as a customer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginBody"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AuthUser" }
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+  /auth/logout:
+    post:
+      operationId: logout
+      tags: [auth]
+      summary: Log out
+      responses:
+        "204":
+          description: Logged out
+  /auth/me:
+    get:
+      operationId: getCurrentUser
+      tags: [auth]
+      summary: Get current authenticated session
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SessionInfo" }
+
+  # ---------- Auth (admin) ----------
+  /admin/auth/login:
+    post:
+      operationId: adminLogin
+      tags: [auth]
+      summary: Log in to the admin dashboard
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdminLoginBody"
+      responses:
+        "204":
+          description: Logged in
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+  /admin/auth/logout:
+    post:
+      operationId: adminLogout
+      tags: [auth]
+      summary: Log out of the admin dashboard
+      responses:
+        "204":
+          description: Logged out
+
+  # ---------- Storage ----------
+  /storage/uploads/request-url:
+    post:
+      operationId: requestUploadUrl
+      tags: [storage]
+      summary: Request a presigned upload URL for an object
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RequestUploadUrlBody"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RequestUploadUrlResponse"
+
+  # ---------- Products (public) ----------
+  /products:
+    get:
+      operationId: listProducts
+      tags: [products]
+      summary: List products
+      parameters:
+        - in: query
+          name: category
+          schema: { type: string }
+        - in: query
+          name: search
+          schema: { type: string }
+        - in: query
+          name: featured
+          schema: { type: boolean }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Product" }
+  /products/featured:
+    get:
+      operationId: listFeaturedProducts
+      tags: [products]
+      summary: Featured products
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Product" }
+  /products/new-arrivals:
+    get:
+      operationId: listNewArrivals
+      tags: [products]
+      summary: Newest arrivals
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Product" }
+  /products/{id}:
+    get:
+      operationId: getProduct
+      tags: [products]
+      summary: Get product detail
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Product" }
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+  /products/{id}/reviews:
+    get:
+      operationId: listProductReviews
+      tags: [reviews]
+      summary: List approved reviews for a product
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Review" }
+    post:
+      operationId: createProductReview
+      tags: [reviews]
+      summary: Submit a review for a product
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateReviewBody"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Review" }
+
+  # ---------- Orders (public) ----------
+  /orders:
+    post:
+      operationId: createOrder
+      tags: [orders]
+      summary: Place an order
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateOrderBody"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Order" }
+  /orders/{id}:
+    get:
+      operationId: getOrder
+      tags: [orders]
+      summary: Get order details (for confirmation page)
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Order" }
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+
+  # ---------- Admin ----------
+  /admin/dashboard:
+    get:
+      operationId: getAdminDashboard
+      tags: [admin]
+      summary: Admin dashboard summary
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/DashboardSummary" }
+  /admin/products:
+    post:
+      operationId: createProduct
+      tags: [admin]
+      summary: Create a product
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateProductBody"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Product" }
+  /admin/products/{id}:
+    put:
+      operationId: updateProduct
+      tags: [admin]
+      summary: Update a product
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateProductBody"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Product" }
+    delete:
+      operationId: deleteProduct
+      tags: [admin]
+      summary: Delete a product
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      responses:
+        "204":
+          description: Deleted
+  /admin/orders:
+    get:
+      operationId: listAdminOrders
+      tags: [admin]
+      summary: List all orders
+      parameters:
+        - in: query
+          name: status
+          schema: { type: string }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Order" }
+  /admin/orders/{id}/status:
+    put:
+      operationId: updateOrderStatus
+      tags: [admin]
+      summary: Update order status
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateOrderStatusBody"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Order" }
+  /admin/reviews:
+    get:
+      operationId: listAdminReviews
+      tags: [admin]
+      summary: List all reviews
+      parameters:
+        - in: query
+          name: status
+          schema: { type: string }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Review" }
+  /admin/reviews/{id}:
+    put:
+      operationId: updateReviewStatus
+      tags: [admin]
+      summary: Update review status (approve/hide)
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateReviewStatusBody"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Review" }
+    delete:
+      operationId: deleteReview
+      tags: [admin]
+      summary: Delete a review
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      responses:
+        "204":
+          description: Deleted
+
+components:
+  schemas:
+    HealthStatus:
+      type: object
+      properties:
+        status: { type: string }
+      required: [status]
+    ErrorResponse:
+      type: object
+      properties:
+        error: { type: string }
+      required: [error]
+
+    AuthUser:
+      type: object
+      properties:
+        id: { type: string }
+        email: { type: string }
+        name: { type: string }
+      required: [id, email, name]
+    SessionInfo:
+      type: object
+      properties:
+        user:
+          allOf:
+            - $ref: "#/components/schemas/AuthUser"
+          nullable: true
+        isAdmin: { type: boolean }
+      required: [isAdmin]
+    SignupBody:
+      type: object
+      properties:
+        name: { type: string, minLength: 1 }
+        email: { type: string, format: email }
+        password: { type: string, minLength: 6 }
+      required: [name, email, password]
+    LoginBody:
+      type: object
+      properties:
+        email: { type: string, format: email }
+        password: { type: string }
+      required: [email, password]
+    AdminLoginBody:
+      type: object
+      properties:
+        password: { type: string }
+      required: [password]
+
+    RequestUploadUrlBody:
+      type: object
+      properties:
+        name: { type: string }
+        size: { type: number }
+        contentType: { type: string }
+      required: [name, size, contentType]
+    RequestUploadUrlResponse:
+      type: object
+      properties:
+        uploadURL: { type: string }
+        objectPath: { type: string }
+      required: [uploadURL, objectPath]
+
+    Product:
+      type: object
+      properties:
+        id: { type: string }
+        name: { type: string }
+        brand: { type: string }
+        description: { type: string }
+        category: { type: string, description: "e.g. Eau de Parfum, Eau de Toilette, Body Mist" }
+        price: { type: number, description: "Price in dollars" }
+        sizeMl: { type: integer, nullable: true }
+        stock: { type: integer }
+        featured: { type: boolean }
+        imageUrl: { type: string, nullable: true }
+        notes:
+          type: array
+          items: { type: string }
+          description: "Fragrance notes (top, heart, base mixed)"
+        topNotes: { type: string, nullable: true }
+        heartNotes: { type: string, nullable: true }
+        baseNotes: { type: string, nullable: true }
+        averageRating: { type: number, nullable: true }
+        reviewCount: { type: integer }
+        createdAt: { type: string, format: date-time }
+      required: [id, name, brand, description, category, price, stock, featured, notes, reviewCount, createdAt]
+
+    CreateProductBody:
+      type: object
+      properties:
+        name: { type: string }
+        brand: { type: string }
+        description: { type: string }
+        category: { type: string }
+        price: { type: number }
+        sizeMl: { type: integer, nullable: true }
+        stock: { type: integer }
+        featured: { type: boolean }
+        imageUrl: { type: string, nullable: true }
+        notes:
+          type: array
+          items: { type: string }
+        topNotes: { type: string, nullable: true }
+        heartNotes: { type: string, nullable: true }
+        baseNotes: { type: string, nullable: true }
+      required: [name, brand, description, category, price, stock, featured, notes]
+
+    UpdateProductBody:
+      type: object
+      properties:
+        name: { type: string }
+        brand: { type: string }
+        description: { type: string }
+        category: { type: string }
+        price: { type: number }
+        sizeMl: { type: integer, nullable: true }
+        stock: { type: integer }
+        featured: { type: boolean }
+        imageUrl: { type: string, nullable: true }
+        notes:
+          type: array
+          items: { type: string }
+        topNotes: { type: string, nullable: true }
+        heartNotes: { type: string, nullable: true }
+        baseNotes: { type: string, nullable: true }
+
+    Review:
+      type: object
+      properties:
+        id: { type: string }
+        productId: { type: string }
+        productName: { type: string, nullable: true }
+        customerName: { type: string }
+        rating: { type: integer, minimum: 1, maximum: 5 }
+        comment: { type: string }
+        status:
+          type: string
+          enum: [pending, approved, hidden]
+        createdAt: { type: string, format: date-time }
+      required: [id, productId, customerName, rating, comment, status, createdAt]
+
+    CreateReviewBody:
+      type: object
+      properties:
+        customerName: { type: string }
+        rating: { type: integer, minimum: 1, maximum: 5 }
+        comment: { type: string }
+      required: [customerName, rating, comment]
+
+    UpdateReviewStatusBody:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [pending, approved, hidden]
+      required: [status]
+
+    OrderItem:
+      type: object
+      properties:
+        productId: { type: string }
+        name: { type: string }
+        brand: { type: string }
+        price: { type: number }
+        quantity: { type: integer, minimum: 1 }
+        imageUrl: { type: string, nullable: true }
+      required: [productId, name, brand, price, quantity]
+
+    Order:
+      type: object
+      properties:
+        id: { type: string }
+        customerName: { type: string }
+        customerEmail: { type: string }
+        shippingAddress: { type: string }
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/OrderItem" }
+        subtotal: { type: number }
+        shipping: { type: number }
+        total: { type: number }
+        status:
+          type: string
+          enum: [pending, processing, shipped, delivered, cancelled]
+        createdAt: { type: string, format: date-time }
+      required: [id, customerName, customerEmail, shippingAddress, items, subtotal, shipping, total, status, createdAt]
+
+    CreateOrderItemBody:
+      type: object
+      properties:
+        productId: { type: string }
+        quantity: { type: integer, minimum: 1 }
+      required: [productId, quantity]
+
+    CreateOrderBody:
+      type: object
+      properties:
+        customerName: { type: string }
+        customerEmail: { type: string }
+        shippingAddress: { type: string }
+        items:
+          type: array
+          minItems: 1
+          items: { $ref: "#/components/schemas/CreateOrderItemBody" }
+      required: [customerName, customerEmail, shippingAddress, items]
+
+    UpdateOrderStatusBody:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [pending, processing, shipped, delivered, cancelled]
+      required: [status]
+
+    DashboardSummary:
+      type: object
+      properties:
+        totalRevenue: { type: number }
+        ordersCount: { type: integer }
+        pendingOrdersCount: { type: integer }
+        productsCount: { type: integer }
+        outOfStockCount: { type: integer }
+        averageRating: { type: number, nullable: true }
+        pendingReviewsCount: { type: integer }
+        recentOrders:
+          type: array
+          items: { $ref: "#/components/schemas/Order" }
+        topProducts:
+          type: array
+          items: { $ref: "#/components/schemas/Product" }
+      required: [totalRevenue, ordersCount, pendingOrdersCount, productsCount, outOfStockCount, pendingReviewsCount, recentOrders, topProducts]

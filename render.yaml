@@ -1,0 +1,22 @@
+services:
+  - type: web
+    name: jojo-collections-api
+    runtime: node
+    plan: free
+    buildCommand: npm install -g pnpm && pnpm install && pnpm --filter @workspace/api-server run build
+    startCommand: cd artifacts/api-server && node --enable-source-maps ./dist/index.mjs
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: FIREBASE_SERVICE_ACCOUNT_JSON
+        sync: false
+      - key: SESSION_SECRET
+        generateValue: true
+      - key: ADMIN_PASSWORD
+        sync: false
+      - key: CORS_ORIGINS
+        sync: false
+      - key: STORAGE_BUCKET_NAME
+        sync: false

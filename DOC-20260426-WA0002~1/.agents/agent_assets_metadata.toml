@@ -1,0 +1,43 @@
+uploads = []
+
+[[generated]]
+id = "zYFQj2v61ZJ8pflBjyJ4l"
+uri = "file://artifacts/jojo-collections/public/perfumes/rose-eclipse.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "2y9Lj8sQ7AMMcXu_TKwQB"
+uri = "file://artifacts/jojo-collections/public/perfumes/midnight-oud.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "XHiu3bcL7cDHel_ouIIZO"
+uri = "file://artifacts/jojo-collections/public/perfumes/jasmine-veil.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "3c0PVu1fLmERGdEe3S9UV"
+uri = "file://artifacts/jojo-collections/public/perfumes/azure-bloom.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "Cey4GhdKCVJsQ6sG_LwkO"
+uri = "file://artifacts/jojo-collections/public/perfumes/golden-amber.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "EpRjzsXipXgMYrUX-D4sh"
+uri = "file://artifacts/jojo-collections/public/perfumes/violet-mist.png"
+type = "image"
+title = "generated_image"
+
+[[outputs]]
+id = "aRVbZ-Gv1HqxI9BfF2Mij"
+uri = "file://exports/jojo-collections-source.tar.gz"
+type = "unspecified"
+title = "Jojo Collections — full source code"
