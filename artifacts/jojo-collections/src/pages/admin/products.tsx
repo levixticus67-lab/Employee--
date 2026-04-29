@@ -245,7 +245,7 @@ export default function AdminProducts() {
       const file = e.target.files?.[0];
       if (!file) return;
       const cloudName = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME;
-      const uploadPreset = import.meta.env.VITE_CLOUDINARY_UPLOAD_FOLDER;
+      const uploadPreset = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET;
       if (!cloudName || !uploadPreset) {
         toast.error("Cloudinary is not configured");
         return;
