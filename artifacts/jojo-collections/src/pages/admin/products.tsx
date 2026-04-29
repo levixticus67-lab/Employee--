@@ -4,7 +4,6 @@ import { useListProducts, useCreateProduct, useUpdateProduct, useDeleteProduct, 
 import { Button } from "@/components/ui/button";
 import { Plus, Edit2, Trash2, X, Upload } from "lucide-react";
 import { toast } from "sonner";
-import { ObjectUploader } from "@workspace/object-storage-web";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 
 const CATEGORIES = ["Eau de Parfum", "Eau de Toilette", "Body Mist"];
@@ -236,30 +235,43 @@ export default function AdminProducts() {
                         <img src={form.imageUrl} alt="Preview" className="w-full h-full object-contain" />
                       </div>
                     )}
-                    <ObjectUploader
-                      onGetUploadParameters={async (file) => {
-                        const apiBase = import.meta.env.VITE_API_URL || "";
-                        const res = await fetch(`${apiBase}/api/storage/uploads/request-url`, {
-                          method: "POST",
-                          headers: { "Content-Type": "application/json" },
-                          credentials: "include",
-                          body: JSON.stringify({ name: file.name, size: file.size, contentType: file.type }),
-                        });
-                        const data = await res.json();
-                        return { method: "PUT", url: data.uploadURL, headers: { "Content-Type": file.type } };
-                      }}
-                      onComplete={(result) => {
-                        if (result.successful && result.successful[0]) {
-                          const file = result.successful[0];
-                          const objectPath = file.response?.body?.objectPath || `/objects/uploads/${file.name}`;
-                          setForm({ ...form, imageUrl: `/api/storage${objectPath}` });
-                          toast.success("Image uploaded");
-                        }
-                      }}
-                      buttonClassName="flex items-center gap-2 px-4 py-2 glass-card rounded-lg text-sm text-blue-900 hover:bg-white/40 transition-colors"
-                    >
-                      <Upload className="w-4 h-4" /> {form.imageUrl ? "Change Image" : "Upload Image"}
-                    </ObjectUploader>
+                    <label className="flex items-center gap-2 px-4 py-2 glass-card rounded-lg text-sm text-blue-900 hover:bg-white/40 transition-colors cursor-pointer">
+  <Upload className="w-4 h-4" /> {form.imageUrl ? "Change Image" : "Upload Image"}
+  <input
+    type="file"
+    accept="image/*"
+    className="hidden"
+    onChange={async (e) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      const cloudName = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME;
+      const uploadPreset = import.meta.env.VITE_CLOUDINARY_UPLOAD_FOLDER;
+      if (!cloudName || !uploadPreset) {
+        toast.error("Cloudinary is not configured");
+        return;
+      }
+      const data = new FormData();
+      data.append("file", file);
+      data.append("upload_preset", uploadPreset);
+      try {
+        const res = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`, {
+          method: "POST",
+          body: data,
+        });
+        const json = await res.json();
+        if (json.secure_url) {
+          setForm({ ...form, imageUrl: json.secure_url });
+          toast.success("Image uploaded");
+        } else {
+          toast.error(json.error?.message || "Upload failed");
+        }
+      } catch (err) {
+        toast.error("Upload failed");
+      }
+      e.target.value = "";
+    }}
+  />
+</label>
                   </div>
                 </div>
 
