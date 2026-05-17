@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { AdminLayout } from "@/components/admin-layout";
 import { TrendingUp, ShoppingBag, DollarSign, Package } from "lucide-react";
+import { apiFetch } from "@/lib/api";
 
 type ChartPoint = { date: string; revenue: number; orders: number };
 type TopSelling = { productId: string; name: string; quantity: number; revenue: number };
@@ -10,7 +11,7 @@ export default function AdminAnalytics() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch("/api/admin/analytics").then((r) => r.json()).then(setData).catch(() => {}).finally(() => setLoading(false));
+    apiFetch("/api/admin/analytics").then((r) => r.json()).then(setData).catch(() => {}).finally(() => setLoading(false));
   }, []);
 
   if (loading) {
