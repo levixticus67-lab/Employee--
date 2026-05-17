@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Plus, Edit2, Trash2, Upload, X } from "lucide-react";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { apiFetch } from "@/lib/api";
 
 const CATEGORIES = ["Eau de Parfum", "Eau de Toilette", "Body Mist"];
 
@@ -35,7 +36,7 @@ export default function AdminProducts() {
   const [uploadingExtra, setUploadingExtra] = useState(false);
 
   useEffect(() => {
-    fetch("/api/products/collections").then((r) => r.json()).then(setCollections).catch(() => {});
+    apiFetch("/api/products/collections").then((r) => r.json()).then(setCollections).catch(() => {});
   }, []);
 
   const initialFormState = {
