@@ -7,6 +7,7 @@ import { useCurrency } from "@/components/currency-context";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { Tag, CheckCircle, Smartphone, CreditCard, Clock, Copy, Info } from "lucide-react";
+import { apiFetch } from "@/lib/api";
 
 type CouponResult = { id: string; code: string; type: string; value: number; discount: number };
 
@@ -33,7 +34,7 @@ export default function Checkout() {
   }, [session?.user]);
 
   useEffect(() => {
-    fetch("/api/settings/public").then((r) => r.json()).then((d) => {
+    apiFetch("/api/settings/public").then((r) => r.json()).then((d) => {
       setBusinessNumbers({ mtnNumber: d.mtnNumber ?? "", airtelNumber: d.airtelNumber ?? "" });
     }).catch(() => {});
   }, []);
@@ -46,7 +47,7 @@ export default function Checkout() {
     if (!couponCode.trim()) return;
     setValidatingCoupon(true); setCouponError(""); setCouponResult(null);
     try {
-      const res = await fetch("/api/coupons/validate", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ code: couponCode, orderTotal: subtotal }) });
+      const res = await apiFetch("/api/coupons/validate", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ code: couponCode, orderTotal: subtotal }) });
       const data = await res.json();
       if (!res.ok) setCouponError(data.error || "Invalid coupon");
       else { setCouponResult(data); toast.success(`Coupon applied! You save ${format(data.discount)}`); }
