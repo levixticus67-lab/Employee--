@@ -5,6 +5,7 @@ import { useGetCurrentUser } from "@workspace/api-client-react";
 import { useCurrency } from "@/components/currency-context";
 import { Package, Clock, Truck, PackageCheck, XCircle, ChevronDown, ChevronUp, Smartphone, CreditCard } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { apiFetch } from "@/lib/api";
 
 type OrderItem = { productId: string; name: string; brand: string; price: number; quantity: number; imageUrl: string | null };
 type StatusEntry = { status: string; timestamp: string };
@@ -150,7 +151,7 @@ export default function MyOrders() {
     const email = session?.user?.email;
     if (!email) return;
     setLoading(true);
-    fetch(`/api/orders/by-email/${encodeURIComponent(email)}`)
+    apiFetch(`/api/orders/by-email/${encodeURIComponent(email)}`)
       .then((r) => r.json())
       .then(setOrders)
       .catch(() => {})
