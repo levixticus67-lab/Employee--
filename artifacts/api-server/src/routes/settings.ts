@@ -10,6 +10,8 @@ type StoreSettings = {
   whatsappMessage: string;
   currencyDefault: string;
   lowStockThreshold: number;
+  mtnNumber: string;
+  airtelNumber: string;
 };
 
 const defaultSettings: StoreSettings = {
@@ -17,6 +19,8 @@ const defaultSettings: StoreSettings = {
   whatsappMessage: "Hi! I need help with my order.",
   currencyDefault: "USD",
   lowStockThreshold: 5,
+  mtnNumber: "",
+  airtelNumber: "",
 };
 
 router.get("/settings/public", async (_req, res) => {
@@ -27,9 +31,11 @@ router.get("/settings/public", async (_req, res) => {
       whatsappNumber: data?.["whatsappNumber"] ?? "",
       whatsappMessage: data?.["whatsappMessage"] ?? "Hi! I need help with my order.",
       currencyDefault: data?.["currencyDefault"] ?? "USD",
+      mtnNumber: data?.["mtnNumber"] ?? "",
+      airtelNumber: data?.["airtelNumber"] ?? "",
     });
   } catch {
-    res.json({ whatsappNumber: "", whatsappMessage: "Hi! I need help.", currencyDefault: "USD" });
+    res.json({ whatsappNumber: "", whatsappMessage: "Hi! I need help.", currencyDefault: "USD", mtnNumber: "", airtelNumber: "" });
   }
 });
 
@@ -45,9 +51,10 @@ router.get("/admin/settings", requireAdmin, async (_req, res) => {
 router.put("/admin/settings", requireAdmin, async (req, res) => {
   const body = req.body as Partial<StoreSettings>;
   const updates: Partial<StoreSettings> = {};
-  if (body.whatsappNumber !== undefined) updates.whatsappNumber = body.whatsappNumber;
-  if (body.whatsappMessage !== undefined) updates.whatsappMessage = body.whatsappMessage;
-  if (body.currencyDefault !== undefined) updates.currencyDefault = body.currencyDefault;
+  const keys: (keyof StoreSettings)[] = ["whatsappNumber", "whatsappMessage", "currencyDefault", "mtnNumber", "airtelNumber"];
+  for (const k of keys) {
+    if (body[k] !== undefined) (updates as Record<string, unknown>)[k] = body[k];
+  }
   if (body.lowStockThreshold !== undefined) updates.lowStockThreshold = Number(body.lowStockThreshold);
   await firestore.doc(SETTINGS_DOC).set(updates, { merge: true });
   const snap = await firestore.doc(SETTINGS_DOC).get();
@@ -61,13 +68,7 @@ router.get("/admin/low-stock", requireAdmin, async (_req, res) => {
     const snap = await firestore.collection("products").get();
     const low = snap.docs
       .filter((d) => (d.data()["stock"] ?? 0) <= threshold)
-      .map((d) => ({
-        id: d.id,
-        name: d.data()["name"],
-        brand: d.data()["brand"],
-        stock: d.data()["stock"],
-        imageUrl: d.data()["imageUrl"] ?? null,
-      }));
+      .map((d) => ({ id: d.id, name: d.data()["name"], brand: d.data()["brand"], stock: d.data()["stock"], imageUrl: d.data()["imageUrl"] ?? null }));
     res.json(low);
   } catch {
     res.json([]);

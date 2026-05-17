@@ -20,6 +20,7 @@ import WishlistPage from "@/pages/wishlist";
 import BlogPage from "@/pages/blog";
 import BlogPostPage from "@/pages/blog-post";
 import BundlesPage from "@/pages/bundles";
+import MyOrders from "@/pages/my-orders";
 import AdminLoginPage from "@/pages/admin/login";
 
 import Dashboard from "@/pages/admin/dashboard";
@@ -37,13 +38,7 @@ const queryClient = new QueryClient();
 
 function AdminRoute({ children }: { children: React.ReactNode }) {
   const { isAdmin, loading } = useAuth();
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center text-blue-800/70">
-        Loading…
-      </div>
-    );
-  }
+  if (loading) return <div className="min-h-screen flex items-center justify-center text-blue-800/70">Loading…</div>;
   if (!isAdmin) return <Redirect to="/admin/login" />;
   return <>{children}</>;
 }
@@ -51,7 +46,6 @@ function AdminRoute({ children }: { children: React.ReactNode }) {
 function Router() {
   return (
     <Switch>
-      {/* Customer Routes */}
       <Route path="/" component={Home} />
       <Route path="/shop" component={Shop} />
       <Route path="/product/:id" component={ProductDetail} />
@@ -64,39 +58,19 @@ function Router() {
       <Route path="/blog" component={BlogPage} />
       <Route path="/blog/:id" component={BlogPostPage} />
       <Route path="/bundles" component={BundlesPage} />
+      <Route path="/my-orders" component={MyOrders} />
 
-      {/* Admin Routes */}
       <Route path="/admin/login" component={AdminLoginPage} />
-      <Route path="/admin">
-        <AdminRoute><Dashboard /></AdminRoute>
-      </Route>
-      <Route path="/admin/analytics">
-        <AdminRoute><AdminAnalytics /></AdminRoute>
-      </Route>
-      <Route path="/admin/products">
-        <AdminRoute><AdminProducts /></AdminRoute>
-      </Route>
-      <Route path="/admin/orders">
-        <AdminRoute><AdminOrders /></AdminRoute>
-      </Route>
-      <Route path="/admin/reviews">
-        <AdminRoute><AdminReviews /></AdminRoute>
-      </Route>
-      <Route path="/admin/coupons">
-        <AdminRoute><AdminCoupons /></AdminRoute>
-      </Route>
-      <Route path="/admin/bundles">
-        <AdminRoute><AdminBundles /></AdminRoute>
-      </Route>
-      <Route path="/admin/blog">
-        <AdminRoute><AdminBlog /></AdminRoute>
-      </Route>
-      <Route path="/admin/bulk-import">
-        <AdminRoute><BulkImport /></AdminRoute>
-      </Route>
-      <Route path="/admin/settings">
-        <AdminRoute><AdminSettings /></AdminRoute>
-      </Route>
+      <Route path="/admin"><AdminRoute><Dashboard /></AdminRoute></Route>
+      <Route path="/admin/analytics"><AdminRoute><AdminAnalytics /></AdminRoute></Route>
+      <Route path="/admin/products"><AdminRoute><AdminProducts /></AdminRoute></Route>
+      <Route path="/admin/orders"><AdminRoute><AdminOrders /></AdminRoute></Route>
+      <Route path="/admin/reviews"><AdminRoute><AdminReviews /></AdminRoute></Route>
+      <Route path="/admin/coupons"><AdminRoute><AdminCoupons /></AdminRoute></Route>
+      <Route path="/admin/bundles"><AdminRoute><AdminBundles /></AdminRoute></Route>
+      <Route path="/admin/blog"><AdminRoute><AdminBlog /></AdminRoute></Route>
+      <Route path="/admin/bulk-import"><AdminRoute><BulkImport /></AdminRoute></Route>
+      <Route path="/admin/settings"><AdminRoute><AdminSettings /></AdminRoute></Route>
 
       <Route component={NotFound} />
     </Switch>
