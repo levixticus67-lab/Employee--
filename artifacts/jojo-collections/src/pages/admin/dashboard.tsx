@@ -4,6 +4,7 @@ import { AdminLayout } from "@/components/admin-layout";
 import { DollarSign, ShoppingCart, Package, AlertCircle, MessageSquare, Star, Bell, BellOff } from "lucide-react";
 import { Link } from "wouter";
 import { toast } from "sonner";
+import { apiFetch } from "@/lib/api";
 
 const STORAGE_KEY = "jojo_seen_order_ids";
 
@@ -38,7 +39,7 @@ function useOrderNotifications() {
 
   const checkNewOrders = async () => {
     try {
-      const res = await fetch("/api/admin/orders");
+      const res = await apiFetch("/api/admin/orders");
       if (!res.ok) return;
       const orders: { id: string; customerName: string; total: number; status: string }[] = await res.json();
 
