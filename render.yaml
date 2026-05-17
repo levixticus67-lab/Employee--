@@ -3,7 +3,7 @@ services:
     name: jojo-collections-api
     runtime: node
     plan: free
-    buildCommand: pnpm install && pnpm --filter @workspace/jojo-collections run build && pnpm --filter @workspace/api-server run build
+    buildCommand: pnpm install && pnpm --filter @workspace/api-server run build
     startCommand: cd artifacts/api-server && node --enable-source-maps ./dist/index.mjs
     envVars:
       - key: NODE_ENV
