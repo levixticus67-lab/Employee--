@@ -6,7 +6,7 @@ import { useCart } from "@/components/cart-context";
 import { useCurrency } from "@/components/currency-context";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { Tag, CheckCircle, Smartphone, CreditCard } from "lucide-react";
+import { Tag, CheckCircle, Smartphone, CreditCard, Clock } from "lucide-react";
 
 type CouponResult = { id: string; code: string; type: string; value: number; discount: number };
 
@@ -17,16 +17,12 @@ export default function Checkout() {
   const { data: session } = useGetCurrentUser();
   const { format } = useCurrency();
 
-  const [form, setForm] = useState({
-    customerName: "",
-    customerEmail: "",
-    shippingAddress: "",
-  });
+  const [form, setForm] = useState({ customerName: "", customerEmail: "", shippingAddress: "" });
   const [couponCode, setCouponCode] = useState("");
   const [couponResult, setCouponResult] = useState<CouponResult | null>(null);
   const [couponError, setCouponError] = useState("");
   const [validatingCoupon, setValidatingCoupon] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState<"online" | "mtn_momo" | "airtel_money">("online");
+  const [paymentMethod, setPaymentMethod] = useState<"mtn_momo" | "airtel_money" | "online">("mtn_momo");
   const [paymentNumber, setPaymentNumber] = useState("");
 
   useEffect(() => {
@@ -51,12 +47,8 @@ export default function Checkout() {
         body: JSON.stringify({ code: couponCode, orderTotal: subtotal }),
       });
       const data = await res.json();
-      if (!res.ok) {
-        setCouponError(data.error || "Invalid coupon");
-      } else {
-        setCouponResult(data);
-        toast.success(`Coupon applied! You save ${format(data.discount)}`);
-      }
+      if (!res.ok) setCouponError(data.error || "Invalid coupon");
+      else { setCouponResult(data); toast.success(`Coupon applied! You save ${format(data.discount)}`); }
     } catch {
       setCouponError("Could not validate coupon");
     } finally {
@@ -67,45 +59,36 @@ export default function Checkout() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (items.length === 0) return;
-
-    const orderItems = items.map((item) => ({
-      productId: item.product.id,
-      quantity: item.quantity,
-    }));
-
     createOrder.mutate(
       {
         data: {
           customerName: form.customerName,
           customerEmail: form.customerEmail,
           shippingAddress: form.shippingAddress,
-          items: orderItems,
+          items: items.map((item) => ({ productId: item.product.id, quantity: item.quantity })),
           couponCode: couponResult?.code,
           paymentMethod,
           paymentNumber: paymentMethod !== "online" ? paymentNumber : undefined,
         } as any,
       },
       {
-        onSuccess: (order) => {
-          clearCart();
-          toast.success("Order placed successfully!");
-          setLocation(`/order/${order.id}`);
-        },
-        onError: () => {
-          toast.error("Failed to place order. Please try again.");
-        },
+        onSuccess: (order) => { clearCart(); toast.success("Order placed!"); setLocation(`/order/${order.id}`); },
+        onError: () => toast.error("Failed to place order. Please try again."),
       }
     );
   };
 
-  if (items.length === 0) {
-    setLocation("/cart");
-    return null;
-  }
+  if (items.length === 0) { setLocation("/cart"); return null; }
 
   const discount = couponResult?.discount ?? 0;
   const shipping = (subtotal - discount) > 100 ? 0 : 15;
   const total = Math.max(0, subtotal - discount + shipping);
+
+  const paymentOptions = [
+    { value: "mtn_momo" as const, label: "MTN Mobile Money", icon: Smartphone, comingSoon: false },
+    { value: "airtel_money" as const, label: "Airtel Money", icon: Smartphone, comingSoon: false },
+    { value: "online" as const, label: "Pay Online (Credit/Debit Card)", icon: CreditCard, comingSoon: true },
+  ];
 
   return (
     <Layout>
@@ -113,9 +96,8 @@ export default function Checkout() {
         <h1 className="text-4xl font-serif text-blue-950 mb-8 text-center">Checkout</h1>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
-          {/* Form */}
           <div className="glass-panel-heavy rounded-3xl p-8 border-white/50 space-y-8">
-            {/* Shipping Details */}
+            {/* Shipping */}
             <div>
               <h2 className="text-2xl font-serif text-blue-950 mb-6">Shipping Details</h2>
               <form id="checkout-form" onSubmit={handleSubmit} className="space-y-5">
@@ -141,7 +123,7 @@ export default function Checkout() {
               </form>
             </div>
 
-            {/* Coupon Code */}
+            {/* Coupon */}
             <div>
               <h2 className="text-lg font-serif text-blue-950 mb-3 flex items-center gap-2">
                 <Tag className="w-4 h-4 text-blue-500" /> Promo Code
@@ -171,26 +153,31 @@ export default function Checkout() {
               )}
             </div>
 
-            {/* Payment Method */}
+            {/* Payment */}
             <div>
-              <h2 className="text-lg font-serif text-blue-950 mb-3">Payment Method</h2>
+              <h2 className="text-lg font-serif text-blue-950 mb-1">Payment Method</h2>
+              <p className="text-xs text-blue-800/50 mb-3">Select how you'd like to pay. We'll confirm payment details after your order is placed.</p>
               <div className="space-y-3">
-                {[
-                  { value: "online", label: "Pay Online (Credit/Debit Card)", icon: CreditCard },
-                  { value: "mtn_momo", label: "MTN Mobile Money", icon: Smartphone },
-                  { value: "airtel_money", label: "Airtel Money", icon: Smartphone },
-                ].map((option) => (
+                {paymentOptions.map((option) => (
                   <label key={option.value}
-                    className={`flex items-center gap-3 glass-card rounded-xl px-4 py-3 cursor-pointer border-2 transition-all ${paymentMethod === option.value ? "border-blue-400 bg-blue-50/20" : "border-white/30 hover:border-blue-200"}`}>
-                    <input type="radio" name="paymentMethod" value={option.value} checked={paymentMethod === option.value}
-                      onChange={(e) => setPaymentMethod(e.target.value as any)} className="accent-blue-600" />
+                    className={`flex items-center gap-3 glass-card rounded-xl px-4 py-3 border-2 transition-all ${option.comingSoon ? "opacity-60 cursor-not-allowed" : "cursor-pointer"} ${paymentMethod === option.value && !option.comingSoon ? "border-blue-400 bg-blue-50/20" : "border-white/30 hover:border-blue-200"}`}>
+                    <input type="radio" name="paymentMethod" value={option.value}
+                      checked={paymentMethod === option.value}
+                      disabled={option.comingSoon}
+                      onChange={(e) => !option.comingSoon && setPaymentMethod(e.target.value as any)}
+                      className="accent-blue-600" />
                     <option.icon className="w-4 h-4 text-blue-600 flex-shrink-0" />
-                    <span className="text-sm font-medium text-blue-950">{option.label}</span>
+                    <span className="text-sm font-medium text-blue-950 flex-1">{option.label}</span>
+                    {option.comingSoon && (
+                      <span className="flex items-center gap-1 text-xs font-medium text-orange-600 bg-orange-50 px-2 py-0.5 rounded-full border border-orange-200">
+                        <Clock className="w-3 h-3" /> Coming Soon
+                      </span>
+                    )}
                   </label>
                 ))}
               </div>
 
-              {paymentMethod !== "online" && (
+              {(paymentMethod === "mtn_momo" || paymentMethod === "airtel_money") && (
                 <div className="mt-4">
                   <label className="block text-sm font-medium text-blue-900/80 mb-1">
                     {paymentMethod === "mtn_momo" ? "MTN" : "Airtel"} Phone Number
@@ -199,7 +186,7 @@ export default function Checkout() {
                     placeholder="+256 700 000 000"
                     className="w-full glass-card rounded-xl px-4 py-2.5 text-blue-950 focus:outline-none focus:ring-2 focus:ring-blue-400 border-white/40" />
                   <p className="text-xs text-blue-800/50 mt-1">
-                    You will receive a payment prompt on this number. Approve it to confirm your order.
+                    After placing your order, you'll receive payment instructions via this number.
                   </p>
                 </div>
               )}
@@ -215,7 +202,6 @@ export default function Checkout() {
           <div>
             <div className="glass-panel rounded-3xl p-8 border-white/40 sticky top-24">
               <h2 className="text-2xl font-serif text-blue-950 mb-6">Order Summary</h2>
-
               <div className="space-y-4 mb-6 max-h-[40vh] overflow-y-auto pr-2">
                 {items.map((item) => (
                   <div key={item.product.id} className="flex items-center gap-4">
@@ -230,17 +216,13 @@ export default function Checkout() {
                       <p className="text-sm font-medium text-blue-950 truncate">{item.product.name}</p>
                       <p className="text-xs text-blue-800/70">Qty: {item.quantity}</p>
                     </div>
-                    <div className="text-sm font-medium text-blue-900">
-                      {format(item.product.price * item.quantity)}
-                    </div>
+                    <div className="text-sm font-medium text-blue-900">{format(item.product.price * item.quantity)}</div>
                   </div>
                 ))}
               </div>
-
               <div className="border-t border-white/30 pt-4 space-y-3">
                 <div className="flex justify-between text-sm text-blue-900/80">
-                  <span>Subtotal</span>
-                  <span>{format(subtotal)}</span>
+                  <span>Subtotal</span><span>{format(subtotal)}</span>
                 </div>
                 {discount > 0 && (
                   <div className="flex justify-between text-sm text-green-700">
@@ -252,9 +234,7 @@ export default function Checkout() {
                   <span>Shipping</span>
                   <span>{shipping === 0 ? "Free" : format(shipping)}</span>
                 </div>
-                {shipping === 0 && subtotal - discount > 100 && (
-                  <p className="text-xs text-green-700">Free shipping on orders over $100!</p>
-                )}
+                {shipping === 0 && <p className="text-xs text-green-700">Free shipping on orders over $100!</p>}
                 <div className="border-t border-white/20 pt-3 flex justify-between items-center">
                   <span className="font-medium text-blue-950">Total</span>
                   <span className="text-2xl font-serif text-blue-950">{format(total)}</span>

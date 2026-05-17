@@ -10,6 +10,18 @@ const CATEGORIES = ["Eau de Parfum", "Eau de Toilette", "Body Mist"];
 
 type Size = { label: string; price: number; stock: number };
 
+async function uploadToCloudinary(file: File): Promise<string | null> {
+  const cloudName = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME;
+  const uploadPreset = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET;
+  if (!cloudName || !uploadPreset) { toast.error("Cloudinary not configured"); return null; }
+  const data = new FormData();
+  data.append("file", file);
+  data.append("upload_preset", uploadPreset);
+  const res = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`, { method: "POST", body: data });
+  const json = await res.json();
+  return json.secure_url ?? null;
+}
+
 export default function AdminProducts() {
   const { data: products, refetch, isLoading } = useListProducts();
   const createProduct = useCreateProduct();
@@ -20,6 +32,7 @@ export default function AdminProducts() {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [activeTab, setActiveTab] = useState<"basic" | "notes" | "advanced">("basic");
+  const [uploadingExtra, setUploadingExtra] = useState(false);
 
   useEffect(() => {
     fetch("/api/products/collections").then((r) => r.json()).then(setCollections).catch(() => {});
@@ -34,7 +47,6 @@ export default function AdminProducts() {
 
   const [form, setForm] = useState(initialFormState);
   const [notesInput, setNotesInput] = useState("");
-  const [newImage, setNewImage] = useState("");
   const [newSizeLabel, setNewSizeLabel] = useState("");
   const [newSizePrice, setNewSizePrice] = useState("");
   const [newSizeStock, setNewSizeStock] = useState("");
@@ -83,10 +95,19 @@ export default function AdminProducts() {
     setNewSizeLabel(""); setNewSizePrice(""); setNewSizeStock("");
   };
 
-  const addImage = () => {
-    if (!newImage.trim()) return;
-    setForm((prev) => ({ ...prev, images: [...prev.images, newImage.trim()] }));
-    setNewImage("");
+  const handleExtraImages = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files ?? []);
+    if (!files.length) return;
+    setUploadingExtra(true);
+    let count = 0;
+    for (const file of files) {
+      const url = await uploadToCloudinary(file);
+      if (url) { setForm((prev) => ({ ...prev, images: [...prev.images, url] })); count++; }
+    }
+    if (count > 0) toast.success(`${count} image${count > 1 ? "s" : ""} uploaded`);
+    else toast.error("Upload failed");
+    setUploadingExtra(false);
+    e.target.value = "";
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -188,7 +209,6 @@ export default function AdminProducts() {
             </DialogTitle>
           </DialogHeader>
 
-          {/* Tabs */}
           <div className="flex gap-2 border-b border-white/20 pb-3 mt-4">
             {(["basic", "notes", "advanced"] as const).map((tab) => (
               <button key={tab} onClick={() => setActiveTab(tab)}
@@ -265,19 +285,14 @@ export default function AdminProducts() {
                       <Upload className="w-4 h-4" /> {form.imageUrl ? "Change" : "Upload Image"}
                       <input type="file" accept="image/*" className="hidden" onChange={async (e) => {
                         const file = e.target.files?.[0]; if (!file) return;
-                        const cloudName = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME;
-                        const uploadPreset = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET;
-                        if (!cloudName || !uploadPreset) { toast.error("Cloudinary not configured"); return; }
-                        const data = new FormData(); data.append("file", file); data.append("upload_preset", uploadPreset);
-                        try {
-                          const res = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`, { method: "POST", body: data });
-                          const json = await res.json();
-                          if (json.secure_url) { setForm({ ...form, imageUrl: json.secure_url }); toast.success("Image uploaded"); }
-                          else { toast.error(json.error?.message || "Upload failed"); }
-                        } catch { toast.error("Upload failed"); }
+                        const url = await uploadToCloudinary(file);
+                        if (url) { setForm({ ...form, imageUrl: url }); toast.success("Image uploaded"); }
                         e.target.value = "";
                       }} />
                     </label>
+                    {form.imageUrl && (
+                      <button type="button" onClick={() => setForm({ ...form, imageUrl: "" })} className="text-xs text-red-500 hover:text-red-700">Remove</button>
+                    )}
                   </div>
                 </div>
               </>
@@ -304,7 +319,6 @@ export default function AdminProducts() {
 
             {activeTab === "advanced" && (
               <>
-                {/* Flash Sale */}
                 <div className="glass-panel rounded-xl p-4 border-white/30">
                   <h3 className="font-medium text-blue-950 mb-3 text-sm uppercase tracking-wider">Flash Sale</h3>
                   <div className="grid grid-cols-2 gap-4">
@@ -319,7 +333,6 @@ export default function AdminProducts() {
                   </div>
                 </div>
 
-                {/* Size Variants */}
                 <div className="glass-panel rounded-xl p-4 border-white/30">
                   <h3 className="font-medium text-blue-950 mb-3 text-sm uppercase tracking-wider">Size Variants</h3>
                   {form.sizes.length > 0 && (
@@ -346,7 +359,6 @@ export default function AdminProducts() {
                   </div>
                 </div>
 
-                {/* Additional Images */}
                 <div className="glass-panel rounded-xl p-4 border-white/30">
                   <h3 className="font-medium text-blue-950 mb-3 text-sm uppercase tracking-wider">Additional Images</h3>
                   {form.images.length > 0 && (
@@ -354,7 +366,8 @@ export default function AdminProducts() {
                       {form.images.map((img, i) => (
                         <div key={i} className="relative w-16 h-16">
                           <img src={img} alt={`Image ${i + 1}`} className="w-full h-full object-contain bg-white/30 rounded-lg" />
-                          <button type="button" onClick={() => setForm((prev) => ({ ...prev, images: prev.images.filter((_, j) => j !== i) }))}
+                          <button type="button"
+                            onClick={() => setForm((prev) => ({ ...prev, images: prev.images.filter((_, j) => j !== i) }))}
                             className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-4 h-4 flex items-center justify-center">
                             <X className="w-2.5 h-2.5" />
                           </button>
@@ -362,10 +375,12 @@ export default function AdminProducts() {
                       ))}
                     </div>
                   )}
-                  <div className="flex gap-2">
-                    <input type="url" value={newImage} onChange={(e) => setNewImage(e.target.value)} placeholder="https://example.com/image.jpg" className="flex-1 glass-card rounded-lg px-3 py-2 text-sm text-blue-950 border-white/40 focus:outline-none focus:ring-1 focus:ring-blue-400" />
-                    <button type="button" onClick={addImage} className="bg-blue-600 text-white rounded-lg px-3 py-2 text-sm hover:bg-blue-700">Add</button>
-                  </div>
+                  <label className={`flex items-center gap-2 px-4 py-2 glass-card rounded-lg text-sm cursor-pointer w-fit transition-colors ${uploadingExtra ? "opacity-60 pointer-events-none" : "text-blue-900 hover:bg-white/40"}`}>
+                    <Upload className="w-4 h-4" />
+                    {uploadingExtra ? "Uploading..." : "Upload Images"}
+                    <input type="file" accept="image/*" multiple className="hidden" onChange={handleExtraImages} disabled={uploadingExtra} />
+                  </label>
+                  <p className="text-xs text-blue-800/50 mt-1">You can select multiple images at once</p>
                 </div>
               </>
             )}
