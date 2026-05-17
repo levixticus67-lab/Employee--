@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Plus, Edit2, Trash2, Tag, ToggleLeft, ToggleRight } from "lucide-react";
 import { toast } from "sonner";
+import { apiFetch } from "@/lib/api";
 
 type Coupon = {
   id: string;
@@ -28,7 +29,7 @@ export default function AdminCoupons() {
   const [saving, setSaving] = useState(false);
 
   const load = () => {
-    fetch("/api/admin/coupons").then((r) => r.json()).then(setCoupons).catch(() => {}).finally(() => setLoading(false));
+    apiFetch("/api/admin/coupons").then((r) => r.json()).then(setCoupons).catch(() => {}).finally(() => setLoading(false));
   };
 
   useEffect(() => { load(); }, []);
@@ -46,10 +47,10 @@ export default function AdminCoupons() {
     const payload = { ...form, value: Number(form.value), minOrder: Number(form.minOrder), maxUses: form.maxUses ? Number(form.maxUses) : null };
     try {
       if (editing) {
-        await fetch(`/api/admin/coupons/${editing.id}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+        await apiFetch(`/api/admin/coupons/${editing.id}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
         toast.success("Coupon updated");
       } else {
-        await fetch("/api/admin/coupons", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+        await apiFetch("/api/admin/coupons", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
         toast.success("Coupon created");
       }
       setOpen(false);
@@ -58,13 +59,13 @@ export default function AdminCoupons() {
   };
 
   const toggleActive = async (c: Coupon) => {
-    await fetch(`/api/admin/coupons/${c.id}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ active: !c.active }) });
+    await apiFetch(`/api/admin/coupons/${c.id}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ active: !c.active }) });
     load();
   };
 
   const handleDelete = async (id: string) => {
     if (!confirm("Delete this coupon?")) return;
-    await fetch(`/api/admin/coupons/${id}`, { method: "DELETE" });
+    await apiFetch(`/api/admin/coupons/${id}`, { method: "DELETE" });
     toast.success("Coupon deleted");
     load();
   };
