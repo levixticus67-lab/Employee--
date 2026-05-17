@@ -10,6 +10,7 @@ import { Star, Minus, Plus, ShoppingBag, Heart, Share2, Bell, ChevronRight, Flam
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
 import { getListProductReviewsQueryKey } from "@workspace/api-client-react";
+import { apiFetch } from "@/lib/api";
 
 type RelatedProduct = { id: string; name: string; brand: string; price: number; salePrice?: number | null; imageUrl: string | null };
 
@@ -68,7 +69,7 @@ export default function ProductDetail() {
   // Load related products
   useEffect(() => {
     if (!productId) return;
-    fetch(`/api/products/${productId}/related`)
+    apiFetch(`/api/products/${productId}/related`)
       .then((r) => r.json())
       .then((data) => setRelatedProducts(Array.isArray(data) ? data : []))
       .catch(() => {});
@@ -103,7 +104,7 @@ export default function ProductDetail() {
     e.preventDefault();
     if (!alertEmail) return;
     try {
-      await fetch("/api/stock-alerts", {
+      await apiFetch("/api/stock-alerts", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: alertEmail, productId, productName: product?.name }),
