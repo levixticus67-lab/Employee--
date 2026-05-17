@@ -5,6 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Plus, Edit2, Trash2, BookOpen, Eye, EyeOff, Upload } from "lucide-react";
 import { ObjectUploader } from "@workspace/object-storage-web";
 import { toast } from "sonner";
+import { apiFetch } from "@/lib/api";
 
 type Post = { id: string; title: string; summary: string; content: string; imageUrl: string | null; author: string; published: boolean; createdAt: string };
 const empty = { title: "", summary: "", content: "", imageUrl: "", author: "Jojo Collections", published: false };
@@ -18,7 +19,7 @@ export default function AdminBlog() {
   const [saving, setSaving] = useState(false);
 
   const load = () => {
-    fetch("/api/admin/blog").then((r) => r.json()).then(setPosts).catch(() => {}).finally(() => setLoading(false));
+    apiFetch("/api/admin/blog").then((r) => r.json()).then(setPosts).catch(() => {}).finally(() => setLoading(false));
   };
   useEffect(() => { load(); }, []);
 
@@ -31,10 +32,10 @@ export default function AdminBlog() {
     const payload = { ...form, imageUrl: form.imageUrl || null };
     try {
       if (editing) {
-        await fetch(`/api/admin/blog/${editing.id}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+        await apiFetch(`/api/admin/blog/${editing.id}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
         toast.success("Post updated");
       } else {
-        await fetch("/api/admin/blog", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+        await apiFetch("/api/admin/blog", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
         toast.success("Post created");
       }
       setOpen(false); load();
@@ -42,13 +43,13 @@ export default function AdminBlog() {
   };
 
   const togglePublish = async (p: Post) => {
-    await fetch(`/api/admin/blog/${p.id}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ published: !p.published }) });
+    await apiFetch(`/api/admin/blog/${p.id}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ published: !p.published }) });
     load();
   };
 
   const handleDelete = async (id: string) => {
     if (!confirm("Delete this article?")) return;
-    await fetch(`/api/admin/blog/${id}`, { method: "DELETE" });
+    await apiFetch(`/api/admin/blog/${id}`, { method: "DELETE" });
     toast.success("Post deleted"); load();
   };
 
@@ -114,7 +115,7 @@ export default function AdminBlog() {
                   )}
                   <ObjectUploader
                     onGetUploadParameters={async (file) => {
-                      const res = await fetch("/api/storage/uploads/request-url", {
+                      const res = await apiFetch("/api/storage/uploads/request-url", {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
                         body: JSON.stringify({ name: file.name, size: file.size, contentType: file.type }),
