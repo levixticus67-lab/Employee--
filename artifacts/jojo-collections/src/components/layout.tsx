@@ -6,6 +6,7 @@ import { useCurrency, type Currency } from "./currency-context";
 import { ShoppingBag, Menu, X, User, LogOut, Heart, MessageCircle, Package } from "lucide-react";
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
+import { apiFetch } from "@/lib/api";
 
 export function Layout({ children }: { children: React.ReactNode }) {
   const { totalItems } = useCart();
@@ -18,7 +19,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const [whatsappMessage, setWhatsappMessage] = useState("Hi! I need help.");
 
   useEffect(() => {
-    fetch("/api/settings/public")
+    apiFetch("/api/settings/public")
       .then((r) => r.json())
       .then((d) => {
         if (d.whatsappNumber) setWhatsappNumber(d.whatsappNumber);
