@@ -6,6 +6,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Plus, Edit2, Trash2, Package, Upload } from "lucide-react";
 import { ObjectUploader } from "@workspace/object-storage-web";
 import { toast } from "sonner";
+import { apiFetch } from "@/lib/api";
 
 type Bundle = { id: string; name: string; description: string; productIds: string[]; price: number; imageUrl: string | null; active: boolean; createdAt: string };
 const empty = { name: "", description: "", productIds: [] as string[], price: 0, imageUrl: "", active: true };
@@ -20,7 +21,7 @@ export default function AdminBundles() {
   const { data: products } = useListProducts();
 
   const load = () => {
-    fetch("/api/admin/bundles").then((r) => r.json()).then(setBundles).catch(() => {}).finally(() => setLoading(false));
+    apiFetch("/api/admin/bundles").then((r) => r.json()).then(setBundles).catch(() => {}).finally(() => setLoading(false));
   };
   useEffect(() => { load(); }, []);
 
@@ -37,10 +38,10 @@ export default function AdminBundles() {
     const payload = { ...form, imageUrl: form.imageUrl || null };
     try {
       if (editing) {
-        await fetch(`/api/admin/bundles/${editing.id}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+        await apiFetch(`/api/admin/bundles/${editing.id}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
         toast.success("Bundle updated");
       } else {
-        await fetch("/api/admin/bundles", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+        await apiFetch("/api/admin/bundles", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
         toast.success("Bundle created");
       }
       setOpen(false); load();
@@ -49,12 +50,12 @@ export default function AdminBundles() {
 
   const handleDelete = async (id: string) => {
     if (!confirm("Delete this bundle?")) return;
-    await fetch(`/api/admin/bundles/${id}`, { method: "DELETE" });
+    await apiFetch(`/api/admin/bundles/${id}`, { method: "DELETE" });
     toast.success("Bundle deleted"); load();
   };
 
   const toggleActive = async (b: Bundle) => {
-    await fetch(`/api/admin/bundles/${b.id}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ active: !b.active }) });
+    await apiFetch(`/api/admin/bundles/${b.id}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ active: !b.active }) });
     load();
   };
 
@@ -125,7 +126,7 @@ export default function AdminBundles() {
                 )}
                 <ObjectUploader
                   onGetUploadParameters={async (file) => {
-                    const res = await fetch("/api/storage/uploads/request-url", {
+                    const res = await apiFetch("/api/storage/uploads/request-url", {
                       method: "POST",
                       headers: { "Content-Type": "application/json" },
                       body: JSON.stringify({ name: file.name, size: file.size, contentType: file.type }),
