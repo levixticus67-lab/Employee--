@@ -43,24 +43,40 @@ export const COLLECTIONS = {
   reviews: "reviews",
   users: "users",
   sessions: "sessions",
+  coupons: "coupons",
+  bundles: "bundles",
+  blogPosts: "blogPosts",
+  stockAlerts: "stockAlerts",
+  settings: "settings",
 } as const;
 
 export { Timestamp };
+
+export type ProductSize = {
+  label: string;
+  price: number;
+  stock: number;
+};
 
 export type ProductDoc = {
   name: string;
   brand: string;
   description: string;
   category: string;
+  collection: string | null;
   price: number;
   sizeMl: number | null;
+  sizes: ProductSize[];
   stock: number;
   featured: boolean;
   imageUrl: string | null;
+  images: string[];
   notes: string[];
   topNotes: string | null;
   heartNotes: string | null;
   baseNotes: string | null;
+  salePrice: number | null;
+  saleEndsAt: string | null;
   createdAt: Timestamp;
 };
 
@@ -75,6 +91,10 @@ export type ReviewDoc = {
 };
 
 export type OrderStatus = "pending" | "processing" | "shipped" | "delivered" | "cancelled";
+export type OrderStatusHistoryEntry = {
+  status: OrderStatus;
+  timestamp: string;
+};
 export type OrderItemDoc = {
   productId: string;
   name: string;
@@ -92,6 +112,11 @@ export type OrderDoc = {
   shipping: number;
   total: number;
   status: OrderStatus;
+  statusHistory: OrderStatusHistoryEntry[];
+  paymentMethod: string;
+  paymentNumber: string | null;
+  couponCode: string | null;
+  discount: number;
   createdAt: Timestamp;
 };
 
@@ -106,6 +131,44 @@ export type SessionDoc = {
   sid: string;
   data: string;
   expiresAt: Timestamp;
+};
+
+export type CouponDoc = {
+  code: string;
+  type: "percentage" | "fixed";
+  value: number;
+  minOrder: number;
+  active: boolean;
+  uses: number;
+  maxUses: number | null;
+  createdAt: Timestamp;
+};
+
+export type BundleDoc = {
+  name: string;
+  description: string;
+  productIds: string[];
+  price: number;
+  imageUrl: string | null;
+  active: boolean;
+  createdAt: Timestamp;
+};
+
+export type BlogPostDoc = {
+  title: string;
+  summary: string;
+  content: string;
+  imageUrl: string | null;
+  author: string;
+  published: boolean;
+  createdAt: Timestamp;
+};
+
+export type StockAlertDoc = {
+  email: string;
+  productId: string;
+  productName: string;
+  createdAt: Timestamp;
 };
 
 export { seedProductsIfEmpty } from "./seed";
