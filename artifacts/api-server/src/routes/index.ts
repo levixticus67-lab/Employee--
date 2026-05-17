@@ -6,6 +6,9 @@ import productsRouter from "./products";
 import reviewsRouter from "./reviews";
 import ordersRouter from "./orders";
 import adminRouter from "./admin";
+import settingsRouter from "./settings";
+import bundlesRouter from "./bundles";
+import blogRouter from "./blog";
 import { requireAdmin } from "../middlewares/requireAdmin";
 
 const router: IRouter = Router();
@@ -16,6 +19,9 @@ router.use(storageRouter);
 router.use(productsRouter);
 router.use(reviewsRouter);
 router.use(ordersRouter);
+router.use(settingsRouter);
+router.use(bundlesRouter);
+router.use(blogRouter);
 
 router.use((req, res, next) => {
   if (req.path.startsWith("/admin/") && !req.path.startsWith("/admin/auth/")) {

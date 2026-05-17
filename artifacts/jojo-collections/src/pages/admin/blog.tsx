@@ -2,7 +2,8 @@ import { useEffect, useState } from "react";
 import { AdminLayout } from "@/components/admin-layout";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Plus, Edit2, Trash2, BookOpen, Eye, EyeOff } from "lucide-react";
+import { Plus, Edit2, Trash2, BookOpen, Eye, EyeOff, Upload } from "lucide-react";
+import { ObjectUploader } from "@workspace/object-storage-web";
 import { toast } from "sonner";
 
 type Post = { id: string; title: string; summary: string; content: string; imageUrl: string | null; author: string; published: boolean; createdAt: string };
@@ -69,8 +70,8 @@ export default function AdminBlog() {
         <div className="space-y-4">
           {posts.map((p) => (
             <div key={p.id} className="glass-panel rounded-2xl p-5 flex items-start gap-4">
-              <div className="w-20 h-14 rounded-lg glass-card flex-shrink-0 overflow-hidden">
-                {p.imageUrl ? <img src={p.imageUrl} alt={p.title} className="w-full h-full object-cover" /> : <BookOpen className="w-6 h-6 text-blue-400 m-auto mt-4" />}
+              <div className="w-20 h-14 rounded-lg glass-card flex-shrink-0 overflow-hidden flex items-center justify-center">
+                {p.imageUrl ? <img src={p.imageUrl} alt={p.title} className="w-full h-full object-cover" /> : <BookOpen className="w-6 h-6 text-blue-400" />}
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 mb-1">
@@ -104,8 +105,39 @@ export default function AdminBlog() {
                 <input type="text" value={form.author} onChange={(e) => setForm({ ...form, author: e.target.value })} className="w-full glass-card rounded-lg px-3 py-2 text-blue-950 border-white/40 focus:ring-2 focus:ring-blue-400 focus:outline-none" />
               </div>
               <div>
-                <label className="block text-sm font-medium text-blue-900/80 mb-1">Cover Image URL</label>
-                <input type="url" value={form.imageUrl} onChange={(e) => setForm({ ...form, imageUrl: e.target.value })} placeholder="https://..." className="w-full glass-card rounded-lg px-3 py-2 text-blue-950 border-white/40 focus:ring-2 focus:ring-blue-400 focus:outline-none" />
+                <label className="block text-sm font-medium text-blue-900/80 mb-1">Cover Image</label>
+                <div className="flex items-center gap-2">
+                  {form.imageUrl && (
+                    <div className="w-10 h-10 glass-card rounded p-0.5 flex-shrink-0 bg-white/40 overflow-hidden">
+                      <img src={form.imageUrl} alt="Cover" className="w-full h-full object-cover rounded" />
+                    </div>
+                  )}
+                  <ObjectUploader
+                    onGetUploadParameters={async (file) => {
+                      const res = await fetch("/api/storage/uploads/request-url", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ name: file.name, size: file.size, contentType: file.type }),
+                      });
+                      const data = await res.json();
+                      return { method: "PUT", url: data.uploadURL, headers: { "Content-Type": file.type } };
+                    }}
+                    onComplete={(result) => {
+                      if (result.successful && result.successful[0]) {
+                        const file = result.successful[0];
+                        const objectPath = file.response?.body?.objectPath || `/objects/uploads/${file.name}`;
+                        setForm({ ...form, imageUrl: `/api/storage${objectPath}` });
+                        toast.success("Cover image uploaded");
+                      }
+                    }}
+                    buttonClassName="flex items-center gap-1.5 px-3 py-2 glass-card rounded-lg text-xs text-blue-900 hover:bg-white/40 transition-colors"
+                  >
+                    <Upload className="w-3.5 h-3.5" /> {form.imageUrl ? "Change" : "Upload"}
+                  </ObjectUploader>
+                  {form.imageUrl && (
+                    <button type="button" onClick={() => setForm({ ...form, imageUrl: "" })} className="text-xs text-red-500 hover:text-red-700">✕</button>
+                  )}
+                </div>
               </div>
             </div>
             <div>
