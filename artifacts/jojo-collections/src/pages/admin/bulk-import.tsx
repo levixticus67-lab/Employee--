@@ -3,6 +3,7 @@ import { AdminLayout } from "@/components/admin-layout";
 import { Button } from "@/components/ui/button";
 import { Upload, Download, CheckCircle, AlertCircle, FileText } from "lucide-react";
 import { toast } from "sonner";
+import { apiFetch } from "@/lib/api";
 
 type CSVRow = Record<string, string>;
 
@@ -52,7 +53,7 @@ export default function BulkImport() {
     setImporting(true);
     setError("");
     try {
-      const res = await fetch("/api/admin/products/bulk-import", {
+      const res = await apiFetch("/api/admin/products/bulk-import", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(rows),
