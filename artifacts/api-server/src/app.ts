@@ -1,9 +1,6 @@
 import express, { type Express } from "express";
 import cors from "cors";
 import pinoHttp from "pino-http";
-import { fileURLToPath } from "url";
-import { dirname, join } from "path";
-import { existsSync } from "fs";
 import { seedProductsIfEmpty } from "@workspace/db";
 import router from "./routes";
 import { logger } from "./lib/logger";
@@ -49,16 +46,5 @@ app.use("/api", router);
 seedProductsIfEmpty()
   .then(() => logger.info("Firestore product seed check complete"))
   .catch((err) => logger.error({ err }, "Failed to seed Firestore products"));
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirnameLocal = dirname(__filename);
-const staticPath = join(__dirnameLocal, "../../jojo-collections/dist/public");
-
-if (existsSync(staticPath)) {
-  app.use(express.static(staticPath));
-  app.use((_req, res) => {
-    res.sendFile(join(staticPath, "index.html"));
-  });
-}
 
 export default app;
