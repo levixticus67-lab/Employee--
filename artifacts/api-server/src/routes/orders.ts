@@ -6,12 +6,11 @@ import {
   type OrderDoc,
   type OrderItemDoc,
   type ProductDoc,
+  type CouponDoc,
 } from "@workspace/db";
 import { CreateOrderBody } from "@workspace/api-zod";
 
 const router: IRouter = Router();
-
-const SHIPPING_FLAT = 5.0;
 
 function tsToIso(value: unknown): string {
   if (value instanceof Timestamp) return value.toDate().toISOString();
@@ -28,7 +27,12 @@ export type OrderDto = {
   subtotal: number;
   shipping: number;
   total: number;
-  status: OrderDoc["status"];
+  discount: number;
+  couponCode: string | null;
+  paymentMethod: string;
+  paymentNumber: string | null;
+  status: string;
+  statusHistory: { status: string; timestamp: string }[];
   createdAt: string;
 };
 
@@ -42,7 +46,12 @@ function docToDto(id: string, d: OrderDoc): OrderDto {
     subtotal: Number(d.subtotal),
     shipping: Number(d.shipping),
     total: Number(d.total),
+    discount: Number(d.discount ?? 0),
+    couponCode: d.couponCode ?? null,
+    paymentMethod: d.paymentMethod ?? "online",
+    paymentNumber: d.paymentNumber ?? null,
     status: d.status,
+    statusHistory: d.statusHistory ?? [],
     createdAt: tsToIso(d.createdAt),
   };
 }
@@ -68,10 +77,16 @@ router.post("/orders", async (req, res) => {
     return;
   }
   const body = parsed.data;
+  const rawBody = req.body as Record<string, unknown>;
 
   const productRefs = body.items.map((i) =>
     firestore.collection(COLLECTIONS.products).doc(i.productId),
   );
+
+  // Coupon resolution
+  let discount = 0;
+  let couponCode: string | null = null;
+  const couponInput = rawBody["couponCode"] as string | undefined;
 
   try {
     const newOrderRef = firestore.collection(COLLECTIONS.orders).doc();
@@ -83,14 +98,10 @@ router.post("/orders", async (req, res) => {
       for (let i = 0; i < productSnaps.length; i++) {
         const snap = productSnaps[i]!;
         const reqItem = body.items[i]!;
-        if (!snap.exists) {
-          throw new Error(`Product ${reqItem.productId} not found`);
-        }
+        if (!snap.exists) throw new Error(`Product ${reqItem.productId} not found`);
         const p = snap.data() as ProductDoc;
-        if (p.stock < reqItem.quantity) {
-          throw new Error(`Insufficient stock for ${p.name}`);
-        }
-        const itemPrice = Number(p.price ?? 0);
+        if (p.stock < reqItem.quantity) throw new Error(`Insufficient stock for ${p.name}`);
+        const itemPrice = Number(p.salePrice ?? p.price ?? 0);
         items.push({
           productId: snap.id,
           name: p.name ?? "Unknown product",
@@ -102,8 +113,28 @@ router.post("/orders", async (req, res) => {
         subtotal += itemPrice * reqItem.quantity;
       }
 
-      const shipping = SHIPPING_FLAT;
-      const total = subtotal + shipping;
+      // Apply coupon inside transaction
+      if (couponInput) {
+        const couponSnap = await firestore.collection(COLLECTIONS.coupons)
+          .where("code", "==", couponInput.toUpperCase().trim()).get();
+        if (!couponSnap.empty) {
+          const couponDoc = couponSnap.docs[0]!;
+          const c = couponDoc.data() as CouponDoc;
+          if (c.active && (c.maxUses === null || c.uses < c.maxUses) && subtotal >= c.minOrder) {
+            discount = c.type === "percentage"
+              ? Math.round((subtotal * c.value) / 100 * 100) / 100
+              : Math.min(c.value, subtotal);
+            couponCode = c.code;
+            tx.update(couponDoc.ref, { uses: c.uses + 1 });
+          }
+        }
+      }
+
+      const shipping = (subtotal - discount) > 100 ? 0 : 15;
+      const total = Math.max(0, subtotal - discount + shipping);
+
+      const paymentMethod = (rawBody["paymentMethod"] as string) || "online";
+      const paymentNumber = (rawBody["paymentNumber"] as string) || null;
 
       const order: OrderDoc = {
         customerName: body.customerName,
@@ -113,7 +144,12 @@ router.post("/orders", async (req, res) => {
         subtotal,
         shipping,
         total,
+        discount,
+        couponCode,
+        paymentMethod,
+        paymentNumber,
         status: "pending",
+        statusHistory: [{ status: "pending", timestamp: new Date().toISOString() }],
         createdAt: Timestamp.now(),
       };
       tx.set(newOrderRef, order);
