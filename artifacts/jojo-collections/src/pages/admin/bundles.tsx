@@ -3,7 +3,8 @@ import { AdminLayout } from "@/components/admin-layout";
 import { useListProducts } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Plus, Edit2, Trash2, Package } from "lucide-react";
+import { Plus, Edit2, Trash2, Package, Upload } from "lucide-react";
+import { ObjectUploader } from "@workspace/object-storage-web";
 import { toast } from "sonner";
 
 type Bundle = { id: string; name: string; description: string; productIds: string[]; price: number; imageUrl: string | null; active: boolean; createdAt: string };
@@ -75,7 +76,7 @@ export default function AdminBundles() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {bundles.map((b) => (
             <div key={b.id} className="glass-panel rounded-2xl p-5 flex gap-4 items-start">
-              <div className="w-16 h-16 rounded-lg glass-card flex items-center justify-center flex-shrink-0">
+              <div className="w-16 h-16 rounded-lg glass-card flex items-center justify-center flex-shrink-0 overflow-hidden">
                 {b.imageUrl ? <img src={b.imageUrl} alt={b.name} className="w-full h-full object-cover rounded-lg" /> : <Package className="w-6 h-6 text-blue-400" />}
               </div>
               <div className="flex-1 min-w-0">
@@ -115,8 +116,39 @@ export default function AdminBundles() {
               <textarea rows={2} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} className="w-full glass-card rounded-lg px-3 py-2 text-blue-950 border-white/40 focus:ring-2 focus:ring-blue-400 focus:outline-none resize-none" />
             </div>
             <div>
-              <label className="block text-sm font-medium text-blue-900/80 mb-1">Image URL (optional)</label>
-              <input type="url" value={form.imageUrl} onChange={(e) => setForm({ ...form, imageUrl: e.target.value })} placeholder="https://..." className="w-full glass-card rounded-lg px-3 py-2 text-blue-950 border-white/40 focus:ring-2 focus:ring-blue-400 focus:outline-none" />
+              <label className="block text-sm font-medium text-blue-900/80 mb-1">Bundle Image (optional)</label>
+              <div className="flex items-center gap-3">
+                {form.imageUrl && (
+                  <div className="w-14 h-14 glass-card rounded-lg p-1 flex-shrink-0 bg-white/40 overflow-hidden">
+                    <img src={form.imageUrl} alt="Preview" className="w-full h-full object-contain rounded" />
+                  </div>
+                )}
+                <ObjectUploader
+                  onGetUploadParameters={async (file) => {
+                    const res = await fetch("/api/storage/uploads/request-url", {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ name: file.name, size: file.size, contentType: file.type }),
+                    });
+                    const data = await res.json();
+                    return { method: "PUT", url: data.uploadURL, headers: { "Content-Type": file.type } };
+                  }}
+                  onComplete={(result) => {
+                    if (result.successful && result.successful[0]) {
+                      const file = result.successful[0];
+                      const objectPath = file.response?.body?.objectPath || `/objects/uploads/${file.name}`;
+                      setForm({ ...form, imageUrl: `/api/storage${objectPath}` });
+                      toast.success("Image uploaded");
+                    }
+                  }}
+                  buttonClassName="flex items-center gap-2 px-4 py-2 glass-card rounded-lg text-sm text-blue-900 hover:bg-white/40 transition-colors"
+                >
+                  <Upload className="w-4 h-4" /> {form.imageUrl ? "Change Image" : "Upload Image"}
+                </ObjectUploader>
+                {form.imageUrl && (
+                  <button type="button" onClick={() => setForm({ ...form, imageUrl: "" })} className="text-xs text-red-500 hover:text-red-700">Remove</button>
+                )}
+              </div>
             </div>
             <div>
               <label className="block text-sm font-medium text-blue-900/80 mb-2">Select Products ({form.productIds.length} selected)</label>
