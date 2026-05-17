@@ -6,6 +6,13 @@ import {
   MessageSquare,
   LogOut,
   Home,
+  Tag,
+  Gift,
+  BookOpen,
+  BarChart2,
+  Settings,
+  Upload,
+  Bell,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "./auth-context";
@@ -16,9 +23,15 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
 
   const navLinks = [
     { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
+    { href: "/admin/analytics", label: "Analytics", icon: BarChart2 },
     { href: "/admin/products", label: "Products", icon: Package },
     { href: "/admin/orders", label: "Orders", icon: ShoppingCart },
     { href: "/admin/reviews", label: "Reviews", icon: MessageSquare },
+    { href: "/admin/coupons", label: "Coupons", icon: Tag },
+    { href: "/admin/bundles", label: "Bundles", icon: Gift },
+    { href: "/admin/blog", label: "Journal", icon: BookOpen },
+    { href: "/admin/bulk-import", label: "Bulk Import", icon: Upload },
+    { href: "/admin/settings", label: "Settings", icon: Settings },
   ];
 
   async function handleLogout() {
@@ -40,7 +53,7 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
             JOJO ADMIN
           </Link>
         </div>
-        <nav className="flex-1 py-6 px-4 space-y-2">
+        <nav className="flex-1 py-4 px-4 space-y-1 overflow-y-auto">
           {navLinks.map((link) => {
             const Icon = link.icon;
             const isActive = location === link.href || (link.href !== "/admin" && location.startsWith(link.href));
@@ -48,32 +61,32 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
               <Link
                 key={link.href}
                 href={link.href}
-                className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 font-medium ${
+                className={`flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all duration-300 font-medium text-sm ${
                   isActive
                     ? "bg-blue-600/20 text-blue-900 border border-white/40 shadow-inner"
                     : "text-blue-800/70 hover:bg-white/20 hover:text-blue-900"
                 }`}
               >
-                <Icon className="w-5 h-5" />
+                <Icon className="w-4 h-4 flex-shrink-0" />
                 {link.label}
               </Link>
             );
           })}
         </nav>
-        <div className="p-4 border-t border-white/20 space-y-2">
+        <div className="p-4 border-t border-white/20 space-y-1">
           <Link
             href="/"
-            className="flex items-center gap-3 px-4 py-3 rounded-xl text-blue-800/70 hover:bg-white/20 hover:text-blue-900 transition-all font-medium"
+            className="flex items-center gap-3 px-4 py-2.5 rounded-xl text-blue-800/70 hover:bg-white/20 hover:text-blue-900 transition-all font-medium text-sm"
           >
-            <Home className="w-5 h-5" />
+            <Home className="w-4 h-4" />
             Storefront
           </Link>
           <button
             type="button"
             onClick={handleLogout}
-            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-blue-800/70 hover:bg-red-500/15 hover:text-red-700 transition-all font-medium"
+            className="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-blue-800/70 hover:bg-red-500/15 hover:text-red-700 transition-all font-medium text-sm"
           >
-            <LogOut className="w-5 h-5" />
+            <LogOut className="w-4 h-4" />
             Sign Out
           </button>
         </div>
@@ -86,13 +99,7 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
           <span className="font-serif font-bold text-blue-950">JOJO ADMIN</span>
           <div className="flex items-center gap-3">
             <Link href="/" className="text-sm text-blue-800 underline">Exit</Link>
-            <button
-              type="button"
-              onClick={handleLogout}
-              className="text-sm text-red-700 underline"
-            >
-              Sign out
-            </button>
+            <button type="button" onClick={handleLogout} className="text-sm text-red-700 underline">Sign out</button>
           </div>
         </header>
 
