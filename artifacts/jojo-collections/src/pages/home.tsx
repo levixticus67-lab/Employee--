@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { useCurrency } from "@/components/currency-context";
 import { useWishlist } from "@/components/wishlist-context";
 import { Flame, Package, Heart, Tag } from "lucide-react";
+import { apiFetch } from "@/lib/api";
 
 type Bundle = { id: string; name: string; description: string; productIds: string[]; price: number; imageUrl: string | null; active: boolean };
 
@@ -36,7 +37,7 @@ export default function Home() {
   const [bundles, setBundles] = useState<Bundle[]>([]);
 
   useEffect(() => {
-    fetch("/api/bundles")
+    apiFetch("/api/bundles")
       .then((r) => r.json())
       .then((data) => setBundles(Array.isArray(data) ? data.slice(0, 3) : []))
       .catch(() => {});
