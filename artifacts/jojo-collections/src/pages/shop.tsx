@@ -5,6 +5,7 @@ import { Layout } from "@/components/layout";
 import { useWishlist } from "@/components/wishlist-context";
 import { useCurrency } from "@/components/currency-context";
 import { Search, Filter, Heart, Flame, Tag } from "lucide-react";
+import { apiFetch } from "@/lib/api";
 
 const CATEGORIES = ["All", "Eau de Parfum", "Eau de Toilette", "Body Mist"];
 
@@ -44,7 +45,7 @@ export default function Shop() {
   });
 
   useEffect(() => {
-    fetch("/api/products/collections")
+    apiFetch("/api/products/collections")
       .then((r) => r.json())
       .then((data) => setCollections(Array.isArray(data) ? data : []))
       .catch(() => {});
