@@ -3,6 +3,7 @@ import { AdminLayout } from "@/components/admin-layout";
 import { Button } from "@/components/ui/button";
 import { Settings, MessageCircle, DollarSign, AlertTriangle, Smartphone, Info } from "lucide-react";
 import { toast } from "sonner";
+import { apiFetch } from "@/lib/api";
 
 type SettingsData = {
   whatsappNumber: string;
@@ -30,11 +31,11 @@ export default function AdminSettings() {
 
   useEffect(() => {
     Promise.all([
-      fetch("/api/admin/settings")
+      apiFetch("/api/admin/settings")
         .then((r) => r.json())
         .then((d) => setForm({ ...defaults, ...d }))
         .catch(() => {}),
-      fetch("/api/admin/low-stock")
+      apiFetch("/api/admin/low-stock")
         .then((r) => r.json())
         .then(setLowStockProducts)
         .catch(() => {}),
@@ -45,7 +46,7 @@ export default function AdminSettings() {
     e.preventDefault();
     setSaving(true);
     try {
-      const res = await fetch("/api/admin/settings", {
+      const res = await apiFetch("/api/admin/settings", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(form),
