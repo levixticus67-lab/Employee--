@@ -13,6 +13,7 @@ type SettingsData = {
   mtnNumber: string;
   airtelNumber: string;
   freeDeliveryThreshold: number;
+  locationDeliveryThreshold: number;
 };
 
 const defaults: SettingsData = {
@@ -23,6 +24,7 @@ const defaults: SettingsData = {
   mtnNumber: "",
   airtelNumber: "",
   freeDeliveryThreshold: 0,
+  locationDeliveryThreshold: 0,
 };
 
 export default function AdminSettings() {
@@ -230,6 +232,35 @@ export default function AdminSettings() {
               ) : (
                 <p className="text-xs text-blue-800/50 mt-1">Free delivery is disabled — you set shipping manually per order.</p>
               )}
+
+              <div className="mt-5 pt-5 border-t border-white/20">
+                <label className="block text-sm font-medium text-blue-900/80 mb-1">
+                  "May get free delivery" hint threshold
+                </label>
+                <p className="text-xs text-blue-800/50 mb-2">
+                  Orders between this amount and the nationwide threshold will see a banner saying delivery
+                  might be free depending on their location — and you decide per order.
+                </p>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-blue-800/50 text-sm">$</span>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={form.locationDeliveryThreshold}
+                    onChange={(e) => setForm((p) => ({ ...p, locationDeliveryThreshold: Number(e.target.value) }))}
+                    placeholder="0"
+                    className="w-full glass-card rounded-xl pl-7 pr-4 py-2.5 text-blue-950 focus:outline-none focus:ring-2 focus:ring-blue-400 border-white/40"
+                  />
+                </div>
+                {form.locationDeliveryThreshold > 0 ? (
+                  <p className="text-xs text-orange-700 mt-1">
+                    Customers spending ${form.locationDeliveryThreshold.toFixed(2)}–${form.freeDeliveryThreshold > 0 ? form.freeDeliveryThreshold.toFixed(2) : "∞"} see a "might be free depending on location" hint.
+                  </p>
+                ) : (
+                  <p className="text-xs text-blue-800/50 mt-1">Set to 0 to disable the location-based hint.</p>
+                )}
+              </div>
             </div>
 
             <Button type="submit" disabled={saving} className="w-full rounded-xl bg-blue-600 hover:bg-blue-700 text-white h-12">

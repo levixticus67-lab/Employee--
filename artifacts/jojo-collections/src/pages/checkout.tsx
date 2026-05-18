@@ -35,6 +35,7 @@ export default function Checkout() {
   const [partialOption, setPartialOption] = useState<"full" | "half" | "quarter" | "none">("full");
   const [businessNumbers, setBusinessNumbers] = useState({ mtnNumber: "", airtelNumber: "" });
     const [freeDeliveryThreshold, setFreeDeliveryThreshold] = useState(0);
+  const [locationDeliveryThreshold, setLocationDeliveryThreshold] = useState(0);
 
   useEffect(() => {
     if (session?.user) {
@@ -46,12 +47,14 @@ export default function Checkout() {
     apiFetch("/api/settings/public").then((r) => r.json()).then((d) => {
       setBusinessNumbers({ mtnNumber: d.mtnNumber ?? "", airtelNumber: d.airtelNumber ?? "" });
         setFreeDeliveryThreshold(Number(d.freeDeliveryThreshold ?? 0));
+      setLocationDeliveryThreshold(Number(d.locationDeliveryThreshold ?? 0));
     }).catch(() => {});
   }, []);
 
   const discount = couponResult?.discount ?? 0;
     const orderValue = subtotal - discount;
-    const qualifiesFreeDelivery = freeDeliveryThreshold > 0 && orderValue >= freeDeliveryThreshold;
+    const qualifiesNationwideFree = freeDeliveryThreshold > 0 && orderValue >= freeDeliveryThreshold;
+    const qualifiesLocationBased  = locationDeliveryThreshold > 0 && orderValue >= locationDeliveryThreshold && !qualifiesNationwideFree;
     const shipping = 0; // always 0 at checkout – admin confirms or auto-free if threshold met
     const total = Math.max(0, subtotal - discount); // shipping excluded until confirmed
   const selectedPct = PAYMENT_OPTIONS.find((o) => o.value === partialOption)?.pct ?? 1;

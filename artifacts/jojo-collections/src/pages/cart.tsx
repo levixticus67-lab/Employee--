@@ -3,28 +3,34 @@ import { useState, useEffect } from "react";
   import { Layout } from "@/components/layout";
   import { useCart } from "@/components/cart-context";
   import { Button } from "@/components/ui/button";
-  import { Minus, Plus, Trash2, ShoppingBag, Truck, Gift } from "lucide-react";
+  import { Minus, Plus, Trash2, ShoppingBag, Truck, Gift, MapPin } from "lucide-react";
   import { apiFetch } from "@/lib/api";
 
   export default function Cart() {
     const { items, updateQuantity, removeFromCart, subtotal, totalItems } = useCart();
     const [freeDeliveryThreshold, setFreeDeliveryThreshold] = useState(0);
+    const [locationDeliveryThreshold, setLocationDeliveryThreshold] = useState(0);
 
     useEffect(() => {
       apiFetch("/api/settings/public")
         .then((r) => r.json())
-        .then((d) => setFreeDeliveryThreshold(Number(d.freeDeliveryThreshold ?? 0)))
+        .then((d) => {
+          setFreeDeliveryThreshold(Number(d.freeDeliveryThreshold ?? 0));
+          setLocationDeliveryThreshold(Number(d.locationDeliveryThreshold ?? 0));
+        })
         .catch(() => {});
     }, []);
 
-    const qualifiesFreeDelivery = freeDeliveryThreshold > 0 && subtotal >= freeDeliveryThreshold;
-    const amountToFreeDelivery = freeDeliveryThreshold > 0 ? Math.max(0, freeDeliveryThreshold - subtotal) : 0;
+    // Delivery banner logic
+    const qualifiesNationwideFree = freeDeliveryThreshold > 0 && subtotal >= freeDeliveryThreshold;
+    const qualifiesLocationBased  = locationDeliveryThreshold > 0 && subtotal >= locationDeliveryThreshold && !qualifiesNationwideFree;
+    const amountToFree = freeDeliveryThreshold > 0 ? Math.max(0, freeDeliveryThreshold - subtotal) : 0;
 
     return (
       <Layout>
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
           <h1 className="text-4xl font-serif text-blue-950 mb-8">Your Cart</h1>
-          
+
           {items.length === 0 ? (
             <div className="glass-panel rounded-2xl p-12 text-center">
               <div className="w-20 h-20 bg-blue-100/50 rounded-full flex items-center justify-center mx-auto mb-6">
@@ -39,29 +45,45 @@ import { useState, useEffect } from "react";
             </div>
           ) : (
             <>
-              {/* Free delivery banner */}
-              {freeDeliveryThreshold > 0 && (
-                <div className={`mb-6 rounded-2xl px-5 py-4 flex items-center gap-3 border ${
-                  qualifiesFreeDelivery
-                    ? "bg-green-50/40 border-green-200/60"
-                    : "bg-orange-50/30 border-orange-200/50"
-                }`}>
-                  {qualifiesFreeDelivery ? (
-                    <>
-                      <Gift className="w-5 h-5 text-green-600 flex-shrink-0" />
-                      <p className="text-sm font-medium text-green-800">
-                        You qualify for <span className="font-bold">free delivery</span> anywhere in the country!
-                      </p>
-                    </>
-                  ) : (
-                    <>
-                      <Truck className="w-5 h-5 text-orange-500 flex-shrink-0" />
-                      <p className="text-sm text-orange-800">
-                        Add <span className="font-bold">${amountToFreeDelivery.toFixed(2)}</span> more to your cart and enjoy{" "}
-                        <span className="font-bold">free delivery</span> anywhere in the country!
-                      </p>
-                    </>
-                  )}
+              {/* ── Delivery banner ────────────────────────────────────────── */}
+              {qualifiesNationwideFree && (
+                <div className="mb-6 rounded-2xl px-5 py-4 flex items-center gap-3 bg-green-50/40 border border-green-200/60">
+                  <Gift className="w-5 h-5 text-green-600 flex-shrink-0" />
+                  <div>
+                    <p className="text-sm font-semibold text-green-800">
+                      You qualify for free delivery anywhere in the country!
+                    </p>
+                    <p className="text-xs text-green-700/80 mt-0.5">
+                      Your order will be shipped to you at no extra delivery cost, nationwide.
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {qualifiesLocationBased && (
+                <div className="mb-6 rounded-2xl px-5 py-4 flex items-start gap-3 bg-blue-50/40 border border-blue-200/50">
+                  <MapPin className="w-5 h-5 text-blue-500 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-sm font-semibold text-blue-900">
+                      You could get free delivery depending on your location!
+                    </p>
+                    <p className="text-xs text-blue-800/70 mt-0.5">
+                      The store will review your order and location — delivery may be on us.
+                      {freeDeliveryThreshold > 0 && amountToFree > 0 && (
+                        <> Add <span className="font-bold">${amountToFree.toFixed(2)}</span> more to guarantee free delivery nationwide.</>
+                      )}
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {!qualifiesNationwideFree && !qualifiesLocationBased && freeDeliveryThreshold > 0 && (
+                <div className="mb-6 rounded-2xl px-5 py-4 flex items-center gap-3 bg-orange-50/30 border border-orange-200/50">
+                  <Truck className="w-5 h-5 text-orange-500 flex-shrink-0" />
+                  <p className="text-sm text-orange-800">
+                    Add <span className="font-bold">${amountToFree.toFixed(2)}</span> more to your cart for{" "}
+                    <span className="font-bold">free delivery</span> anywhere in the country!
+                  </p>
                 </div>
               )}
 
@@ -98,7 +120,7 @@ import { useState, useEffect } from "react";
                     </div>
                   ))}
                 </div>
-                
+
                 <div className="md:col-span-1">
                   <div className="glass-panel-heavy rounded-2xl p-6 border-white/50 sticky top-24">
                     <h3 className="text-lg font-serif text-blue-950 mb-4">Order Summary</h3>
@@ -109,10 +131,12 @@ import { useState, useEffect } from "react";
                       </div>
                       <div className="flex justify-between items-center">
                         <span>Delivery</span>
-                        {qualifiesFreeDelivery ? (
-                          <span className="text-green-700 font-semibold flex items-center gap-1"><Gift className="w-3 h-3" /> Free</span>
+                        {qualifiesNationwideFree ? (
+                          <span className="text-green-700 font-semibold flex items-center gap-1 text-xs"><Gift className="w-3 h-3" /> Free nationwide</span>
+                        ) : qualifiesLocationBased ? (
+                          <span className="text-blue-600 text-xs flex items-center gap-1 italic"><MapPin className="w-3 h-3" /> May be free</span>
                         ) : (
-                          <span className="text-xs italic text-blue-700/70">Confirmed after order</span>
+                          <span className="text-xs italic text-blue-700/60">Confirmed after order</span>
                         )}
                       </div>
                     </div>

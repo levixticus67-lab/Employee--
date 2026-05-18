@@ -13,6 +13,7 @@ type StoreSettings = {
   mtnNumber: string;
   airtelNumber: string;
   freeDeliveryThreshold: number;
+  locationDeliveryThreshold: number;
 };
 
 const defaultSettings: StoreSettings = {
@@ -23,6 +24,7 @@ const defaultSettings: StoreSettings = {
   mtnNumber: "",
   airtelNumber: "",
   freeDeliveryThreshold: 0,
+  locationDeliveryThreshold: 0,
 };
 
 router.get("/settings/public", async (_req, res) => {
@@ -36,6 +38,7 @@ router.get("/settings/public", async (_req, res) => {
       mtnNumber: data?.["mtnNumber"] ?? "",
       airtelNumber: data?.["airtelNumber"] ?? "",
       freeDeliveryThreshold: Number(data?.["freeDeliveryThreshold"] ?? 0),
+      locationDeliveryThreshold: Number(data?.["locationDeliveryThreshold"] ?? 0),
     });
   } catch {
     res.json({ whatsappNumber: "", whatsappMessage: "Hi! I need help.", currencyDefault: "USD", mtnNumber: "", airtelNumber: "" });
@@ -60,6 +63,7 @@ router.put("/admin/settings", requireAdmin, async (req, res) => {
   }
   if (body.lowStockThreshold !== undefined) updates.lowStockThreshold = Number(body.lowStockThreshold);
   if (body.freeDeliveryThreshold !== undefined) updates.freeDeliveryThreshold = Number(body.freeDeliveryThreshold);
+  if (body.locationDeliveryThreshold !== undefined) updates.locationDeliveryThreshold = Number(body.locationDeliveryThreshold);
   await firestore.doc(SETTINGS_DOC).set(updates, { merge: true });
   const snap = await firestore.doc(SETTINGS_DOC).get();
   res.json({ ...defaultSettings, ...snap.data() });
