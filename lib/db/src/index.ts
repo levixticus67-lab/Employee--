@@ -48,6 +48,8 @@ export const COLLECTIONS = {
   blogPosts: "blogPosts",
   stockAlerts: "stockAlerts",
   settings: "settings",
+  storageFolders: "storageFolders",
+  storageItems: "storageItems",
 } as const;
 
 export { Timestamp };
@@ -90,7 +92,7 @@ export type ReviewDoc = {
   createdAt: Timestamp;
 };
 
-export type OrderStatus = "pending" | "processing" | "shipped" | "delivered" | "cancelled";
+export type OrderStatus = "pending" | "processing" | "shipped" | "delivered" | "cancelled" | "received";
 export type OrderStatusHistoryEntry = {
   status: OrderStatus;
   timestamp: string;
@@ -107,16 +109,20 @@ export type OrderDoc = {
   customerName: string;
   customerEmail: string;
   shippingAddress: string;
+  buyerPhone: string | null;
   items: OrderItemDoc[];
   subtotal: number;
   shipping: number;
   total: number;
+  amountPaid: number;
+  paymentStatus: "unpaid" | "partial" | "paid";
   status: OrderStatus;
   statusHistory: OrderStatusHistoryEntry[];
   paymentMethod: string;
   paymentNumber: string | null;
   couponCode: string | null;
   discount: number;
+  archived: boolean;
   createdAt: Timestamp;
 };
 
@@ -161,6 +167,7 @@ export type BlogPostDoc = {
   imageUrl: string | null;
   author: string;
   published: boolean;
+  storedInFolder: string | null;
   createdAt: Timestamp;
 };
 
@@ -169,6 +176,22 @@ export type StockAlertDoc = {
   productId: string;
   productName: string;
   createdAt: Timestamp;
+};
+
+export type StorageFolderDoc = {
+  name: string;
+  description: string;
+  isSystem: boolean;
+  createdAt: Timestamp;
+};
+
+export type StorageItemDoc = {
+  folderId: string;
+  type: "order_log" | "blog_post";
+  referenceId: string;
+  title: string;
+  snapshot: Record<string, unknown>;
+  archivedAt: Timestamp;
 };
 
 export { seedProductsIfEmpty } from "./seed";
