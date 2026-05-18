@@ -12,22 +12,28 @@ function tsToIso(value: unknown): string {
 
 export type OrderDto = {
   id: string; customerName: string; customerEmail: string; shippingAddress: string;
+  buyerPhone: string | null;
   items: OrderItemDoc[]; subtotal: number; shipping: number; total: number;
+  amountPaid: number; paymentStatus: string;
   discount: number; couponCode: string | null; paymentMethod: string;
   paymentNumber: string | null; status: string;
   statusHistory: { status: string; timestamp: string }[]; createdAt: string;
+  archived: boolean;
 };
 
 function docToDto(id: string, d: OrderDoc): OrderDto {
   return {
     id, customerName: d.customerName, customerEmail: d.customerEmail,
-    shippingAddress: d.shippingAddress, items: d.items ?? [],
+    shippingAddress: d.shippingAddress, buyerPhone: d.buyerPhone ?? null,
+    items: d.items ?? [],
     subtotal: Number(d.subtotal), shipping: Number(d.shipping), total: Number(d.total),
+    amountPaid: Number(d.amountPaid ?? 0), paymentStatus: d.paymentStatus ?? "unpaid",
     discount: Number(d.discount ?? 0), couponCode: d.couponCode ?? null,
     paymentMethod: d.paymentMethod ?? "online", paymentNumber: d.paymentNumber ?? null,
     status: d.status,
     statusHistory: (d.statusHistory ?? []) as { status: string; timestamp: string }[],
     createdAt: tsToIso(d.createdAt),
+    archived: d.archived ?? false,
   };
 }
 
@@ -37,10 +43,11 @@ export async function loadOrderById(id: string): Promise<OrderDto | null> {
   return docToDto(doc.id, doc.data() as OrderDoc);
 }
 
-export async function loadAllOrders(filterStatus?: string): Promise<OrderDto[]> {
+export async function loadAllOrders(filterStatus?: string, includeArchived?: boolean): Promise<OrderDto[]> {
   const snap = await firestore.collection(COLLECTIONS.orders).get();
   let orders = snap.docs.map((d) => docToDto(d.id, d.data() as OrderDoc));
   if (filterStatus) orders = orders.filter((o) => o.status === filterStatus);
+  if (!includeArchived) orders = orders.filter((o) => !o.archived);
   orders.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   return orders;
 }
@@ -71,6 +78,8 @@ router.post("/orders", async (req, res) => {
   let discount = 0;
   let couponCode: string | null = null;
   const couponInput = rawBody["couponCode"] as string | undefined;
+  const buyerPhone = (rawBody["buyerPhone"] as string) || null;
+  const requestedAmountPaid = Number(rawBody["amountPaid"] ?? 0);
 
   try {
     const newOrderRef = firestore.collection(COLLECTIONS.orders).doc();
@@ -108,12 +117,19 @@ router.post("/orders", async (req, res) => {
       const paymentMethod = (rawBody["paymentMethod"] as string) || "online";
       const paymentNumber = (rawBody["paymentNumber"] as string) || null;
 
+      const amountPaid = Math.min(requestedAmountPaid, total);
+      let paymentStatus: "unpaid" | "partial" | "paid" = "unpaid";
+      if (amountPaid >= total) paymentStatus = "paid";
+      else if (amountPaid > 0) paymentStatus = "partial";
+
       const order: OrderDoc = {
         customerName: body.customerName, customerEmail: body.customerEmail,
-        shippingAddress: body.shippingAddress, items, subtotal, shipping, total,
+        shippingAddress: body.shippingAddress, buyerPhone, items, subtotal, shipping, total,
+        amountPaid, paymentStatus,
         discount, couponCode, paymentMethod, paymentNumber,
         status: "pending",
         statusHistory: [{ status: "pending", timestamp: new Date().toISOString() }],
+        archived: false,
         createdAt: Timestamp.now(),
       };
       tx.set(newOrderRef, order);
@@ -138,6 +154,62 @@ router.get("/orders/:id", async (req, res) => {
   const order = await loadOrderById(req.params.id);
   if (!order) { res.status(404).json({ error: "Order not found" }); return; }
   res.json(order);
+});
+
+// User: mark order as received
+router.put("/orders/:id/received", async (req, res) => {
+  const { email } = req.body as { email?: string };
+  const ref = firestore.collection(COLLECTIONS.orders).doc(req.params.id);
+  const snap = await ref.get();
+  if (!snap.exists) { res.status(404).json({ error: "Order not found" }); return; }
+  const order = snap.data() as OrderDoc;
+  if (email && order.customerEmail.toLowerCase() !== email.toLowerCase()) {
+    res.status(403).json({ error: "Unauthorized" }); return;
+  }
+  if (!["delivered", "shipped"].includes(order.status)) {
+    res.status(400).json({ error: "Order cannot be marked received in its current state" }); return;
+  }
+  const history = order.statusHistory ?? [];
+  history.push({ status: "received", timestamp: new Date().toISOString() });
+  await ref.update({ status: "received", statusHistory: history, archived: true });
+  const dto = await loadOrderById(req.params.id);
+  res.json(dto);
+});
+
+// User: add partial payment
+router.post("/orders/:id/payment", async (req, res) => {
+  const { email, amount } = req.body as { email?: string; amount?: number };
+  if (!amount || amount <= 0) { res.status(400).json({ error: "amount is required" }); return; }
+  const ref = firestore.collection(COLLECTIONS.orders).doc(req.params.id);
+  const snap = await ref.get();
+  if (!snap.exists) { res.status(404).json({ error: "Order not found" }); return; }
+  const order = snap.data() as OrderDoc;
+  if (email && order.customerEmail.toLowerCase() !== email.toLowerCase()) {
+    res.status(403).json({ error: "Unauthorized" }); return;
+  }
+  const newAmountPaid = Math.min(Number(order.amountPaid ?? 0) + Number(amount), order.total);
+  let paymentStatus: "unpaid" | "partial" | "paid" = "partial";
+  if (newAmountPaid >= order.total) paymentStatus = "paid";
+  await ref.update({ amountPaid: newAmountPaid, paymentStatus });
+  const dto = await loadOrderById(req.params.id);
+  res.json(dto);
+});
+
+// User: delete their own cancelled or received order
+router.delete("/orders/:id", async (req, res) => {
+  const { email } = req.body as { email?: string };
+  const ref = firestore.collection(COLLECTIONS.orders).doc(req.params.id);
+  const snap = await ref.get();
+  if (!snap.exists) { res.status(404).json({ error: "Order not found" }); return; }
+  const order = snap.data() as OrderDoc;
+  if (email && order.customerEmail.toLowerCase() !== email.toLowerCase()) {
+    res.status(403).json({ error: "Unauthorized" }); return;
+  }
+  if (!["cancelled", "received", "delivered"].includes(order.status)) {
+    res.status(400).json({ error: "Only cancelled or received orders can be deleted" }); return;
+  }
+  await ref.delete();
+  res.status(204).send();
 });
 
 export default router;
