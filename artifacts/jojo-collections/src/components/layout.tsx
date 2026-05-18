@@ -50,13 +50,13 @@ export function Layout({ children }: { children: React.ReactNode }) {
     <div className="min-h-screen flex flex-col relative overflow-hidden">
       <header className="sticky top-0 z-50 glass-panel-heavy border-b border-white/20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center h-16 gap-6">
-            <Link href="/" className="flex-shrink-0 text-xl font-serif text-blue-950 font-bold tracking-widest">JOJO</Link>
+          <div className="flex items-center h-20 gap-6">
+            <Link href="/" className="flex-shrink-0 text-2xl font-serif text-blue-950 font-bold tracking-widest">JOJO</Link>
 
             <nav className="hidden md:flex items-center gap-5 flex-1">
               {navLinks.map((link) => (
                 <Link key={link.href} href={link.href}
-                  className={`text-xs font-medium uppercase tracking-wider transition-colors ${location === link.href ? "text-blue-900 font-semibold" : "text-blue-800/60 hover:text-blue-950"}`}>
+                  className={`text-sm font-medium uppercase tracking-wider transition-colors ${location === link.href ? "text-blue-900 font-semibold" : "text-blue-800/60 hover:text-blue-950"}`}>
                   {link.label}
                 </Link>
               ))}
@@ -91,7 +91,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
                 {wishlistCount > 0 && <span className="absolute -top-0.5 -right-0.5 flex items-center justify-center w-4 h-4 text-[10px] font-bold text-white bg-red-500 rounded-full">{wishlistCount}</span>}
               </Link>
               <Link href="/cart" className="relative p-1.5 text-blue-900/70 hover:text-blue-950 transition-colors">
-                <ShoppingBag className="w-5 h-5" />
+                <ShoppingBag className="w-6 h-6" />
                 {totalItems > 0 && <span className="absolute -top-0.5 -right-0.5 flex items-center justify-center w-4 h-4 text-[10px] font-bold text-white bg-blue-600 rounded-full">{totalItems}</span>}
               </Link>
             </div>
