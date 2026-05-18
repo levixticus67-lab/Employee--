@@ -8,6 +8,7 @@ import { apiFetch } from "@/lib/api";
 import { useListAdminOrders } from "@workspace/api-client-react";
 
 const ALL_STATUSES = ["pending", "processing", "shipped", "delivered", "cancelled", "received"];
+const ADMIN_SET_STATUSES = ["pending", "processing", "shipped", "delivered", "cancelled"];
 const ACTIVE_FILTER = "active";
 const FILTERS = [ACTIVE_FILTER, "all", ...ALL_STATUSES];
 
@@ -60,7 +61,7 @@ export default function AdminOrders() {
       if (!res.ok) throw new Error();
       toast.success("Order status updated");
       refetch();
-      if (selectedOrder?.id === id) setSelectedOrder((prev: any) => ({ ...prev, status, archived: ["delivered", "cancelled", "received"].includes(status) }));
+      if (selectedOrder?.id === id) setSelectedOrder((prev: any) => ({ ...prev, status }));
     } catch { toast.error("Failed to update status"); } finally { setUpdatingStatus(false); }
   };
 
@@ -212,7 +213,7 @@ export default function AdminOrders() {
                     disabled={updatingStatus}
                     className={`text-sm px-3 py-1.5 rounded-full border capitalize font-medium outline-none ${STATUS_COLORS[selectedOrder.status] ?? "bg-gray-100 text-gray-800 border-gray-200"}`}
                   >
-                    {ALL_STATUSES.map((s) => (
+                    {ADMIN_SET_STATUSES.map((s) => (
                       <option key={s} value={s} className="bg-white text-gray-900 capitalize">{s}</option>
                     ))}
                   </select>
