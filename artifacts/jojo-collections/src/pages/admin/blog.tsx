@@ -2,12 +2,13 @@ import { useEffect, useState } from "react";
 import { AdminLayout } from "@/components/admin-layout";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Plus, Edit2, Trash2, BookOpen, Eye, EyeOff, Upload } from "lucide-react";
+import { Plus, Edit2, Trash2, BookOpen, Eye, EyeOff, Upload, Archive } from "lucide-react";
 import { ObjectUploader } from "@workspace/object-storage-web";
 import { toast } from "sonner";
 import { apiFetch } from "@/lib/api";
 
-type Post = { id: string; title: string; summary: string; content: string; imageUrl: string | null; author: string; published: boolean; createdAt: string };
+type Post = { id: string; title: string; summary: string; content: string; imageUrl: string | null; author: string; published: boolean; storedInFolder: string | null; createdAt: string };
+type StorageFolder = { id: string; name: string; isSystem: boolean };
 const empty = { title: "", summary: "", content: "", imageUrl: "", author: "Jojo Collections", published: false };
 
 export default function AdminBlog() {
@@ -17,6 +18,11 @@ export default function AdminBlog() {
   const [editing, setEditing] = useState<Post | null>(null);
   const [form, setForm] = useState(empty);
   const [saving, setSaving] = useState(false);
+  const [archiveOpen, setArchiveOpen] = useState(false);
+  const [archivingPost, setArchivingPost] = useState<Post | null>(null);
+  const [folders, setFolders] = useState<StorageFolder[]>([]);
+  const [selectedFolder, setSelectedFolder] = useState("");
+  const [archiving, setArchiving] = useState(false);
 
   const load = () => {
     apiFetch("/api/admin/blog").then((r) => r.json()).then(setPosts).catch(() => {}).finally(() => setLoading(false));
@@ -25,6 +31,15 @@ export default function AdminBlog() {
 
   const openCreate = () => { setEditing(null); setForm(empty); setOpen(true); };
   const openEdit = (p: Post) => { setEditing(p); setForm({ title: p.title, summary: p.summary, content: p.content, imageUrl: p.imageUrl ?? "", author: p.author, published: p.published }); setOpen(true); };
+
+  const openArchive = async (p: Post) => {
+    setArchivingPost(p);
+    const res = await apiFetch("/api/admin/storage/folders");
+    const data: StorageFolder[] = await res.json();
+    setFolders(data.filter((f) => !f.isSystem));
+    setSelectedFolder(data.find((f) => !f.isSystem)?.id ?? "");
+    setArchiveOpen(true);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -53,6 +68,22 @@ export default function AdminBlog() {
     toast.success("Post deleted"); load();
   };
 
+  const handleArchive = async () => {
+    if (!archivingPost || !selectedFolder) return;
+    setArchiving(true);
+    try {
+      const res = await apiFetch(`/api/admin/storage/blog/${archivingPost.id}/archive`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ folderId: selectedFolder }),
+      });
+      if (!res.ok) throw new Error();
+      toast.success("Article moved to storage");
+      setArchiveOpen(false);
+      load();
+    } catch { toast.error("Failed to archive article"); } finally { setArchiving(false); }
+  };
+
   return (
     <AdminLayout>
       <div className="flex justify-between items-center mb-8">
@@ -77,13 +108,14 @@ export default function AdminBlog() {
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 mb-1">
                   <h3 className="font-serif text-lg text-blue-950 truncate">{p.title}</h3>
-                  <span className={`text-xs px-2 py-0.5 rounded-full ${p.published ? "bg-green-100 text-green-700" : "bg-yellow-100 text-yellow-700"}`}>{p.published ? "Published" : "Draft"}</span>
+                  <span className={`text-xs px-2 py-0.5 rounded-full flex-shrink-0 ${p.published ? "bg-green-100 text-green-700" : "bg-yellow-100 text-yellow-700"}`}>{p.published ? "Published" : "Draft"}</span>
                 </div>
                 <p className="text-sm text-blue-800/60 truncate mb-1">{p.summary}</p>
                 <p className="text-xs text-blue-800/40">By {p.author} · {new Date(p.createdAt).toLocaleDateString()}</p>
               </div>
               <div className="flex gap-1 flex-shrink-0">
                 <button onClick={() => togglePublish(p)} title={p.published ? "Unpublish" : "Publish"} className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg">{p.published ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}</button>
+                <button onClick={() => openArchive(p)} title="Move to Storage" className="p-2 text-amber-600 hover:bg-amber-50 rounded-lg"><Archive className="w-4 h-4" /></button>
                 <button onClick={() => openEdit(p)} className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg"><Edit2 className="w-4 h-4" /></button>
                 <button onClick={() => handleDelete(p.id)} className="p-2 text-red-600 hover:bg-red-50 rounded-lg"><Trash2 className="w-4 h-4" /></button>
               </div>
@@ -92,6 +124,7 @@ export default function AdminBlog() {
         </div>
       )}
 
+      {/* Edit/Create Dialog */}
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="glass-panel-heavy border-white/50 max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader><DialogTitle className="text-2xl font-serif text-blue-950">{editing ? "Edit Article" : "New Article"}</DialogTitle></DialogHeader>
@@ -108,18 +141,10 @@ export default function AdminBlog() {
               <div>
                 <label className="block text-sm font-medium text-blue-900/80 mb-1">Cover Image</label>
                 <div className="flex items-center gap-2">
-                  {form.imageUrl && (
-                    <div className="w-10 h-10 glass-card rounded p-0.5 flex-shrink-0 bg-white/40 overflow-hidden">
-                      <img src={form.imageUrl} alt="Cover" className="w-full h-full object-cover rounded" />
-                    </div>
-                  )}
+                  {form.imageUrl && <div className="w-10 h-10 glass-card rounded p-0.5 flex-shrink-0 bg-white/40 overflow-hidden"><img src={form.imageUrl} alt="Cover" className="w-full h-full object-cover rounded" /></div>}
                   <ObjectUploader
                     onGetUploadParameters={async (file) => {
-                      const res = await apiFetch("/api/storage/uploads/request-url", {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ name: file.name, size: file.size, contentType: file.type }),
-                      });
+                      const res = await apiFetch("/api/storage/uploads/request-url", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: file.name, size: file.size, contentType: file.type }) });
                       const data = await res.json();
                       return { method: "PUT", url: data.uploadURL, headers: { "Content-Type": file.type } };
                     }}
@@ -135,14 +160,12 @@ export default function AdminBlog() {
                   >
                     <Upload className="w-3.5 h-3.5" /> {form.imageUrl ? "Change" : "Upload"}
                   </ObjectUploader>
-                  {form.imageUrl && (
-                    <button type="button" onClick={() => setForm({ ...form, imageUrl: "" })} className="text-xs text-red-500 hover:text-red-700">✕</button>
-                  )}
+                  {form.imageUrl && <button type="button" onClick={() => setForm({ ...form, imageUrl: "" })} className="text-xs text-red-500 hover:text-red-700">✕</button>}
                 </div>
               </div>
             </div>
             <div>
-              <label className="block text-sm font-medium text-blue-900/80 mb-1">Summary (shown in listing)</label>
+              <label className="block text-sm font-medium text-blue-900/80 mb-1">Summary</label>
               <textarea rows={2} value={form.summary} onChange={(e) => setForm({ ...form, summary: e.target.value })} className="w-full glass-card rounded-lg px-3 py-2 text-blue-950 border-white/40 focus:ring-2 focus:ring-blue-400 focus:outline-none resize-none" />
             </div>
             <div>
@@ -158,6 +181,39 @@ export default function AdminBlog() {
               <Button type="submit" disabled={saving} className="bg-blue-600 hover:bg-blue-700 text-white ml-2">{saving ? "Saving..." : editing ? "Save Changes" : "Create Article"}</Button>
             </DialogFooter>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Archive Dialog */}
+      <Dialog open={archiveOpen} onOpenChange={setArchiveOpen}>
+        <DialogContent className="glass-panel-heavy border-white/50 max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-serif text-blue-950">Move to Storage</DialogTitle>
+          </DialogHeader>
+          <div className="mt-4 space-y-4">
+            <p className="text-sm text-blue-800/70">
+              Moving <strong>"{archivingPost?.title}"</strong> to storage will unpublish it and remove it from the Journal. You can restore it later from the Storage section.
+            </p>
+            {folders.length === 0 ? (
+              <div className="glass-card rounded-xl p-3 bg-amber-50/20 border-amber-200/50">
+                <p className="text-xs text-amber-800">No custom folders yet. Create one in the Storage section first, or the article will be placed in Order Logs.</p>
+              </div>
+            ) : (
+              <div>
+                <label className="block text-sm font-medium text-blue-900/80 mb-2">Select Folder</label>
+                <select value={selectedFolder} onChange={(e) => setSelectedFolder(e.target.value)}
+                  className="w-full glass-card rounded-xl px-4 py-2.5 text-blue-950 border-white/40 focus:outline-none focus:ring-2 focus:ring-blue-400">
+                  {folders.map((f) => <option key={f.id} value={f.id}>{f.name}</option>)}
+                </select>
+              </div>
+            )}
+          </div>
+          <DialogFooter className="mt-4">
+            <Button type="button" variant="outline" onClick={() => setArchiveOpen(false)} className="glass-card text-blue-900 border-white/40">Cancel</Button>
+            <Button onClick={handleArchive} disabled={archiving || !selectedFolder} className="bg-amber-600 hover:bg-amber-700 text-white ml-2 flex items-center gap-2">
+              <Archive className="w-4 h-4" /> {archiving ? "Moving..." : "Move to Storage"}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </AdminLayout>
