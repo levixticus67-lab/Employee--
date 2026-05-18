@@ -2,7 +2,7 @@ import { useState } from "react";
 import { AdminLayout } from "@/components/admin-layout";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Package, MapPin, CreditCard, Phone, Wallet, Trash2, CheckCircle2 } from "lucide-react";
+import { Package, MapPin, CreditCard, Phone, Wallet, Trash2, CheckCircle2, Truck, Gift } from "lucide-react";
 import { toast } from "sonner";
 import { apiFetch } from "@/lib/api";
 import { useListAdminOrders } from "@workspace/api-client-react";
@@ -33,6 +33,8 @@ export default function AdminOrders() {
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [paymentAmount, setPaymentAmount] = useState("");
   const [recordingPayment, setRecordingPayment] = useState(false);
+    const [shippingInput, setShippingInput] = useState("");
+    const [settingShipping, setSettingShipping] = useState(false);
 
   const queryStatus = !["active", "all"].includes(filterMode) ? filterMode : undefined;
   const includeArchived = filterMode === "all";
@@ -93,7 +95,26 @@ export default function AdminOrders() {
     } catch { toast.error("Failed to record payment"); } finally { setRecordingPayment(false); }
   };
 
-  const canDelete = (o: any) => ["cancelled", "delivered", "received"].includes(o?.status);
+  const handleSetShipping = async () => {
+      const amount = parseFloat(shippingInput);
+      if (isNaN(amount) || amount < 0 || !selectedOrder) return;
+      setSettingShipping(true);
+      try {
+        const res = await apiFetch(`/api/admin/orders/${selectedOrder.id}/shipping`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ shipping: amount }),
+        });
+        if (!res.ok) throw new Error();
+        const updated = await res.json();
+        toast.success(amount === 0 ? "Free delivery confirmed!" : `Delivery fee set to ${amount.toFixed(2)}`);
+        setSelectedOrder(updated);
+        setShippingInput("");
+        refetch();
+      } catch { toast.error("Failed to set delivery fee"); } finally { setSettingShipping(false); }
+    };
+
+    const canDelete = (o: any) => ["cancelled", "delivered", "received"].includes(o?.status);
 
   return (
     <AdminLayout>
@@ -133,7 +154,7 @@ export default function AdminOrders() {
                 <tr><td colSpan={7} className="px-6 py-8 text-center text-blue-800">No orders found.</td></tr>
               ) : (
                 orders.map((order: any) => (
-                  <tr key={order.id} className="hover:bg-white/10 transition-colors cursor-pointer" onClick={() => { setSelectedOrder(order); setPaymentAmount(""); }}>
+                  <tr key={order.id} className="hover:bg-white/10 transition-colors cursor-pointer" onClick={() => { setSelectedOrder(order); setPaymentAmount(""); setShippingInput(""); }}>
                     <td className="px-6 py-4 font-mono text-sm text-blue-900">{order.id.slice(0, 8)}</td>
                     <td className="px-6 py-4 text-sm text-blue-800/80">{new Date(order.createdAt).toLocaleDateString()}</td>
                     <td className="px-6 py-4">
@@ -153,7 +174,7 @@ export default function AdminOrders() {
                       </span>
                     </td>
                     <td className="px-6 py-4">
-                      <button onClick={(e) => { e.stopPropagation(); setSelectedOrder(order); setPaymentAmount(""); }} className="text-sm text-blue-600 hover:text-blue-800 font-medium mr-3">
+                      <button onClick={(e) => { e.stopPropagation(); setSelectedOrder(order); setPaymentAmount(""); setShippingInput(""); }} className="text-sm text-blue-600 hover:text-blue-800 font-medium mr-3">
                         View
                       </button>
                       {canDelete(order) && (
@@ -243,9 +264,36 @@ export default function AdminOrders() {
               </div>
             </div>
 
-            {/* Record Payment */}
-            {selectedOrder.paymentStatus !== "paid" && (
-              <div className="glass-card rounded-xl p-4 border-white/30 mb-6">
+              {/* Set Delivery Fee */}
+              {!(selectedOrder as any).shippingConfirmed ? (
+                <div className="glass-card rounded-xl p-4 border-orange-200/50 bg-orange-50/10 mb-6">
+                  <div className="flex items-center gap-2 mb-2 text-blue-950 font-medium">
+                    <Truck className="w-4 h-4 text-orange-500" /> Set Delivery Fee
+                  </div>
+                  <p className="text-xs text-blue-800/70 mb-3">
+                    Review the customer's address and items, then enter the delivery cost. Enter 0 for free delivery.
+                  </p>
+                  <div className="flex gap-2">
+                    <input type="number" min="0" step="0.01" value={shippingInput} onChange={(e) => setShippingInput(e.target.value)} placeholder="0.00"
+                      className="flex-1 glass-card rounded-xl px-4 py-2 text-blue-950 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 border-white/40" />
+                    <Button onClick={handleSetShipping} disabled={settingShipping || shippingInput === ""} className="rounded-xl text-sm h-auto py-2 px-4">
+                      {settingShipping ? "..." : "Confirm"}
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <div className="glass-card rounded-xl p-3 border-green-200/50 bg-green-50/10 mb-6 flex items-center gap-2">
+                  {(selectedOrder as any).freeDelivery ? <Gift className="w-4 h-4 text-green-600 flex-shrink-0" /> : <CheckCircle2 className="w-4 h-4 text-green-600 flex-shrink-0" />}
+                  <span className="text-sm text-green-800 font-medium">
+                    {(selectedOrder as any).freeDelivery ? "Free delivery confirmed" : `Delivery fee: ${selectedOrder.shipping.toFixed(2)}`}
+                  </span>
+                  <button onClick={() => setSelectedOrder((prev: any) => ({ ...prev, shippingConfirmed: false }))} className="ml-auto text-xs text-blue-500 hover:underline">Change</button>
+                </div>
+              )}
+
+              {/* Record Payment */}
+              {selectedOrder.paymentStatus !== "paid" && (
+                <div className="glass-card rounded-xl p-4 border-white/30 mb-6">
                 <div className="flex items-center gap-2 mb-3 text-blue-950 font-medium"><Wallet className="w-4 h-4 text-blue-600" /> Record Payment</div>
                 <div className="flex gap-2">
                   <input

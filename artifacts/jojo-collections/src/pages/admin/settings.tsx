@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { AdminLayout } from "@/components/admin-layout";
 import { Button } from "@/components/ui/button";
-import { Settings, MessageCircle, DollarSign, AlertTriangle, Smartphone, Info } from "lucide-react";
+import { Settings, MessageCircle, DollarSign, AlertTriangle, Smartphone, Info, Truck } from "lucide-react";
 import { toast } from "sonner";
 import { apiFetch } from "@/lib/api";
 
@@ -12,6 +12,7 @@ type SettingsData = {
   lowStockThreshold: number;
   mtnNumber: string;
   airtelNumber: string;
+  freeDeliveryThreshold: number;
 };
 
 const defaults: SettingsData = {
@@ -21,6 +22,7 @@ const defaults: SettingsData = {
   lowStockThreshold: 5,
   mtnNumber: "",
   airtelNumber: "",
+  freeDeliveryThreshold: 0,
 };
 
 export default function AdminSettings() {
@@ -197,7 +199,40 @@ export default function AdminSettings() {
             />
           </div>
 
-          <Button type="submit" disabled={saving} className="w-full rounded-xl bg-blue-600 hover:bg-blue-700 text-white h-12">
+          {/* Free Delivery Threshold */}
+            <div className="glass-panel-heavy rounded-2xl p-6 border-white/50">
+              <h2 className="text-lg font-serif text-blue-950 mb-1 flex items-center gap-2">
+                <Truck className="w-5 h-5 text-blue-500" /> Free Delivery Threshold
+              </h2>
+              <p className="text-sm text-blue-800/60 mb-4">
+                Orders that reach this amount qualify for free delivery anywhere in the country.
+                Set to 0 to disable automatic free delivery — you'll set it manually per order.
+              </p>
+              <label className="block text-sm font-medium text-blue-900/80 mb-1">
+                Minimum order amount for free delivery
+              </label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-blue-800/50 text-sm">$</span>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={form.freeDeliveryThreshold}
+                  onChange={(e) => setForm((p) => ({ ...p, freeDeliveryThreshold: Number(e.target.value) }))}
+                  placeholder="0"
+                  className="w-full glass-card rounded-xl pl-7 pr-4 py-2.5 text-blue-950 focus:outline-none focus:ring-2 focus:ring-blue-400 border-white/40"
+                />
+              </div>
+              {form.freeDeliveryThreshold > 0 ? (
+                <p className="text-xs text-green-700 mt-1">
+                  Customers spending ${form.freeDeliveryThreshold.toFixed(2)} or more get free delivery nationwide.
+                </p>
+              ) : (
+                <p className="text-xs text-blue-800/50 mt-1">Free delivery is disabled — you set shipping manually per order.</p>
+              )}
+            </div>
+
+            <Button type="submit" disabled={saving} className="w-full rounded-xl bg-blue-600 hover:bg-blue-700 text-white h-12">
             {saving ? "Saving..." : "Save Settings"}
           </Button>
         </form>

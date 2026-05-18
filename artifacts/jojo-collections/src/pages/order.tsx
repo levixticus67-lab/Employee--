@@ -134,7 +134,15 @@ export default function OrderConfirmation() {
                   <Tag className="w-3 h-3" /> Discount: −{format(o.discount)} {o.couponCode && `(${o.couponCode})`}
                 </p>
               )}
-              <p className="text-sm text-blue-900/80 mb-1">Shipping: {format(order.shipping)}</p>
+              {(o as any).freeDelivery ? (
+                  <p className="text-sm text-green-700 mb-1 font-medium flex items-center gap-1">
+                    <Truck className="w-3.5 h-3.5" /> Free delivery
+                  </p>
+                ) : (o as any).shippingConfirmed ? (
+                  <p className="text-sm text-blue-900/80 mb-1">Delivery: {format(order.shipping)}</p>
+                ) : (
+                  <p className="text-sm text-orange-600/90 mb-1 italic">Delivery: Being confirmed by store</p>
+                )}
               <p className="text-sm font-medium text-blue-950 border-t border-white/30 mt-1 pt-1">Total: {format(order.total)}</p>
             </div>
           </div>

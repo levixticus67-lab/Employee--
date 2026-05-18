@@ -34,6 +34,7 @@ export default function Checkout() {
   const [paymentNumber, setPaymentNumber] = useState("");
   const [partialOption, setPartialOption] = useState<"full" | "half" | "quarter" | "none">("full");
   const [businessNumbers, setBusinessNumbers] = useState({ mtnNumber: "", airtelNumber: "" });
+    const [freeDeliveryThreshold, setFreeDeliveryThreshold] = useState(0);
 
   useEffect(() => {
     if (session?.user) {
@@ -44,12 +45,15 @@ export default function Checkout() {
   useEffect(() => {
     apiFetch("/api/settings/public").then((r) => r.json()).then((d) => {
       setBusinessNumbers({ mtnNumber: d.mtnNumber ?? "", airtelNumber: d.airtelNumber ?? "" });
+        setFreeDeliveryThreshold(Number(d.freeDeliveryThreshold ?? 0));
     }).catch(() => {});
   }, []);
 
   const discount = couponResult?.discount ?? 0;
-  const shipping = (subtotal - discount) > 100 ? 0 : 15;
-  const total = Math.max(0, subtotal - discount + shipping);
+    const orderValue = subtotal - discount;
+    const qualifiesFreeDelivery = freeDeliveryThreshold > 0 && orderValue >= freeDeliveryThreshold;
+    const shipping = 0; // always 0 at checkout – admin confirms or auto-free if threshold met
+    const total = Math.max(0, subtotal - discount); // shipping excluded until confirmed
   const selectedPct = PAYMENT_OPTIONS.find((o) => o.value === partialOption)?.pct ?? 1;
   const amountPaidNow = Math.round(total * selectedPct * 100) / 100;
   const amountOnDelivery = Math.round((total - amountPaidNow) * 100) / 100;

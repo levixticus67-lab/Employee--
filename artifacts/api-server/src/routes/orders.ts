@@ -30,6 +30,8 @@ function docToDto(id: string, d: OrderDoc): OrderDto {
     amountPaid: Number(d.amountPaid ?? 0), paymentStatus: d.paymentStatus ?? "unpaid",
     discount: Number(d.discount ?? 0), couponCode: d.couponCode ?? null,
     paymentMethod: d.paymentMethod ?? "online", paymentNumber: d.paymentNumber ?? null,
+    shippingConfirmed: d.shippingConfirmed ?? false,
+    freeDelivery: d.freeDelivery ?? false,
     status: d.status,
     statusHistory: (d.statusHistory ?? []) as { status: string; timestamp: string }[],
     createdAt: tsToIso(d.createdAt),
@@ -81,6 +83,10 @@ router.post("/orders", async (req, res) => {
   const buyerPhone = (rawBody["buyerPhone"] as string) || null;
   const requestedAmountPaid = Number(rawBody["amountPaid"] ?? 0);
 
+  // Fetch free delivery threshold from store settings
+  const settingsSnap = await firestore.doc("settings/global").get();
+  const freeThreshold = settingsSnap.exists ? Number(settingsSnap.data()?.["freeDeliveryThreshold"] ?? 0) : 0;
+
   try {
     const newOrderRef = firestore.collection(COLLECTIONS.orders).doc();
     await firestore.runTransaction(async (tx) => {
@@ -112,8 +118,12 @@ router.post("/orders", async (req, res) => {
         }
       }
 
-      const shipping = (subtotal - discount) > 100 ? 0 : 15;
-      const total = Math.max(0, subtotal - discount + shipping);
+      const orderValue = subtotal - discount;
+        const qualifiesFreeDelivery = freeThreshold > 0 && orderValue >= freeThreshold;
+        const shipping = 0; // always starts at 0 – admin sets it, or it's free
+        const shippingConfirmed = qualifiesFreeDelivery;
+        const freeDelivery = qualifiesFreeDelivery;
+        const total = Math.max(0, subtotal - discount); // shipping is 0 at creation
       const paymentMethod = (rawBody["paymentMethod"] as string) || "online";
       const paymentNumber = (rawBody["paymentNumber"] as string) || null;
 
@@ -127,6 +137,8 @@ router.post("/orders", async (req, res) => {
         shippingAddress: body.shippingAddress, buyerPhone, items, subtotal, shipping, total,
         amountPaid, paymentStatus,
         discount, couponCode, paymentMethod, paymentNumber,
+        shippingConfirmed,
+        freeDelivery,
         status: "pending",
         statusHistory: [{ status: "pending", timestamp: new Date().toISOString() }],
         archived: false,
