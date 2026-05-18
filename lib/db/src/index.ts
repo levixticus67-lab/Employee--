@@ -113,6 +113,8 @@ export type OrderDoc = {
   items: OrderItemDoc[];
   subtotal: number;
   shipping: number;
+  shippingConfirmed: boolean;
+  freeDelivery: boolean;
   total: number;
   amountPaid: number;
   paymentStatus: "unpaid" | "partial" | "paid";
