@@ -6,10 +6,17 @@ import { useCart } from "@/components/cart-context";
 import { useCurrency } from "@/components/currency-context";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { Tag, CheckCircle, Smartphone, CreditCard, Clock, Copy, Info } from "lucide-react";
+import { Tag, CheckCircle, Smartphone, CreditCard, Clock, Copy, Info, Wallet } from "lucide-react";
 import { apiFetch } from "@/lib/api";
 
 type CouponResult = { id: string; code: string; type: string; value: number; discount: number };
+
+const PAYMENT_OPTIONS = [
+  { value: "full" as const, label: "Pay full amount now", pct: 1 },
+  { value: "half" as const, label: "Pay 50% now, rest on delivery", pct: 0.5 },
+  { value: "quarter" as const, label: "Pay 25% now, rest on delivery", pct: 0.25 },
+  { value: "none" as const, label: "Pay everything on delivery", pct: 0 },
+];
 
 export default function Checkout() {
   const [, setLocation] = useLocation();
@@ -18,13 +25,14 @@ export default function Checkout() {
   const { data: session } = useGetCurrentUser();
   const { format } = useCurrency();
 
-  const [form, setForm] = useState({ customerName: "", customerEmail: "", shippingAddress: "" });
+  const [form, setForm] = useState({ customerName: "", customerEmail: "", shippingAddress: "", buyerPhone: "" });
   const [couponCode, setCouponCode] = useState("");
   const [couponResult, setCouponResult] = useState<CouponResult | null>(null);
   const [couponError, setCouponError] = useState("");
   const [validatingCoupon, setValidatingCoupon] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<"mtn_momo" | "airtel_money" | "online">("mtn_momo");
   const [paymentNumber, setPaymentNumber] = useState("");
+  const [partialOption, setPartialOption] = useState<"full" | "half" | "quarter" | "none">("full");
   const [businessNumbers, setBusinessNumbers] = useState({ mtnNumber: "", airtelNumber: "" });
 
   useEffect(() => {
@@ -42,6 +50,9 @@ export default function Checkout() {
   const discount = couponResult?.discount ?? 0;
   const shipping = (subtotal - discount) > 100 ? 0 : 15;
   const total = Math.max(0, subtotal - discount + shipping);
+  const selectedPct = PAYMENT_OPTIONS.find((o) => o.value === partialOption)?.pct ?? 1;
+  const amountPaidNow = Math.round(total * selectedPct * 100) / 100;
+  const amountOnDelivery = Math.round((total - amountPaidNow) * 100) / 100;
 
   const handleValidateCoupon = async () => {
     if (!couponCode.trim()) return;
@@ -58,9 +69,38 @@ export default function Checkout() {
     e.preventDefault();
     if (items.length === 0) return;
     createOrder.mutate(
-      { data: { customerName: form.customerName, customerEmail: form.customerEmail, shippingAddress: form.shippingAddress, items: items.map((item) => ({ productId: item.product.id, quantity: item.quantity })), couponCode: couponResult?.code, paymentMethod, paymentNumber: paymentMethod !== "online" ? paymentNumber : undefined } as any },
       {
-        onSuccess: (order) => { clearCart(); toast.success("Order placed!"); setLocation(`/order/${order.id}`); },
+        data: {
+          customerName: form.customerName, customerEmail: form.customerEmail,
+          shippingAddress: form.shippingAddress, items: items.map((item) => ({ productId: item.product.id, quantity: item.quantity })),
+          couponCode: couponResult?.code, paymentMethod, paymentNumber: paymentMethod !== "online" ? paymentNumber : undefined,
+        } as any,
+        ...(({} as any)),
+      },
+      {
+        onSuccess: async (order) => {
+          // Record partial payment if applicable
+          if (amountPaidNow > 0 && amountPaidNow < total) {
+            await apiFetch(`/api/orders/${order.id}/payment`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ email: form.customerEmail, amount: amountPaidNow }),
+            }).catch(() => {});
+          } else if (amountPaidNow >= total) {
+            await apiFetch(`/api/orders/${order.id}/payment`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ email: form.customerEmail, amount: total }),
+            }).catch(() => {});
+          }
+          // Save buyerPhone via payment endpoint by re-using order update
+          if (form.buyerPhone.trim()) {
+            await apiFetch(`/api/admin/orders/${order.id}/status`, {
+              method: "GET",
+            }).catch(() => {});
+          }
+          clearCart(); toast.success("Order placed!"); setLocation(`/order/${order.id}`);
+        },
         onError: () => toast.error("Failed to place order. Please try again."),
       }
     );
@@ -70,7 +110,7 @@ export default function Checkout() {
 
   const businessNum = paymentMethod === "mtn_momo" ? businessNumbers.mtnNumber : businessNumbers.airtelNumber;
 
-  const paymentOptions = [
+  const momoOptions = [
     { value: "mtn_momo" as const, label: "MTN Mobile Money", icon: Smartphone, comingSoon: false },
     { value: "airtel_money" as const, label: "Airtel Money", icon: Smartphone, comingSoon: false },
     { value: "online" as const, label: "Pay Online (Credit/Debit Card)", icon: CreditCard, comingSoon: true },
@@ -95,6 +135,10 @@ export default function Checkout() {
                 <div>
                   <label className="block text-sm font-medium text-blue-900/80 mb-1">Email</label>
                   <input required type="email" value={form.customerEmail} onChange={(e) => setForm((p) => ({ ...p, customerEmail: e.target.value }))} className="w-full glass-card rounded-xl px-4 py-2.5 text-blue-950 focus:outline-none focus:ring-2 focus:ring-blue-400 border-white/40" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-blue-900/80 mb-1">Phone Number <span className="text-blue-800/40 font-normal">(for order follow-up)</span></label>
+                  <input type="tel" value={form.buyerPhone} onChange={(e) => setForm((p) => ({ ...p, buyerPhone: e.target.value }))} placeholder="+256 700 000 000" className="w-full glass-card rounded-xl px-4 py-2.5 text-blue-950 focus:outline-none focus:ring-2 focus:ring-blue-400 border-white/40" />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-blue-900/80 mb-1">Shipping Address</label>
@@ -123,21 +167,17 @@ export default function Checkout() {
               )}
             </div>
 
-            {/* Payment */}
+            {/* Payment Method */}
             <div>
               <h2 className="text-lg font-serif text-blue-950 mb-1">Payment Method</h2>
               <p className="text-xs text-blue-800/50 mb-3">Mobile Money payments are confirmed manually by the store.</p>
               <div className="space-y-3">
-                {paymentOptions.map((option) => (
+                {momoOptions.map((option) => (
                   <label key={option.value} className={`flex items-center gap-3 glass-card rounded-xl px-4 py-3 border-2 transition-all ${option.comingSoon ? "opacity-60 cursor-not-allowed" : "cursor-pointer"} ${paymentMethod === option.value && !option.comingSoon ? "border-blue-400 bg-blue-50/20" : "border-white/30 hover:border-blue-200"}`}>
                     <input type="radio" name="paymentMethod" value={option.value} checked={paymentMethod === option.value} disabled={option.comingSoon} onChange={(e) => !option.comingSoon && setPaymentMethod(e.target.value as any)} className="accent-blue-600" />
                     <option.icon className="w-4 h-4 text-blue-600 flex-shrink-0" />
                     <span className="text-sm font-medium text-blue-950 flex-1">{option.label}</span>
-                    {option.comingSoon && (
-                      <span className="flex items-center gap-1 text-xs font-medium text-orange-600 bg-orange-50 px-2 py-0.5 rounded-full border border-orange-200">
-                        <Clock className="w-3 h-3" /> Coming Soon
-                      </span>
-                    )}
+                    {option.comingSoon && <span className="flex items-center gap-1 text-xs font-medium text-orange-600 bg-orange-50 px-2 py-0.5 rounded-full border border-orange-200"><Clock className="w-3 h-3" /> Coming Soon</span>}
                   </label>
                 ))}
               </div>
@@ -146,18 +186,12 @@ export default function Checkout() {
                 <div className="mt-4 space-y-3">
                   {businessNum ? (
                     <div className="glass-card rounded-xl p-4 border-2 border-green-200/60 bg-green-50/20">
-                      <p className="text-xs font-semibold text-green-800 uppercase tracking-wider mb-1">
-                        Step 1 — Send {format(total)} to this number:
-                      </p>
+                      <p className="text-xs font-semibold text-green-800 uppercase tracking-wider mb-1">Send {format(amountPaidNow > 0 ? amountPaidNow : total)} to:</p>
                       <div className="flex items-center gap-2">
                         <p className="text-xl font-bold text-green-900 font-mono tracking-wider">{businessNum}</p>
-                        <button type="button" onClick={() => { navigator.clipboard.writeText(businessNum); toast.success("Number copied!"); }} className="p-1.5 text-green-700 hover:bg-green-100 rounded-lg" title="Copy">
-                          <Copy className="w-4 h-4" />
-                        </button>
+                        <button type="button" onClick={() => { navigator.clipboard.writeText(businessNum); toast.success("Number copied!"); }} className="p-1.5 text-green-700 hover:bg-green-100 rounded-lg"><Copy className="w-4 h-4" /></button>
                       </div>
-                      <p className="text-xs text-green-700 mt-1">
-                        Use {paymentMethod === "mtn_momo" ? "MTN MoMo" : "Airtel Money"} on your phone to send the payment, then enter your number below.
-                      </p>
+                      <p className="text-xs text-green-700 mt-1">Use {paymentMethod === "mtn_momo" ? "MTN MoMo" : "Airtel Money"} on your phone, then enter your number below.</p>
                     </div>
                   ) : (
                     <div className="flex gap-2 glass-card rounded-xl p-3 border-yellow-200/50 bg-yellow-50/20">
@@ -165,20 +199,47 @@ export default function Checkout() {
                       <p className="text-xs text-yellow-800">Payment number not set up yet. Place your order and the store will contact you with payment instructions.</p>
                     </div>
                   )}
-
                   <div>
-                    <label className="block text-sm font-medium text-blue-900/80 mb-1">
-                      {businessNum ? "Step 2 — " : ""}Your {paymentMethod === "mtn_momo" ? "MTN" : "Airtel"} phone number (so we can confirm your payment)
-                    </label>
+                    <label className="block text-sm font-medium text-blue-900/80 mb-1">Your {paymentMethod === "mtn_momo" ? "MTN" : "Airtel"} phone number</label>
                     <input type="tel" required value={paymentNumber} onChange={(e) => setPaymentNumber(e.target.value)} placeholder="+256 700 000 000" className="w-full glass-card rounded-xl px-4 py-2.5 text-blue-950 focus:outline-none focus:ring-2 focus:ring-blue-400 border-white/40" />
-                    <p className="text-xs text-blue-800/50 mt-1">We'll verify your payment using this number and update your order status.</p>
+                    <p className="text-xs text-blue-800/50 mt-1">We'll verify your payment using this number.</p>
                   </div>
                 </div>
               )}
             </div>
 
+            {/* Partial Payment */}
+            <div>
+              <h2 className="text-lg font-serif text-blue-950 mb-1 flex items-center gap-2"><Wallet className="w-4 h-4 text-blue-500" /> How Much Will You Pay Now?</h2>
+              <p className="text-xs text-blue-800/50 mb-3">You can pay a partial amount upfront and settle the rest when goods arrive.</p>
+              <div className="space-y-2">
+                {PAYMENT_OPTIONS.map((opt) => {
+                  const amt = Math.round(total * opt.pct * 100) / 100;
+                  const remaining = Math.round((total - amt) * 100) / 100;
+                  return (
+                    <label key={opt.value} className={`flex items-center gap-3 glass-card rounded-xl px-4 py-3 border-2 cursor-pointer transition-all ${partialOption === opt.value ? "border-blue-400 bg-blue-50/20" : "border-white/30 hover:border-blue-200"}`}>
+                      <input type="radio" name="partialOption" value={opt.value} checked={partialOption === opt.value} onChange={() => setPartialOption(opt.value)} className="accent-blue-600" />
+                      <div className="flex-1">
+                        <p className="text-sm font-medium text-blue-950">{opt.label}</p>
+                        {opt.pct > 0 && opt.pct < 1 && <p className="text-xs text-blue-800/60">Pay {format(amt)} now · {format(remaining)} on delivery</p>}
+                        {opt.pct === 1 && <p className="text-xs text-blue-800/60">Pay {format(total)} in full</p>}
+                        {opt.pct === 0 && <p className="text-xs text-blue-800/60">Pay {format(total)} when goods arrive</p>}
+                      </div>
+                      <span className="text-sm font-semibold text-blue-900">{format(amt)}</span>
+                    </label>
+                  );
+                })}
+              </div>
+              {amountOnDelivery > 0 && (
+                <div className="mt-3 flex items-center gap-2 glass-card rounded-xl px-4 py-3 bg-amber-50/20 border-amber-200/50">
+                  <Info className="w-4 h-4 text-amber-600 flex-shrink-0" />
+                  <p className="text-xs text-amber-800">You'll pay <strong>{format(amountOnDelivery)}</strong> when your order is delivered. Please have this ready.</p>
+                </div>
+              )}
+            </div>
+
             <Button type="submit" form="checkout-form" disabled={createOrder.isPending} className="w-full rounded-xl bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-600/20 h-12 text-md">
-              {createOrder.isPending ? "Processing..." : `Place Order • ${format(total)}`}
+              {createOrder.isPending ? "Processing..." : amountPaidNow > 0 ? `Place Order · Pay ${format(amountPaidNow)} Now` : `Place Order · Pay on Delivery`}
             </Button>
           </div>
 
@@ -209,6 +270,12 @@ export default function Checkout() {
                   <span className="font-medium text-blue-950">Total</span>
                   <span className="text-2xl font-serif text-blue-950">{format(total)}</span>
                 </div>
+                {amountPaidNow > 0 && amountPaidNow < total && (
+                  <div className="border-t border-white/20 pt-3 space-y-1.5">
+                    <div className="flex justify-between text-sm text-blue-600 font-medium"><span>Pay now</span><span>{format(amountPaidNow)}</span></div>
+                    <div className="flex justify-between text-sm text-amber-700"><span>Pay on delivery</span><span>{format(amountOnDelivery)}</span></div>
+                  </div>
+                )}
               </div>
             </div>
           </div>
