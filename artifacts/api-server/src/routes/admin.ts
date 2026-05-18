@@ -192,7 +192,7 @@ router.get("/admin/orders", async (req, res) => {
 
 router.put("/admin/orders/:id/status", async (req, res) => {
   const { status } = req.body as { status?: string };
-  const validStatuses = ["pending", "processing", "shipped", "delivered", "cancelled", "received"];
+  const validStatuses = ["pending", "processing", "shipped", "delivered", "cancelled"];
   if (!status || !validStatuses.includes(status)) {
     res.status(400).json({ error: "Invalid status" }); return;
   }
@@ -203,7 +203,8 @@ router.put("/admin/orders/:id/status", async (req, res) => {
   const history = existing.statusHistory ?? [];
   history.push({ status: status as OrderDoc["status"], timestamp: new Date().toISOString() });
 
-  const shouldArchive = ["delivered", "cancelled", "received"].includes(status);
+  const isPaid = existing.paymentStatus === "paid" || Number(existing.amountPaid ?? 0) >= Number(existing.total);
+  const shouldArchive = status === "cancelled" || (status === "delivered" && isPaid);
   await ref.update({ status, statusHistory: history, ...(shouldArchive ? { archived: true } : {}) });
 
   // Auto-archive to storage
@@ -239,20 +240,41 @@ router.put("/admin/orders/:id/status", async (req, res) => {
 });
 
 // Admin: record payment against an order
-router.post("/admin/orders/:id/payment", async (req, res) => {
-  const { amount } = req.body as { amount?: number };
-  if (!amount || amount <= 0) { res.status(400).json({ error: "amount is required" }); return; }
-  const ref = firestore.collection(COLLECTIONS.orders).doc(req.params.id);
-  const snap = await ref.get();
-  if (!snap.exists) { res.status(404).json({ error: "Order not found" }); return; }
-  const order = snap.data() as OrderDoc;
-  const newAmountPaid = Math.min(Number(order.amountPaid ?? 0) + Number(amount), order.total);
-  let paymentStatus: "unpaid" | "partial" | "paid" = "partial";
-  if (newAmountPaid >= order.total) paymentStatus = "paid";
-  await ref.update({ amountPaid: newAmountPaid, paymentStatus });
-  const all = await loadAllOrders(undefined, true);
-  res.json(all.find((o) => o.id === req.params.id));
-});
+  router.post("/admin/orders/:id/payment", async (req, res) => {
+    const { amount } = req.body as { amount?: number };
+    if (!amount || amount <= 0) { res.status(400).json({ error: "amount is required" }); return; }
+    const ref = firestore.collection(COLLECTIONS.orders).doc(req.params.id);
+    const snap = await ref.get();
+    if (!snap.exists) { res.status(404).json({ error: "Order not found" }); return; }
+    const order = snap.data() as OrderDoc;
+    const newAmountPaid = Math.min(Number(order.amountPaid ?? 0) + Number(amount), order.total);
+    let paymentStatus: "unpaid" | "partial" | "paid" = "partial";
+    if (newAmountPaid >= order.total) paymentStatus = "paid";
+    const payUpdates: Record<string, unknown> = { amountPaid: newAmountPaid, paymentStatus };
+    // Auto-archive when payment completes a delivered order
+    const nowPaidDelivered = paymentStatus === "paid" && order.status === "delivered";
+    if (nowPaidDelivered) payUpdates["archived"] = true;
+    await ref.update(payUpdates);
+    if (nowPaidDelivered) {
+      try {
+        const folderId = await ensureOrderLogsFolder();
+        const alreadyLogged = await firestore.collection(COLLECTIONS.storageItems)
+          .where("referenceId", "==", req.params.id).where("type", "==", "order_log").get();
+        if (alreadyLogged.empty) {
+          await firestore.collection(COLLECTIONS.storageItems).add({
+            folderId, type: "order_log" as const, referenceId: req.params.id,
+            title: `Order #${req.params.id.slice(0, 8).toUpperCase()} – ${order.customerName}`,
+            snapshot: { customerName: order.customerName, customerEmail: order.customerEmail,
+              buyerPhone: order.buyerPhone ?? null, total: order.total, status: order.status,
+              itemCount: order.items?.length ?? 0, paymentMethod: order.paymentMethod } as Record<string, unknown>,
+            archivedAt: Timestamp.now(),
+          } satisfies StorageItemDoc);
+        }
+      } catch { /* non-critical */ }
+    }
+    const all = await loadAllOrders(undefined, true);
+    res.json(all.find((o) => o.id === req.params.id));
+  });
 
 // Admin: set shipping fee for an order
   router.patch("/admin/orders/:id/shipping", async (req, res) => {
@@ -600,9 +622,14 @@ router.get("/admin/settings", async (_req, res) => {
 });
 
 router.put("/admin/settings", async (req, res) => {
-  await firestore.collection(COLLECTIONS.settings).doc("public").set(req.body, { merge: true });
-  const fresh = await firestore.collection(COLLECTIONS.settings).doc("public").get();
-  res.json(fresh.data());
+  try {
+    await firestore.collection(COLLECTIONS.settings).doc("public").set(req.body, { merge: true });
+    const fresh = await firestore.collection(COLLECTIONS.settings).doc("public").get();
+    res.json(fresh.data() ?? {});
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "Failed to save settings";
+    res.status(500).json({ error: msg });
+  }
 });
 
 // ─── Analytics ────────────────────────────────────────────────────────────────
