@@ -1,21 +1,10 @@
 import { Link, useLocation } from "wouter";
-import {
-  LayoutDashboard,
-  Package,
-  ShoppingCart,
-  MessageSquare,
-  LogOut,
-  Home,
-  Tag,
-  Gift,
-  BookOpen,
-  BarChart2,
-  Settings,
-  Upload,
-  Bell,
-} from "lucide-react";
+import { useAuth } from "@/components/auth-context";
 import { toast } from "sonner";
-import { useAuth } from "./auth-context";
+import {
+  LayoutDashboard, Package, ShoppingCart, MessageSquare,
+  Tag, Gift, BookOpen, Upload, Settings, Home, LogOut, BarChart2, Archive,
+} from "lucide-react";
 
 export function AdminLayout({ children }: { children: React.ReactNode }) {
   const [location, setLocation] = useLocation();
@@ -30,6 +19,7 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
     { href: "/admin/coupons", label: "Coupons", icon: Tag },
     { href: "/admin/bundles", label: "Bundles", icon: Gift },
     { href: "/admin/blog", label: "Journal", icon: BookOpen },
+    { href: "/admin/storage", label: "Storage", icon: Archive },
     { href: "/admin/bulk-import", label: "Bulk Import", icon: Upload },
     { href: "/admin/settings", label: "Settings", icon: Settings },
   ];
@@ -74,18 +64,11 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
           })}
         </nav>
         <div className="p-4 border-t border-white/20 space-y-1">
-          <Link
-            href="/"
-            className="flex items-center gap-3 px-4 py-2.5 rounded-xl text-blue-800/70 hover:bg-white/20 hover:text-blue-900 transition-all font-medium text-sm"
-          >
+          <Link href="/" className="flex items-center gap-3 px-4 py-2.5 rounded-xl text-blue-800/70 hover:bg-white/20 hover:text-blue-900 transition-all font-medium text-sm">
             <Home className="w-4 h-4" />
             Storefront
           </Link>
-          <button
-            type="button"
-            onClick={handleLogout}
-            className="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-blue-800/70 hover:bg-red-500/15 hover:text-red-700 transition-all font-medium text-sm"
-          >
+          <button type="button" onClick={handleLogout} className="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-blue-800/70 hover:bg-red-500/15 hover:text-red-700 transition-all font-medium text-sm">
             <LogOut className="w-4 h-4" />
             Sign Out
           </button>
