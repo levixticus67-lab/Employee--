@@ -272,7 +272,7 @@ export default function Checkout() {
                 <div className="flex justify-between text-sm text-blue-900/80"><span>Subtotal</span><span>{format(subtotal)}</span></div>
                 {discount > 0 && <div className="flex justify-between text-sm text-green-700"><span>Discount ({couponResult?.code})</span><span>−{format(discount)}</span></div>}
                 <div className="flex justify-between text-sm text-blue-900/80"><span>Shipping</span><span>{shipping === 0 ? "Free" : format(shipping)}</span></div>
-                {shipping === 0 && <p className="text-xs text-green-700">Free shipping on orders over $100!</p>}
+                {shipping === 0 && <p className="text-xs text-blue-700/60 italic">Delivery fee will be confirmed by the team</p>}
                 <div className="border-t border-white/20 pt-3 flex justify-between items-center">
                   <span className="font-medium text-blue-950">Total</span>
                   <span className="text-2xl font-serif text-blue-950">{format(total)}</span>
