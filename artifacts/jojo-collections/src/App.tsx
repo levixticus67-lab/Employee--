@@ -1,4 +1,5 @@
 import { Switch, Route, Router as WouterRouter, Redirect } from "wouter";
+  import { useEffect } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -80,6 +81,18 @@ function Router() {
 }
 
 function App() {
+    useEffect(() => {
+      if ("serviceWorker" in navigator) {
+        navigator.serviceWorker.register("/sw.js", { scope: "/" })
+          .then((reg) => {
+            if ("Notification" in window && Notification.permission === "default") {
+              Notification.requestPermission().catch(() => {});
+            }
+          })
+          .catch(() => {});
+      }
+    }, []);
+  
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
