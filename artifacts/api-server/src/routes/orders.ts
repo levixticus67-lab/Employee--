@@ -84,7 +84,7 @@ router.post("/orders", async (req, res) => {
   const requestedAmountPaid = Number(rawBody["amountPaid"] ?? 0);
 
   // Fetch free delivery threshold from store settings
-  const settingsSnap = await firestore.doc("settings/global").get();
+  const settingsSnap = await firestore.collection(COLLECTIONS.settings).doc("public").get();
   const freeThreshold = settingsSnap.exists ? Number(settingsSnap.data()?.["freeDeliveryThreshold"] ?? 0) : 0;
 
   try {
