@@ -32,6 +32,7 @@ import AdminBundles from "@/pages/admin/bundles";
 import AdminBlog from "@/pages/admin/blog";
 import AdminAnalytics from "@/pages/admin/analytics";
 import AdminSettings from "@/pages/admin/settings";
+import AdminStorage from "@/pages/admin/storage";
 import BulkImport from "@/pages/admin/bulk-import";
 
 const queryClient = new QueryClient();
@@ -69,6 +70,7 @@ function Router() {
       <Route path="/admin/coupons"><AdminRoute><AdminCoupons /></AdminRoute></Route>
       <Route path="/admin/bundles"><AdminRoute><AdminBundles /></AdminRoute></Route>
       <Route path="/admin/blog"><AdminRoute><AdminBlog /></AdminRoute></Route>
+      <Route path="/admin/storage"><AdminRoute><AdminStorage /></AdminRoute></Route>
       <Route path="/admin/bulk-import"><AdminRoute><BulkImport /></AdminRoute></Route>
       <Route path="/admin/settings"><AdminRoute><AdminSettings /></AdminRoute></Route>
 
