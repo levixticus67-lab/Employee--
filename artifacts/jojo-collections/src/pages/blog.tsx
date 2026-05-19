@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Layout } from "@/components/layout";
 import { Link } from "wouter";
 import { BookOpen, Calendar, User } from "lucide-react";
+import { apiFetch } from "@/lib/api";
 
 type BlogPost = {
   id: string;
@@ -19,7 +20,7 @@ export default function BlogPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch("/api/blog")
+    apiFetch("/api/blog")
       .then((r) => r.json())
       .then((data) => setPosts(Array.isArray(data) ? data : []))
       .catch(() => setPosts([]))
