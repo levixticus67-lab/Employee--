@@ -8,6 +8,19 @@ import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import { apiFetch } from "@/lib/api";
 
+type BannerMediaType = "none" | "image" | "video";
+
+type PublicSettings = {
+  whatsappNumber: string;
+  whatsappMessage: string;
+  logoUrl: string;
+  bannerEnabled: boolean;
+  bannerText: string;
+  bannerBgColor: string;
+  bannerMediaUrl: string;
+  bannerMediaType: BannerMediaType;
+};
+
 export function Layout({ children }: { children: React.ReactNode }) {
   const { totalItems } = useCart();
   const { user, logout } = useAuth();
@@ -15,18 +28,22 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const { currency, setCurrency } = useCurrency();
   const [location, setLocation] = useLocation();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [whatsappNumber, setWhatsappNumber] = useState("");
-  const [whatsappMessage, setWhatsappMessage] = useState("Hi! I need help.");
-  const [logoUrl, setLogoUrl] = useState("");
+  const [bannerDismissed, setBannerDismissed] = useState(false);
+  const [settings, setSettings] = useState<PublicSettings>({
+    whatsappNumber: "",
+    whatsappMessage: "Hi! I need help.",
+    logoUrl: "",
+    bannerEnabled: false,
+    bannerText: "",
+    bannerBgColor: "#1e3a8a",
+    bannerMediaUrl: "",
+    bannerMediaType: "none",
+  });
 
   useEffect(() => {
     apiFetch("/api/settings/public")
       .then((r) => r.json())
-      .then((d) => {
-        if (d.whatsappNumber) setWhatsappNumber(d.whatsappNumber);
-        if (d.whatsappMessage) setWhatsappMessage(d.whatsappMessage);
-        if (d.logoUrl) setLogoUrl(d.logoUrl);
-      })
+      .then((d) => setSettings((prev) => ({ ...prev, ...d })))
       .catch(() => {});
   }, []);
 
@@ -44,19 +61,77 @@ export function Layout({ children }: { children: React.ReactNode }) {
     catch { toast.error("Could not sign out"); }
   }
 
-  const whatsappUrl = whatsappNumber
-    ? `https://wa.me/${whatsappNumber.replace(/\D/g, "")}?text=${encodeURIComponent(whatsappMessage)}`
+  const whatsappUrl = settings.whatsappNumber
+    ? `https://wa.me/${settings.whatsappNumber.replace(/\D/g, "")}?text=${encodeURIComponent(settings.whatsappMessage)}`
     : null;
+
+  const showBanner = settings.bannerEnabled && !bannerDismissed && (settings.bannerText || settings.bannerMediaUrl);
 
   return (
     <div className="min-h-screen flex flex-col relative overflow-hidden">
+
+      {/* Announcement Banner */}
+      {showBanner && (
+        <div
+          className="relative w-full overflow-hidden flex-shrink-0"
+          style={{ minHeight: settings.bannerMediaType !== "none" ? 80 : 40 }}
+        >
+          {/* Background media */}
+          {settings.bannerMediaType === "video" && settings.bannerMediaUrl && (
+            <video
+              src={settings.bannerMediaUrl}
+              className="absolute inset-0 w-full h-full object-cover"
+              autoPlay
+              loop
+              muted
+              playsInline
+            />
+          )}
+          {settings.bannerMediaType === "image" && settings.bannerMediaUrl && (
+            <img
+              src={settings.bannerMediaUrl}
+              alt=""
+              className="absolute inset-0 w-full h-full object-cover"
+            />
+          )}
+
+          {/* Color overlay — solid when no media, semi-transparent when media is present */}
+          <div
+            className="absolute inset-0"
+            style={{
+              background: settings.bannerMediaType !== "none"
+                ? `${settings.bannerBgColor}bb`
+                : settings.bannerBgColor,
+            }}
+          />
+
+          {/* Text content */}
+          <div className="relative z-10 flex items-center justify-center px-8 py-2.5" style={{ minHeight: "inherit" }}>
+            {settings.bannerText && (
+              <p className="text-white text-sm font-medium text-center leading-snug drop-shadow-md px-4">
+                {settings.bannerText}
+              </p>
+            )}
+          </div>
+
+          {/* Dismiss button */}
+          <button
+            onClick={() => setBannerDismissed(true)}
+            className="absolute right-3 top-1/2 -translate-y-1/2 z-20 text-white/80 hover:text-white transition-colors p-1 rounded-full hover:bg-white/20"
+            aria-label="Dismiss banner"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
       <header className="sticky top-0 z-50 glass-panel-heavy border-b border-white/20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center h-20 gap-6">
             <Link href="/" className="flex-shrink-0 flex items-center gap-2.5">
-              {logoUrl && (
+              {settings.logoUrl && (
                 <img
-                  src={logoUrl}
+                  src={settings.logoUrl}
                   alt="Logo"
                   className="w-9 h-9 rounded-full object-cover border-2 border-blue-200/60 shadow-sm flex-shrink-0"
                 />
