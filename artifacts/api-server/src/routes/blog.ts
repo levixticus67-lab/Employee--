@@ -17,24 +17,50 @@ function postDto(id: string, data: FirebaseFirestore.DocumentData) {
   };
 }
 
+// Public: list published posts — sort in JS to avoid composite index requirement
 router.get("/blog", async (_req, res) => {
-  const snap = await firestore
-    .collection("blog")
-    .where("published", "==", true)
-    .orderBy("createdAt", "desc")
-    .get();
-  res.json(snap.docs.map((d) => postDto(d.id, d.data())));
+  try {
+    const snap = await firestore.collection("blog").get();
+    const posts = snap.docs
+      .map((d) => postDto(d.id, d.data()))
+      .filter((p) => p.published)
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    res.json(posts);
+  } catch (err) {
+    console.error("GET /blog error:", err);
+    res.json([]);
+  }
 });
 
+// Public: single post by id
 router.get("/blog/:id", async (req, res) => {
-  const snap = await firestore.collection("blog").doc(req.params.id).get();
-  if (!snap.exists) { res.status(404).json({ error: "Post not found" }); return; }
-  res.json(postDto(snap.id, snap.data() ?? {}));
+  try {
+    const snap = await firestore.collection("blog").doc(req.params.id).get();
+    if (!snap.exists) {
+      res.status(404).json({ error: "Post not found" });
+      return;
+    }
+    const post = postDto(snap.id, snap.data() ?? {});
+    if (!post.published) {
+      res.status(404).json({ error: "Post not found" });
+      return;
+    }
+    res.json(post);
+  } catch (err) {
+    console.error(`GET /blog/${req.params.id} error:`, err);
+    res.status(500).json({ error: "Failed to load post" });
+  }
 });
 
+// Admin: list all posts (including unpublished)
 router.get("/admin/blog", requireAdmin, async (_req, res) => {
-  const snap = await firestore.collection("blog").orderBy("createdAt", "desc").get();
-  res.json(snap.docs.map((d) => postDto(d.id, d.data())));
+  try {
+    const snap = await firestore.collection("blog").orderBy("createdAt", "desc").get();
+    res.json(snap.docs.map((d) => postDto(d.id, d.data())));
+  } catch (err) {
+    console.error("GET /admin/blog error:", err);
+    res.json([]);
+  }
 });
 
 router.post("/admin/blog", requireAdmin, async (req, res) => {
