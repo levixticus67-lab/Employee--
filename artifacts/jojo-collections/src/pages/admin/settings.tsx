@@ -1,7 +1,7 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { AdminLayout } from "@/components/admin-layout";
 import { Button } from "@/components/ui/button";
-import { Settings, MessageCircle, DollarSign, AlertTriangle, Smartphone, Info, Truck } from "lucide-react";
+import { Settings, MessageCircle, DollarSign, AlertTriangle, Smartphone, Info, Truck, ImageIcon, Upload, X } from "lucide-react";
 import { toast } from "sonner";
 import { apiFetch } from "@/lib/api";
 
@@ -14,6 +14,7 @@ type SettingsData = {
   airtelNumber: string;
   freeDeliveryThreshold: number;
   locationDeliveryThreshold: number;
+  logoUrl: string;
 };
 
 const defaults: SettingsData = {
@@ -25,12 +26,27 @@ const defaults: SettingsData = {
   airtelNumber: "",
   freeDeliveryThreshold: 0,
   locationDeliveryThreshold: 0,
+  logoUrl: "",
 };
+
+async function uploadToCloudinary(file: File): Promise<string | null> {
+  const cloudName = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME;
+  const uploadPreset = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET;
+  if (!cloudName || !uploadPreset) { toast.error("Cloudinary not configured"); return null; }
+  const data = new FormData();
+  data.append("file", file);
+  data.append("upload_preset", uploadPreset);
+  const res = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`, { method: "POST", body: data });
+  const json = await res.json();
+  return json.secure_url ?? null;
+}
 
 export default function AdminSettings() {
   const [form, setForm] = useState<SettingsData>(defaults);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [uploadingLogo, setUploadingLogo] = useState(false);
+  const logoInputRef = useRef<HTMLInputElement>(null);
   const [lowStockProducts, setLowStockProducts] = useState<{ id: string; name: string; brand: string; stock: number; imageUrl: string | null }[]>([]);
 
   useEffect(() => {
@@ -45,6 +61,22 @@ export default function AdminSettings() {
         .catch(() => {}),
     ]).finally(() => setLoading(false));
   }, []);
+
+  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith("image/")) { toast.error("Please select an image file"); return; }
+    setUploadingLogo(true);
+    try {
+      const url = await uploadToCloudinary(file);
+      if (!url) throw new Error("Upload failed");
+      setForm((prev) => ({ ...prev, logoUrl: url }));
+      toast.success("Logo uploaded — save settings to apply");
+    } catch { toast.error("Upload failed"); } finally {
+      setUploadingLogo(false);
+      if (logoInputRef.current) logoInputRef.current.value = "";
+    }
+  };
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -88,6 +120,35 @@ export default function AdminSettings() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         <form onSubmit={handleSave} className="space-y-6">
+
+          {/* Store Logo */}
+          <div className="glass-panel-heavy rounded-2xl p-6 border-white/50">
+            <h2 className="text-lg font-serif text-blue-950 mb-4 flex items-center gap-2">
+              <ImageIcon className="w-5 h-5 text-blue-600" /> Store Logo
+            </h2>
+            <div className="flex items-center gap-4 flex-wrap">
+              {form.logoUrl ? (
+                <div className="relative">
+                  <img src={form.logoUrl} alt="Logo" className="w-16 h-16 rounded-full object-cover border-2 border-blue-200 shadow" />
+                  <button type="button" onClick={() => setForm({ ...form, logoUrl: "" })} className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600">
+                    <X className="w-3 h-3" />
+                  </button>
+                </div>
+              ) : (
+                <div className="w-16 h-16 rounded-full bg-blue-100/60 flex items-center justify-center border-2 border-dashed border-blue-300">
+                  <ImageIcon className="w-7 h-7 text-blue-300" />
+                </div>
+              )}
+              <div>
+                <input ref={logoInputRef} type="file" accept="image/*" onChange={handleLogoUpload} className="hidden" id="logo-upload-input" />
+                <label htmlFor="logo-upload-input" className={`flex items-center gap-2 px-4 py-2 glass-card rounded-lg text-sm text-blue-900 hover:bg-white/40 transition-colors cursor-pointer border border-white/40 ${uploadingLogo ? "opacity-50 pointer-events-none" : ""}`}>
+                  <Upload className="w-4 h-4" />
+                  {uploadingLogo ? "Uploading…" : form.logoUrl ? "Change Logo" : "Upload Logo"}
+                </label>
+                <p className="text-xs text-blue-800/50 mt-1.5">Round image shown next to the brand name in the header.</p>
+              </div>
+            </div>
+          </div>
 
           {/* WhatsApp */}
           <div className="glass-panel-heavy rounded-2xl p-6 border-white/50">
