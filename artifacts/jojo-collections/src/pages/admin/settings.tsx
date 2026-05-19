@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from "react";
 import { AdminLayout } from "@/components/admin-layout";
 import { Button } from "@/components/ui/button";
-import { Settings, MessageCircle, DollarSign, AlertTriangle, Smartphone, Info, Truck, ImageIcon, Upload, X, Megaphone, Video, Eye, EyeOff } from "lucide-react";
+import { Settings, MessageCircle, DollarSign, AlertTriangle, Smartphone, Info, Truck, ImageIcon, Upload, X, Megaphone, Video, Eye, EyeOff, Timer } from "lucide-react";
 import { toast } from "sonner";
 import { apiFetch } from "@/lib/api";
 
@@ -22,6 +22,8 @@ type SettingsData = {
   bannerBgColor: string;
   bannerMediaUrl: string;
   bannerMediaType: BannerMediaType;
+  bannerCountdownEnabled: boolean;
+  bannerCountdownEnd: string;
 };
 
 const defaults: SettingsData = {
@@ -39,6 +41,8 @@ const defaults: SettingsData = {
   bannerBgColor: "#1e3a8a",
   bannerMediaUrl: "",
   bannerMediaType: "none",
+  bannerCountdownEnabled: false,
+  bannerCountdownEnd: "",
 };
 
 const COLOR_PRESETS = [
@@ -64,6 +68,35 @@ async function uploadToCloudinary(file: File, resourceType: "image" | "video" = 
   return json.secure_url ?? null;
 }
 
+function CountdownPreview({ end, enabled }: { end: string; enabled: boolean }) {
+  const [t, setT] = useState<{ d: number; h: number; m: number; s: number } | null>(null);
+  useEffect(() => {
+    if (!enabled || !end) { setT(null); return; }
+    const target = new Date(end).getTime();
+    const tick = () => {
+      const diff = target - Date.now();
+      if (diff <= 0) { setT({ d: 0, h: 0, m: 0, s: 0 }); return; }
+      setT({ d: Math.floor(diff / 86400000), h: Math.floor((diff % 86400000) / 3600000), m: Math.floor((diff % 3600000) / 60000), s: Math.floor((diff % 60000) / 1000) });
+      setTimeout(tick, 1000);
+    };
+    tick();
+  }, [end, enabled]);
+  if (!t) return null;
+  return (
+    <div className="flex items-center gap-1.5 mt-1.5 justify-center">
+      {[{ v: t.d, l: "D" }, { v: t.h, l: "H" }, { v: t.m, l: "M" }, { v: t.s, l: "S" }].map(({ v, l }, i) => (
+        <div key={l} className="flex items-center gap-1.5">
+          <div className="flex flex-col items-center bg-black/30 rounded px-2 py-0.5 min-w-[28px]">
+            <span className="text-white font-bold text-xs tabular-nums">{String(v).padStart(2, "0")}</span>
+            <span className="text-white/60 text-[8px]">{l}</span>
+          </div>
+          {i < 3 && <span className="text-white/70 text-xs font-bold">:</span>}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export default function AdminSettings() {
   const [form, setForm] = useState<SettingsData>(defaults);
   const [loading, setLoading] = useState(true);
@@ -76,14 +109,8 @@ export default function AdminSettings() {
 
   useEffect(() => {
     Promise.all([
-      apiFetch("/api/admin/settings")
-        .then((r) => r.json())
-        .then((d) => setForm({ ...defaults, ...d }))
-        .catch(() => {}),
-      apiFetch("/api/admin/low-stock")
-        .then((r) => r.json())
-        .then(setLowStockProducts)
-        .catch(() => {}),
+      apiFetch("/api/admin/settings").then((r) => r.json()).then((d) => setForm({ ...defaults, ...d })).catch(() => {}),
+      apiFetch("/api/admin/low-stock").then((r) => r.json()).then(setLowStockProducts).catch(() => {}),
     ]).finally(() => setLoading(false));
   }, []);
 
@@ -131,16 +158,10 @@ export default function AdminSettings() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(form),
       });
-      if (!res.ok) {
-        toast.error("Could not save settings. Please try again.");
-      } else {
-        toast.success("Settings saved!");
-      }
-    } catch {
-      toast.error("Network error — please check your connection.");
-    } finally {
-      setSaving(false);
-    }
+      if (!res.ok) { toast.error("Could not save settings. Please try again."); }
+      else { toast.success("Settings saved!"); }
+    } catch { toast.error("Network error — please check your connection."); }
+    finally { setSaving(false); }
   };
 
   if (loading) {
@@ -152,6 +173,9 @@ export default function AdminSettings() {
       </AdminLayout>
     );
   }
+
+  const hasMedia = form.bannerMediaUrl && form.bannerMediaType !== "none";
+  const bannerPreviewHeight = hasMedia ? 160 : 48;
 
   return (
     <AdminLayout>
@@ -203,7 +227,7 @@ export default function AdminSettings() {
               <button
                 type="button"
                 onClick={() => setForm((p) => ({ ...p, bannerEnabled: !p.bannerEnabled }))}
-                className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold transition-colors ${form.bannerEnabled ? "bg-green-100 text-green-700 hover:bg-green-200" : "bg-gray-100 text-gray-500 hover:bg-gray-200"}`}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-colors ${form.bannerEnabled ? "bg-green-100 text-green-700 hover:bg-green-200" : "bg-gray-100 text-gray-500 hover:bg-gray-200"}`}
               >
                 {form.bannerEnabled ? <><Eye className="w-3.5 h-3.5" /> Live</> : <><EyeOff className="w-3.5 h-3.5" /> Hidden</>}
               </button>
@@ -227,43 +251,31 @@ export default function AdminSettings() {
                 <label className="block text-sm font-medium text-blue-900/80 mb-2">Background Color</label>
                 <div className="flex items-center gap-2 flex-wrap">
                   {COLOR_PRESETS.map((c) => (
-                    <button
-                      key={c.value}
-                      type="button"
-                      title={c.label}
-                      onClick={() => setForm({ ...form, bannerBgColor: c.value })}
-                      className={`w-7 h-7 rounded-full border-2 transition-transform hover:scale-110 ${form.bannerBgColor === c.value ? "border-blue-400 scale-110" : "border-white/60"}`}
+                    <button key={c.value} type="button" title={c.label} onClick={() => setForm({ ...form, bannerBgColor: c.value })}
+                      className={`w-7 h-7 rounded-full border-2 transition-transform hover:scale-110 ${form.bannerBgColor === c.value ? "border-blue-400 scale-110 ring-2 ring-blue-300" : "border-white/60"}`}
                       style={{ background: c.value }}
                     />
                   ))}
-                  <input
-                    type="color"
-                    value={form.bannerBgColor}
-                    onChange={(e) => setForm({ ...form, bannerBgColor: e.target.value })}
-                    className="w-7 h-7 rounded-full border-2 border-white/60 cursor-pointer bg-transparent"
-                    title="Custom color"
-                  />
+                  <input type="color" value={form.bannerBgColor} onChange={(e) => setForm({ ...form, bannerBgColor: e.target.value })}
+                    className="w-7 h-7 rounded-full border-2 border-white/60 cursor-pointer bg-transparent" title="Custom color" />
                 </div>
               </div>
 
               {/* Media upload */}
               <div>
                 <label className="block text-sm font-medium text-blue-900/80 mb-2">
-                  Background Media <span className="text-xs font-normal text-blue-800/50">(image or short looping video)</span>
+                  Background Media <span className="text-xs font-normal text-blue-800/50">(image or short looping video/animation)</span>
                 </label>
                 <div className="flex items-start gap-3 flex-wrap">
                   {form.bannerMediaUrl && (
-                    <div className="relative rounded-lg overflow-hidden border border-white/40 w-28 h-16 flex-shrink-0">
+                    <div className="relative rounded-xl overflow-hidden border border-white/40 flex-shrink-0" style={{ width: 140, height: 80 }}>
                       {form.bannerMediaType === "video" ? (
                         <video src={form.bannerMediaUrl} className="w-full h-full object-cover" muted autoPlay loop playsInline />
                       ) : (
                         <img src={form.bannerMediaUrl} alt="Banner" className="w-full h-full object-cover" />
                       )}
-                      <button
-                        type="button"
-                        onClick={() => setForm({ ...form, bannerMediaUrl: "", bannerMediaType: "none" })}
-                        className="absolute top-1 right-1 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600"
-                      >
+                      <button type="button" onClick={() => setForm({ ...form, bannerMediaUrl: "", bannerMediaType: "none" })}
+                        className="absolute top-1 right-1 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600">
                         <X className="w-3 h-3" />
                       </button>
                       <div className="absolute bottom-1 left-1">
@@ -274,47 +286,62 @@ export default function AdminSettings() {
                     </div>
                   )}
                   <div className="flex flex-col gap-1.5">
-                    <input
-                      ref={bannerMediaInputRef}
-                      type="file"
-                      accept="image/*,video/*"
-                      onChange={handleBannerMediaUpload}
-                      className="hidden"
-                      id="banner-media-input"
-                    />
-                    <label
-                      htmlFor="banner-media-input"
-                      className={`flex items-center gap-2 px-4 py-2 glass-card rounded-lg text-sm text-blue-900 hover:bg-white/40 transition-colors cursor-pointer border border-white/40 ${uploadingBannerMedia ? "opacity-50 pointer-events-none" : ""}`}
-                    >
+                    <input ref={bannerMediaInputRef} type="file" accept="image/*,video/*" onChange={handleBannerMediaUpload} className="hidden" id="banner-media-input" />
+                    <label htmlFor="banner-media-input" className={`flex items-center gap-2 px-4 py-2 glass-card rounded-lg text-sm text-blue-900 hover:bg-white/40 transition-colors cursor-pointer border border-white/40 ${uploadingBannerMedia ? "opacity-50 pointer-events-none" : ""}`}>
                       <Upload className="w-4 h-4" />
                       {uploadingBannerMedia ? "Uploading…" : form.bannerMediaUrl ? "Change Media" : "Upload Image / Video"}
                     </label>
-                    <p className="text-xs text-blue-800/50">Short MP4/GIF animations, or a festive image. Video loops automatically.</p>
+                    <p className="text-xs text-blue-800/50">MP4 animations, festive GIFs, or a seasonal image.<br />Video loops automatically, muted.</p>
                   </div>
                 </div>
               </div>
 
-              {/* Live mini preview */}
-              {(form.bannerText || form.bannerMediaUrl) && (
-                <div className="mt-2">
-                  <p className="text-xs font-medium text-blue-900/60 mb-1.5 uppercase tracking-wider">Preview</p>
-                  <div
-                    className="relative w-full h-14 rounded-xl overflow-hidden flex items-center justify-center"
-                    style={{ background: form.bannerMediaUrl ? undefined : form.bannerBgColor }}
-                  >
-                    {form.bannerMediaUrl && form.bannerMediaType === "video" && (
-                      <video src={form.bannerMediaUrl} className="absolute inset-0 w-full h-full object-cover" muted autoPlay loop playsInline />
-                    )}
-                    {form.bannerMediaUrl && form.bannerMediaType === "image" && (
-                      <img src={form.bannerMediaUrl} alt="" className="absolute inset-0 w-full h-full object-cover" />
-                    )}
-                    {form.bannerMediaUrl && (
-                      <div className="absolute inset-0" style={{ background: `${form.bannerBgColor}99` }} />
-                    )}
-                    <p className="relative z-10 text-white text-sm font-medium text-center px-4 drop-shadow">{form.bannerText || "Your banner text appears here"}</p>
+              {/* Countdown timer */}
+              <div className="rounded-xl border border-white/30 bg-white/10 p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <label className="flex items-center gap-2 text-sm font-medium text-blue-900/80">
+                    <Timer className="w-4 h-4 text-blue-500" /> Flash Sale Countdown
+                  </label>
+                  <button type="button" onClick={() => setForm((p) => ({ ...p, bannerCountdownEnabled: !p.bannerCountdownEnabled }))}
+                    className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold transition-colors ${form.bannerCountdownEnabled ? "bg-blue-100 text-blue-700" : "bg-gray-100 text-gray-500"}`}>
+                    {form.bannerCountdownEnabled ? "On" : "Off"}
+                  </button>
+                </div>
+                {form.bannerCountdownEnabled && (
+                  <div>
+                    <label className="block text-xs text-blue-800/60 mb-1">Sale ends at (date &amp; time)</label>
+                    <input
+                      type="datetime-local"
+                      value={form.bannerCountdownEnd ? form.bannerCountdownEnd.slice(0, 16) : ""}
+                      onChange={(e) => setForm({ ...form, bannerCountdownEnd: e.target.value ? new Date(e.target.value).toISOString() : "" })}
+                      className="w-full glass-card rounded-lg px-3 py-2 text-blue-950 text-sm border-white/40 focus:ring-2 focus:ring-blue-400 focus:outline-none"
+                    />
+                  </div>
+                )}
+              </div>
+
+              {/* Live preview */}
+              <div>
+                <p className="text-xs font-medium text-blue-900/60 mb-1.5 uppercase tracking-wider">Preview</p>
+                <div
+                  className="relative w-full rounded-xl overflow-hidden flex items-center justify-center"
+                  style={{ minHeight: bannerPreviewHeight, background: hasMedia ? undefined : form.bannerBgColor }}
+                >
+                  {form.bannerMediaType === "video" && form.bannerMediaUrl && (
+                    <video src={form.bannerMediaUrl} className="absolute inset-0 w-full h-full object-cover" muted autoPlay loop playsInline />
+                  )}
+                  {form.bannerMediaType === "image" && form.bannerMediaUrl && (
+                    <img src={form.bannerMediaUrl} alt="" className="absolute inset-0 w-full h-full object-cover" />
+                  )}
+                  {hasMedia && <div className="absolute inset-0" style={{ background: `${form.bannerBgColor}99` }} />}
+                  <div className="relative z-10 flex flex-col items-center justify-center px-8 py-3 text-center w-full">
+                    <p className="text-white text-sm font-semibold drop-shadow">
+                      {form.bannerText || (form.bannerEnabled ? "Banner is live but no text set" : "Enter banner text above")}
+                    </p>
+                    <CountdownPreview end={form.bannerCountdownEnd} enabled={form.bannerCountdownEnabled} />
                   </div>
                 </div>
-              )}
+              </div>
             </div>
           </div>
 
@@ -325,28 +352,15 @@ export default function AdminSettings() {
             </h2>
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-blue-900/80 mb-1">
-                  Your WhatsApp Number (with country code)
-                </label>
-                <input
-                  type="text"
-                  value={form.whatsappNumber}
-                  onChange={(e) => setForm({ ...form, whatsappNumber: e.target.value })}
-                  placeholder="+256700000000"
-                  className="w-full glass-card rounded-lg px-3 py-2 text-blue-950 border-white/40 focus:ring-2 focus:ring-blue-400 focus:outline-none"
-                />
-                <p className="text-xs text-blue-800/50 mt-1">
-                  Save this number and a green WhatsApp button will appear on the storefront.
-                </p>
+                <label className="block text-sm font-medium text-blue-900/80 mb-1">Your WhatsApp Number (with country code)</label>
+                <input type="text" value={form.whatsappNumber} onChange={(e) => setForm({ ...form, whatsappNumber: e.target.value })} placeholder="+256700000000"
+                  className="w-full glass-card rounded-lg px-3 py-2 text-blue-950 border-white/40 focus:ring-2 focus:ring-blue-400 focus:outline-none" />
+                <p className="text-xs text-blue-800/50 mt-1">Save this number and a green WhatsApp button will appear on the storefront.</p>
               </div>
               <div>
                 <label className="block text-sm font-medium text-blue-900/80 mb-1">Default Greeting Message</label>
-                <textarea
-                  rows={2}
-                  value={form.whatsappMessage}
-                  onChange={(e) => setForm({ ...form, whatsappMessage: e.target.value })}
-                  className="w-full glass-card rounded-lg px-3 py-2 text-blue-950 border-white/40 focus:ring-2 focus:ring-blue-400 focus:outline-none resize-none"
-                />
+                <textarea rows={2} value={form.whatsappMessage} onChange={(e) => setForm({ ...form, whatsappMessage: e.target.value })}
+                  className="w-full glass-card rounded-lg px-3 py-2 text-blue-950 border-white/40 focus:ring-2 focus:ring-blue-400 focus:outline-none resize-none" />
               </div>
             </div>
           </div>
@@ -372,23 +386,13 @@ export default function AdminSettings() {
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-blue-900/80 mb-1">Your MTN Mobile Money Number</label>
-                <input
-                  type="text"
-                  value={form.mtnNumber}
-                  onChange={(e) => setForm({ ...form, mtnNumber: e.target.value })}
-                  placeholder="+256 77X XXX XXX"
-                  className="w-full glass-card rounded-lg px-3 py-2 text-blue-950 border-white/40 focus:ring-2 focus:ring-blue-400 focus:outline-none"
-                />
+                <input type="text" value={form.mtnNumber} onChange={(e) => setForm({ ...form, mtnNumber: e.target.value })} placeholder="+256 77X XXX XXX"
+                  className="w-full glass-card rounded-lg px-3 py-2 text-blue-950 border-white/40 focus:ring-2 focus:ring-blue-400 focus:outline-none" />
               </div>
               <div>
                 <label className="block text-sm font-medium text-blue-900/80 mb-1">Your Airtel Money Number</label>
-                <input
-                  type="text"
-                  value={form.airtelNumber}
-                  onChange={(e) => setForm({ ...form, airtelNumber: e.target.value })}
-                  placeholder="+256 75X XXX XXX"
-                  className="w-full glass-card rounded-lg px-3 py-2 text-blue-950 border-white/40 focus:ring-2 focus:ring-blue-400 focus:outline-none"
-                />
+                <input type="text" value={form.airtelNumber} onChange={(e) => setForm({ ...form, airtelNumber: e.target.value })} placeholder="+256 75X XXX XXX"
+                  className="w-full glass-card rounded-lg px-3 py-2 text-blue-950 border-white/40 focus:ring-2 focus:ring-blue-400 focus:outline-none" />
               </div>
             </div>
           </div>
@@ -398,11 +402,8 @@ export default function AdminSettings() {
             <h2 className="text-lg font-serif text-blue-950 mb-4 flex items-center gap-2">
               <DollarSign className="w-5 h-5 text-blue-600" /> Default Currency
             </h2>
-            <select
-              value={form.currencyDefault}
-              onChange={(e) => setForm({ ...form, currencyDefault: e.target.value })}
-              className="w-full glass-card rounded-lg px-3 py-2 text-blue-950 border-white/40 focus:ring-2 focus:ring-blue-400 focus:outline-none"
-            >
+            <select value={form.currencyDefault} onChange={(e) => setForm({ ...form, currencyDefault: e.target.value })}
+              className="w-full glass-card rounded-lg px-3 py-2 text-blue-950 border-white/40 focus:ring-2 focus:ring-blue-400 focus:outline-none">
               <option value="USD">USD — US Dollar</option>
               <option value="UGX">UGX — Ugandan Shilling</option>
               <option value="EUR">EUR — Euro</option>
@@ -416,14 +417,8 @@ export default function AdminSettings() {
               <AlertTriangle className="w-5 h-5 text-orange-500" /> Low Stock Alert
             </h2>
             <label className="block text-sm font-medium text-blue-900/80 mb-1">Alert when stock falls below</label>
-            <input
-              type="number"
-              min="1"
-              max="100"
-              value={form.lowStockThreshold}
-              onChange={(e) => setForm({ ...form, lowStockThreshold: Number(e.target.value) })}
-              className="w-full glass-card rounded-lg px-3 py-2 text-blue-950 border-white/40 focus:ring-2 focus:ring-blue-400 focus:outline-none"
-            />
+            <input type="number" min="1" max="100" value={form.lowStockThreshold} onChange={(e) => setForm({ ...form, lowStockThreshold: Number(e.target.value) })}
+              className="w-full glass-card rounded-lg px-3 py-2 text-blue-950 border-white/40 focus:ring-2 focus:ring-blue-400 focus:outline-none" />
           </div>
 
           {/* Free Delivery Threshold */}
@@ -431,53 +426,28 @@ export default function AdminSettings() {
             <h2 className="text-lg font-serif text-blue-950 mb-1 flex items-center gap-2">
               <Truck className="w-5 h-5 text-blue-500" /> Free Delivery Threshold
             </h2>
-            <p className="text-sm text-blue-800/60 mb-4">
-              Orders that reach this amount qualify for free delivery anywhere in the country.
-              Set to 0 to disable automatic free delivery.
-            </p>
+            <p className="text-sm text-blue-800/60 mb-4">Orders that reach this amount qualify for free delivery anywhere in the country. Set to 0 to disable.</p>
             <label className="block text-sm font-medium text-blue-900/80 mb-1">Minimum order amount for free delivery</label>
             <div className="relative">
               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-blue-800/50 text-sm">$</span>
-              <input
-                type="number"
-                min="0"
-                step="0.01"
-                value={form.freeDeliveryThreshold}
-                onChange={(e) => setForm((p) => ({ ...p, freeDeliveryThreshold: Number(e.target.value) }))}
-                placeholder="0"
-                className="w-full glass-card rounded-xl pl-7 pr-4 py-2.5 text-blue-950 focus:outline-none focus:ring-2 focus:ring-blue-400 border-white/40"
-              />
+              <input type="number" min="0" step="0.01" value={form.freeDeliveryThreshold} onChange={(e) => setForm((p) => ({ ...p, freeDeliveryThreshold: Number(e.target.value) }))} placeholder="0"
+                className="w-full glass-card rounded-xl pl-7 pr-4 py-2.5 text-blue-950 focus:outline-none focus:ring-2 focus:ring-blue-400 border-white/40" />
             </div>
-            {form.freeDeliveryThreshold > 0 ? (
-              <p className="text-xs text-green-700 mt-1">Customers spending ${form.freeDeliveryThreshold.toFixed(2)} or more get free delivery nationwide.</p>
-            ) : (
-              <p className="text-xs text-blue-800/50 mt-1">Free delivery is disabled — you set shipping manually per order.</p>
-            )}
+            {form.freeDeliveryThreshold > 0
+              ? <p className="text-xs text-green-700 mt-1">Customers spending ${form.freeDeliveryThreshold.toFixed(2)} or more get free delivery nationwide.</p>
+              : <p className="text-xs text-blue-800/50 mt-1">Free delivery is disabled — you set shipping manually per order.</p>}
 
             <div className="mt-5 pt-5 border-t border-white/20">
               <label className="block text-sm font-medium text-blue-900/80 mb-1">"May get free delivery" hint threshold</label>
-              <p className="text-xs text-blue-800/50 mb-2">
-                Orders between this amount and the nationwide threshold will see a banner saying delivery might be free depending on location.
-              </p>
+              <p className="text-xs text-blue-800/50 mb-2">Orders between this amount and the nationwide threshold see a "might be free depending on location" hint.</p>
               <div className="relative">
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-blue-800/50 text-sm">$</span>
-                <input
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  value={form.locationDeliveryThreshold}
-                  onChange={(e) => setForm((p) => ({ ...p, locationDeliveryThreshold: Number(e.target.value) }))}
-                  placeholder="0"
-                  className="w-full glass-card rounded-xl pl-7 pr-4 py-2.5 text-blue-950 focus:outline-none focus:ring-2 focus:ring-blue-400 border-white/40"
-                />
+                <input type="number" min="0" step="0.01" value={form.locationDeliveryThreshold} onChange={(e) => setForm((p) => ({ ...p, locationDeliveryThreshold: Number(e.target.value) }))} placeholder="0"
+                  className="w-full glass-card rounded-xl pl-7 pr-4 py-2.5 text-blue-950 focus:outline-none focus:ring-2 focus:ring-blue-400 border-white/40" />
               </div>
-              {form.locationDeliveryThreshold > 0 ? (
-                <p className="text-xs text-orange-700 mt-1">
-                  Customers spending ${form.locationDeliveryThreshold.toFixed(2)}–${form.freeDeliveryThreshold > 0 ? form.freeDeliveryThreshold.toFixed(2) : "∞"} see a "might be free depending on location" hint.
-                </p>
-              ) : (
-                <p className="text-xs text-blue-800/50 mt-1">Set to 0 to disable the location-based hint.</p>
-              )}
+              {form.locationDeliveryThreshold > 0
+                ? <p className="text-xs text-orange-700 mt-1">Customers spending ${form.locationDeliveryThreshold.toFixed(2)}–${form.freeDeliveryThreshold > 0 ? form.freeDeliveryThreshold.toFixed(2) : "∞"} see a location hint.</p>
+                : <p className="text-xs text-blue-800/50 mt-1">Set to 0 to disable the location-based hint.</p>}
             </div>
           </div>
 
@@ -498,11 +468,7 @@ export default function AdminSettings() {
               {lowStockProducts.map((p) => (
                 <div key={p.id} className="flex items-center gap-3 glass-card rounded-xl p-3 border-white/30">
                   <div className="w-10 h-10 rounded-lg bg-white/40 flex-shrink-0 flex items-center justify-center overflow-hidden">
-                    {p.imageUrl ? (
-                      <img src={p.imageUrl} alt={p.name} className="w-full h-full object-cover rounded-lg" />
-                    ) : (
-                      <span className="text-[10px] text-blue-400">Img</span>
-                    )}
+                    {p.imageUrl ? <img src={p.imageUrl} alt={p.name} className="w-full h-full object-cover rounded-lg" /> : <span className="text-[10px] text-blue-400">Img</span>}
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="font-medium text-blue-950 text-sm truncate">{p.name}</p>
