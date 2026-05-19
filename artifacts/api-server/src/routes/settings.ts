@@ -20,6 +20,8 @@ type StoreSettings = {
   bannerBgColor: string;
   bannerMediaUrl: string;
   bannerMediaType: "none" | "image" | "video";
+  bannerCountdownEnabled: boolean;
+  bannerCountdownEnd: string;
 };
 
 const defaultSettings: StoreSettings = {
@@ -37,6 +39,8 @@ const defaultSettings: StoreSettings = {
   bannerBgColor: "#1e3a8a",
   bannerMediaUrl: "",
   bannerMediaType: "none",
+  bannerCountdownEnabled: false,
+  bannerCountdownEnd: "",
 };
 
 router.get("/settings/public", async (_req, res) => {
@@ -57,6 +61,8 @@ router.get("/settings/public", async (_req, res) => {
       bannerBgColor: data?.["bannerBgColor"] ?? "#1e3a8a",
       bannerMediaUrl: data?.["bannerMediaUrl"] ?? "",
       bannerMediaType: data?.["bannerMediaType"] ?? "none",
+      bannerCountdownEnabled: data?.["bannerCountdownEnabled"] === true,
+      bannerCountdownEnd: data?.["bannerCountdownEnd"] ?? "",
     });
   } catch {
     res.json({ whatsappNumber: "", whatsappMessage: "Hi! I need help.", currencyDefault: "USD", mtnNumber: "", airtelNumber: "", logoUrl: "", bannerEnabled: false });
@@ -75,7 +81,10 @@ router.get("/admin/settings", requireAdmin, async (_req, res) => {
 router.put("/admin/settings", requireAdmin, async (req, res) => {
   const body = req.body as Partial<StoreSettings>;
   const updates: Partial<StoreSettings> = {};
-  const strKeys: (keyof StoreSettings)[] = ["whatsappNumber", "whatsappMessage", "currencyDefault", "mtnNumber", "airtelNumber", "logoUrl", "bannerText", "bannerBgColor", "bannerMediaUrl", "bannerMediaType"];
+  const strKeys: (keyof StoreSettings)[] = [
+    "whatsappNumber", "whatsappMessage", "currencyDefault", "mtnNumber", "airtelNumber",
+    "logoUrl", "bannerText", "bannerBgColor", "bannerMediaUrl", "bannerMediaType", "bannerCountdownEnd",
+  ];
   for (const k of strKeys) {
     if (body[k] !== undefined) (updates as Record<string, unknown>)[k] = body[k];
   }
@@ -83,6 +92,7 @@ router.put("/admin/settings", requireAdmin, async (req, res) => {
   if (body.freeDeliveryThreshold !== undefined) updates.freeDeliveryThreshold = Number(body.freeDeliveryThreshold);
   if (body.locationDeliveryThreshold !== undefined) updates.locationDeliveryThreshold = Number(body.locationDeliveryThreshold);
   if (body.bannerEnabled !== undefined) updates.bannerEnabled = Boolean(body.bannerEnabled);
+  if (body.bannerCountdownEnabled !== undefined) updates.bannerCountdownEnabled = Boolean(body.bannerCountdownEnabled);
   await firestore.doc(SETTINGS_DOC).set(updates, { merge: true });
   const snap = await firestore.doc(SETTINGS_DOC).get();
   res.json({ ...defaultSettings, ...snap.data() });
