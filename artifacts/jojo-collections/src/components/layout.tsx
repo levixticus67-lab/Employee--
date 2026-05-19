@@ -4,7 +4,7 @@ import { useAuth } from "./auth-context";
 import { useWishlist } from "./wishlist-context";
 import { useCurrency, type Currency } from "./currency-context";
 import { ShoppingBag, Menu, X, User, LogOut, Heart, MessageCircle, Package } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { toast } from "sonner";
 import { apiFetch } from "@/lib/api";
 
@@ -19,7 +19,33 @@ type PublicSettings = {
   bannerBgColor: string;
   bannerMediaUrl: string;
   bannerMediaType: BannerMediaType;
+  bannerCountdownEnabled: boolean;
+  bannerCountdownEnd: string;
 };
+
+function useCountdown(targetIso: string, enabled: boolean) {
+  const [timeLeft, setTimeLeft] = useState<{ d: number; h: number; m: number; s: number } | null>(null);
+  const rafRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (!enabled || !targetIso) { setTimeLeft(null); return; }
+    const target = new Date(targetIso).getTime();
+    const tick = () => {
+      const diff = target - Date.now();
+      if (diff <= 0) { setTimeLeft({ d: 0, h: 0, m: 0, s: 0 }); return; }
+      const d = Math.floor(diff / 86400000);
+      const h = Math.floor((diff % 86400000) / 3600000);
+      const m = Math.floor((diff % 3600000) / 60000);
+      const s = Math.floor((diff % 60000) / 1000);
+      setTimeLeft({ d, h, m, s });
+      rafRef.current = window.setTimeout(tick, 1000);
+    };
+    tick();
+    return () => { if (rafRef.current) clearTimeout(rafRef.current); };
+  }, [targetIso, enabled]);
+
+  return timeLeft;
+}
 
 export function Layout({ children }: { children: React.ReactNode }) {
   const { totalItems } = useCart();
@@ -38,6 +64,8 @@ export function Layout({ children }: { children: React.ReactNode }) {
     bannerBgColor: "#1e3a8a",
     bannerMediaUrl: "",
     bannerMediaType: "none",
+    bannerCountdownEnabled: false,
+    bannerCountdownEnd: "",
   });
 
   useEffect(() => {
@@ -46,6 +74,8 @@ export function Layout({ children }: { children: React.ReactNode }) {
       .then((d) => setSettings((prev) => ({ ...prev, ...d })))
       .catch(() => {});
   }, []);
+
+  const countdown = useCountdown(settings.bannerCountdownEnd, settings.bannerCountdownEnabled);
 
   const navLinks = [
     { href: "/", label: "Home" },
@@ -65,26 +95,26 @@ export function Layout({ children }: { children: React.ReactNode }) {
     ? `https://wa.me/${settings.whatsappNumber.replace(/\D/g, "")}?text=${encodeURIComponent(settings.whatsappMessage)}`
     : null;
 
-  const showBanner = settings.bannerEnabled && !bannerDismissed && (settings.bannerText || settings.bannerMediaUrl);
+  const hasMedia = settings.bannerMediaUrl && settings.bannerMediaType !== "none";
+  const showBanner = settings.bannerEnabled && !bannerDismissed;
+
+  const bannerMinHeight = hasMedia ? 200 : 44;
 
   return (
-    <div className="min-h-screen flex flex-col relative overflow-hidden">
+    <div className="min-h-screen flex flex-col">
 
       {/* Announcement Banner */}
       {showBanner && (
         <div
-          className="relative w-full overflow-hidden flex-shrink-0"
-          style={{ minHeight: settings.bannerMediaType !== "none" ? 80 : 40 }}
+          className="relative w-full overflow-hidden flex-shrink-0 flex items-center justify-center"
+          style={{ minHeight: bannerMinHeight, background: hasMedia ? undefined : settings.bannerBgColor }}
         >
           {/* Background media */}
           {settings.bannerMediaType === "video" && settings.bannerMediaUrl && (
             <video
               src={settings.bannerMediaUrl}
               className="absolute inset-0 w-full h-full object-cover"
-              autoPlay
-              loop
-              muted
-              playsInline
+              autoPlay loop muted playsInline
             />
           )}
           {settings.bannerMediaType === "image" && settings.bannerMediaUrl && (
@@ -95,29 +125,45 @@ export function Layout({ children }: { children: React.ReactNode }) {
             />
           )}
 
-          {/* Color overlay — solid when no media, semi-transparent when media is present */}
+          {/* Color overlay — always applied; opaque when no media, semi-transparent when media present */}
           <div
             className="absolute inset-0"
-            style={{
-              background: settings.bannerMediaType !== "none"
-                ? `${settings.bannerBgColor}bb`
-                : settings.bannerBgColor,
-            }}
+            style={{ background: hasMedia ? `${settings.bannerBgColor}99` : settings.bannerBgColor }}
           />
 
-          {/* Text content */}
-          <div className="relative z-10 flex items-center justify-center px-8 py-2.5" style={{ minHeight: "inherit" }}>
+          {/* Content */}
+          <div className="relative z-10 flex flex-col items-center justify-center gap-2 px-10 py-4 text-center w-full">
             {settings.bannerText && (
-              <p className="text-white text-sm font-medium text-center leading-snug drop-shadow-md px-4">
+              <p className="text-white font-semibold text-sm sm:text-base leading-snug drop-shadow-md">
                 {settings.bannerText}
               </p>
             )}
+            {settings.bannerCountdownEnabled && countdown && (
+              <div className="flex items-center gap-2 mt-1">
+                {[
+                  { v: countdown.d, label: "Days" },
+                  { v: countdown.h, label: "Hrs" },
+                  { v: countdown.m, label: "Min" },
+                  { v: countdown.s, label: "Sec" },
+                ].map(({ v, label }, i) => (
+                  <div key={label} className="flex items-center gap-2">
+                    <div className="flex flex-col items-center bg-black/30 backdrop-blur-sm rounded-lg px-3 py-1 min-w-[42px]">
+                      <span className="text-white font-bold text-lg leading-none tabular-nums">
+                        {String(v).padStart(2, "0")}
+                      </span>
+                      <span className="text-white/70 text-[9px] uppercase tracking-wider">{label}</span>
+                    </div>
+                    {i < 3 && <span className="text-white/80 font-bold text-lg">:</span>}
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
-          {/* Dismiss button */}
+          {/* Dismiss */}
           <button
             onClick={() => setBannerDismissed(true)}
-            className="absolute right-3 top-1/2 -translate-y-1/2 z-20 text-white/80 hover:text-white transition-colors p-1 rounded-full hover:bg-white/20"
+            className="absolute right-3 top-3 z-20 text-white/70 hover:text-white transition-colors p-1.5 rounded-full hover:bg-white/20"
             aria-label="Dismiss banner"
           >
             <X className="w-4 h-4" />
@@ -229,9 +275,9 @@ export function Layout({ children }: { children: React.ReactNode }) {
         )}
       </header>
 
-      <main className="flex-1 w-full relative z-10">{children}</main>
+      <main className="flex-1 w-full">{children}</main>
 
-      <footer className="glass-panel mt-auto border-t border-white/20 py-10 relative z-10">
+      <footer className="glass-panel mt-auto border-t border-white/20 py-10">
         <div className="max-w-7xl mx-auto px-4">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-8 text-sm">
             <div>
