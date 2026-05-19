@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useRoute, Link } from "wouter";
 import { Layout } from "@/components/layout";
 import { ArrowLeft, Calendar, User } from "lucide-react";
+import { apiFetch } from "@/lib/api";
 
 type BlogPost = {
   id: string;
@@ -22,7 +23,7 @@ export default function BlogPostPage() {
 
   useEffect(() => {
     if (!id) return;
-    fetch(`/api/blog/${id}`)
+    apiFetch(`/api/blog/${id}`)
       .then((r) => (r.ok ? r.json() : null))
       .then((data) => setPost(data))
       .catch(() => setPost(null))
