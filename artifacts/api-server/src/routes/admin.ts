@@ -397,7 +397,8 @@ router.post("/admin/storage/items/:id/restore", async (req, res) => {
   if (!snap.exists) { res.status(404).json({ error: "Item not found" }); return; }
   const item = snap.data() as StorageItemDoc;
   if (item.type !== "blog_post") { res.status(400).json({ error: "Only blog posts can be restored" }); return; }
-  await firestore.collection(COLLECTIONS.blogPosts).doc(item.referenceId).update({ storedInFolder: null });
+  // Blog posts live in the "blog" collection (managed by blog.ts routes)
+  await firestore.collection("blog").doc(item.referenceId).update({ storedInFolder: null, published: false });
   await ref.delete();
   res.json({ message: "Restored" });
 });
@@ -406,7 +407,8 @@ router.post("/admin/storage/items/:id/restore", async (req, res) => {
 router.post("/admin/storage/blog/:blogId/archive", async (req, res) => {
   const { folderId } = req.body as { folderId?: string };
   if (!folderId) { res.status(400).json({ error: "folderId is required" }); return; }
-  const blogRef = firestore.collection(COLLECTIONS.blogPosts).doc(req.params.blogId);
+  // Blog posts live in the "blog" collection (managed by blog.ts routes)
+  const blogRef = firestore.collection("blog").doc(req.params.blogId);
   const blogSnap = await blogRef.get();
   if (!blogSnap.exists) { res.status(404).json({ error: "Blog post not found" }); return; }
   const post = blogSnap.data() as BlogPostDoc;
