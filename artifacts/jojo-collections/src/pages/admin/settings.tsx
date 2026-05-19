@@ -149,6 +149,29 @@ export default function AdminSettings() {
     }
   };
 
+  const patchSettings = async (patch: Partial<SettingsData>) => {
+    try {
+      await apiFetch("/api/admin/settings", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(patch),
+      });
+    } catch { /* silently ignore patch errors */ }
+  };
+
+  const handleToggleBanner = async () => {
+    const next = !form.bannerEnabled;
+    setForm((p) => ({ ...p, bannerEnabled: next }));
+    await patchSettings({ bannerEnabled: next });
+    toast.success(next ? "Banner is now live" : "Banner hidden");
+  };
+
+  const handleToggleCountdown = async () => {
+    const next = !form.bannerCountdownEnabled;
+    setForm((p) => ({ ...p, bannerCountdownEnabled: next }));
+    await patchSettings({ bannerCountdownEnabled: next });
+  };
+
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
@@ -226,7 +249,7 @@ export default function AdminSettings() {
               </h2>
               <button
                 type="button"
-                onClick={() => setForm((p) => ({ ...p, bannerEnabled: !p.bannerEnabled }))}
+                onClick={handleToggleBanner}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-colors ${form.bannerEnabled ? "bg-green-100 text-green-700 hover:bg-green-200" : "bg-gray-100 text-gray-500 hover:bg-gray-200"}`}
               >
                 {form.bannerEnabled ? <><Eye className="w-3.5 h-3.5" /> Live</> : <><EyeOff className="w-3.5 h-3.5" /> Hidden</>}
@@ -302,7 +325,7 @@ export default function AdminSettings() {
                   <label className="flex items-center gap-2 text-sm font-medium text-blue-900/80">
                     <Timer className="w-4 h-4 text-blue-500" /> Flash Sale Countdown
                   </label>
-                  <button type="button" onClick={() => setForm((p) => ({ ...p, bannerCountdownEnabled: !p.bannerCountdownEnabled }))}
+                  <button type="button" onClick={handleToggleCountdown}
                     className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold transition-colors ${form.bannerCountdownEnabled ? "bg-blue-100 text-blue-700" : "bg-gray-100 text-gray-500"}`}>
                     {form.bannerCountdownEnabled ? "On" : "Off"}
                   </button>
