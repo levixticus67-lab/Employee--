@@ -14,6 +14,7 @@ type StoreSettings = {
   airtelNumber: string;
   freeDeliveryThreshold: number;
   locationDeliveryThreshold: number;
+  logoUrl: string;
 };
 
 const defaultSettings: StoreSettings = {
@@ -25,6 +26,7 @@ const defaultSettings: StoreSettings = {
   airtelNumber: "",
   freeDeliveryThreshold: 0,
   locationDeliveryThreshold: 0,
+  logoUrl: "",
 };
 
 router.get("/settings/public", async (_req, res) => {
@@ -39,6 +41,7 @@ router.get("/settings/public", async (_req, res) => {
       airtelNumber: data?.["airtelNumber"] ?? "",
       freeDeliveryThreshold: Number(data?.["freeDeliveryThreshold"] ?? 0),
       locationDeliveryThreshold: Number(data?.["locationDeliveryThreshold"] ?? 0),
+      logoUrl: data?.["logoUrl"] ?? "",
     });
   } catch {
     res.json({ whatsappNumber: "", whatsappMessage: "Hi! I need help.", currencyDefault: "USD", mtnNumber: "", airtelNumber: "" });
@@ -57,7 +60,7 @@ router.get("/admin/settings", requireAdmin, async (_req, res) => {
 router.put("/admin/settings", requireAdmin, async (req, res) => {
   const body = req.body as Partial<StoreSettings>;
   const updates: Partial<StoreSettings> = {};
-  const keys: (keyof StoreSettings)[] = ["whatsappNumber", "whatsappMessage", "currencyDefault", "mtnNumber", "airtelNumber"];
+  const keys: (keyof StoreSettings)[] = ["whatsappNumber", "whatsappMessage", "currencyDefault", "mtnNumber", "airtelNumber", "logoUrl"];
   for (const k of keys) {
     if (body[k] !== undefined) (updates as Record<string, unknown>)[k] = body[k];
   }
