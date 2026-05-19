@@ -6,6 +6,18 @@ import { useEffect, useState, useRef } from "react";
   import { toast } from "sonner";
   import { apiFetch } from "@/lib/api";
 
+  async function uploadToCloudinary(file: File): Promise<string | null> {
+    const cloudName = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME;
+    const uploadPreset = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET;
+    if (!cloudName || !uploadPreset) { toast.error("Cloudinary not configured"); return null; }
+    const data = new FormData();
+    data.append("file", file);
+    data.append("upload_preset", uploadPreset);
+    const res = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`, { method: "POST", body: data });
+    const json = await res.json();
+    return json.secure_url ?? null;
+  }
+
   type Post = { id: string; title: string; summary: string; content: string; imageUrl: string | null; author: string; published: boolean; storedInFolder: string | null; createdAt: string };
   type StorageFolder = { id: string; name: string; isSystem: boolean };
   const empty = { title: "", summary: "", content: "", imageUrl: "", author: "Jojo Collections", published: false };
@@ -50,15 +62,9 @@ import { useEffect, useState, useRef } from "react";
       if (!file.type.startsWith("image/")) { toast.error("Please select an image file"); return; }
       setUploadingImage(true);
       try {
-        const res = await apiFetch("/api/storage/uploads/request-url", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ name: file.name, size: file.size, contentType: file.type }),
-        });
-        const data = await res.json();
-        await fetch(data.uploadURL, { method: "PUT", headers: { "Content-Type": file.type }, body: file });
-        const objectPath = data.objectPath ?? `/objects/uploads/${file.name}`;
-        setForm((prev) => ({ ...prev, imageUrl: `/api/storage${objectPath}` }));
+        const url = await uploadToCloudinary(file);
+        if (!url) throw new Error("Upload failed");
+        setForm((prev) => ({ ...prev, imageUrl: url }));
         toast.success("Image uploaded");
       } catch { toast.error("Upload failed"); } finally {
         setUploadingImage(false);
