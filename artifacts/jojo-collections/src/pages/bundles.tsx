@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
   import { ShoppingBag, Package, Tag, Star } from "lucide-react";
   import { Button } from "@/components/ui/button";
   import { toast } from "sonner";
+  import { apiFetch } from "@/lib/api";
 
   type Bundle = {
     id: string; name: string; description: string; productIds: string[];
@@ -20,7 +21,7 @@ import { useEffect, useState } from "react";
     const { data: allProducts } = useListProducts();
 
     useEffect(() => {
-      fetch("/api/bundles")
+      apiFetch("/api/bundles")
         .then((r) => r.json())
         .then((data) => setBundles(Array.isArray(data) ? data.filter((b: Bundle) => b.active) : []))
         .catch(() => setBundles([]))
