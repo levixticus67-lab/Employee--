@@ -17,6 +17,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [whatsappNumber, setWhatsappNumber] = useState("");
   const [whatsappMessage, setWhatsappMessage] = useState("Hi! I need help.");
+  const [logoUrl, setLogoUrl] = useState("");
 
   useEffect(() => {
     apiFetch("/api/settings/public")
@@ -24,6 +25,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
       .then((d) => {
         if (d.whatsappNumber) setWhatsappNumber(d.whatsappNumber);
         if (d.whatsappMessage) setWhatsappMessage(d.whatsappMessage);
+        if (d.logoUrl) setLogoUrl(d.logoUrl);
       })
       .catch(() => {});
   }, []);
@@ -51,7 +53,16 @@ export function Layout({ children }: { children: React.ReactNode }) {
       <header className="sticky top-0 z-50 glass-panel-heavy border-b border-white/20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center h-20 gap-6">
-            <Link href="/" className="flex-shrink-0 text-2xl font-serif text-blue-950 font-bold tracking-widest">JOJO</Link>
+            <Link href="/" className="flex-shrink-0 flex items-center gap-2.5">
+              {logoUrl && (
+                <img
+                  src={logoUrl}
+                  alt="Logo"
+                  className="w-9 h-9 rounded-full object-cover border-2 border-blue-200/60 shadow-sm flex-shrink-0"
+                />
+              )}
+              <span className="text-2xl font-serif text-blue-950 font-bold tracking-widest">JOJO</span>
+            </Link>
 
             <nav className="hidden md:flex items-center gap-5 flex-1">
               {navLinks.map((link) => (
@@ -114,13 +125,13 @@ export function Layout({ children }: { children: React.ReactNode }) {
         </div>
 
         {isMobileMenuOpen && (
-          <div className="md:hidden glass-panel border-t border-white/20 absolute w-full z-50">
+          <div className="md:hidden absolute w-full z-50 border-t border-blue-200/40 bg-white/95 backdrop-blur-xl shadow-xl">
             <div className="px-4 pt-2 pb-4 space-y-1">
               {navLinks.map((link) => (
                 <Link key={link.href} href={link.href} onClick={() => setIsMobileMenuOpen(false)}
-                  className="block px-3 py-2 text-sm font-medium text-blue-900 hover:bg-white/20 rounded-md uppercase tracking-wider">{link.label}</Link>
+                  className={`block px-3 py-2.5 text-sm font-medium rounded-xl uppercase tracking-wider transition-colors ${location === link.href ? "bg-blue-50 text-blue-900 font-semibold" : "text-blue-900 hover:bg-blue-50"}`}>{link.label}</Link>
               ))}
-              <div className="px-3 py-2 flex items-center gap-2">
+              <div className="px-3 py-2 flex items-center gap-2 border-t border-blue-100 mt-2 pt-3">
                 <span className="text-xs text-blue-800/50 uppercase tracking-wide">Currency:</span>
                 <select value={currency} onChange={(e) => setCurrency(e.target.value as Currency)} className="text-sm text-blue-900 bg-transparent border-0 focus:outline-none">
                   {currencies.map((c) => <option key={c} value={c}>{c}</option>)}
@@ -128,15 +139,15 @@ export function Layout({ children }: { children: React.ReactNode }) {
               </div>
               {user ? (
                 <>
-                  <div className="px-3 py-2 text-sm text-blue-900 font-medium flex items-center gap-2"><User className="w-4 h-4" /> {user.name}</div>
-                  <Link href="/my-orders" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-blue-900 hover:bg-white/20 rounded-md"><Package className="w-4 h-4" /> My Orders</Link>
-                  <button type="button" onClick={() => { setIsMobileMenuOpen(false); handleLogout(); }} className="flex items-center gap-2 w-full text-left px-3 py-2 text-sm font-medium text-red-600 hover:bg-white/20 rounded-md"><LogOut className="w-4 h-4" /> Sign out</button>
+                  <div className="px-3 py-2 text-sm text-blue-900 font-medium flex items-center gap-2 border-t border-blue-100 mt-1 pt-3"><User className="w-4 h-4" /> {user.name}</div>
+                  <Link href="/my-orders" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center gap-2 px-3 py-2.5 text-sm font-medium text-blue-900 hover:bg-blue-50 rounded-xl"><Package className="w-4 h-4" /> My Orders</Link>
+                  <button type="button" onClick={() => { setIsMobileMenuOpen(false); handleLogout(); }} className="flex items-center gap-2 w-full text-left px-3 py-2.5 text-sm font-medium text-red-600 hover:bg-red-50 rounded-xl"><LogOut className="w-4 h-4" /> Sign out</button>
                 </>
               ) : (
-                <>
-                  <Link href="/login" onClick={() => setIsMobileMenuOpen(false)} className="block px-3 py-2 text-sm font-medium text-blue-900 hover:bg-white/20 rounded-md">Sign In</Link>
-                  <Link href="/signup" onClick={() => setIsMobileMenuOpen(false)} className="block px-3 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-md text-center">Sign Up</Link>
-                </>
+                <div className="flex flex-col gap-2 border-t border-blue-100 mt-1 pt-3">
+                  <Link href="/login" onClick={() => setIsMobileMenuOpen(false)} className="block px-3 py-2.5 text-sm font-medium text-blue-900 hover:bg-blue-50 rounded-xl">Sign In</Link>
+                  <Link href="/signup" onClick={() => setIsMobileMenuOpen(false)} className="block px-3 py-2.5 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-xl text-center">Sign Up</Link>
+                </div>
               )}
             </div>
           </div>
