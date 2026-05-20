@@ -278,23 +278,28 @@ router.put("/admin/orders/:id/status", async (req, res) => {
 
 // Admin: set shipping fee for an order
   router.patch("/admin/orders/:id/shipping", async (req, res) => {
-    const { shipping } = req.body as { shipping?: unknown };
-    const shippingAmount = Number(shipping);
-    if (isNaN(shippingAmount) || shippingAmount < 0) {
-      res.status(400).json({ error: "shipping must be a non-negative number" }); return;
+    try {
+      const { shipping } = req.body as { shipping?: unknown };
+      const shippingAmount = Number(shipping);
+      if (isNaN(shippingAmount) || shippingAmount < 0) {
+        res.status(400).json({ error: "shipping must be a non-negative number" }); return;
+      }
+      const ref = firestore.collection(COLLECTIONS.orders).doc(req.params.id);
+      const snap = await ref.get();
+      if (!snap.exists) { res.status(404).json({ error: "Order not found" }); return; }
+      const order = snap.data() as OrderDoc;
+      const newTotal = Math.max(0, Number(order.subtotal) - Number(order.discount ?? 0) + shippingAmount);
+      const amountPaid = Number(order.amountPaid ?? 0);
+      let paymentStatus: "unpaid" | "partial" | "paid" = "unpaid";
+      if (amountPaid >= newTotal && newTotal > 0) paymentStatus = "paid";
+      else if (amountPaid > 0) paymentStatus = "partial";
+      await ref.update({ shipping: shippingAmount, total: newTotal, shippingConfirmed: true, freeDelivery: shippingAmount === 0, paymentStatus });
+      const dto = await loadOrderById(req.params.id);
+      res.json(dto);
+    } catch (err) {
+      console.error("set shipping error:", err);
+      res.status(500).json({ error: "Failed to set delivery fee — please try again" });
     }
-    const ref = firestore.collection(COLLECTIONS.orders).doc(req.params.id);
-    const snap = await ref.get();
-    if (!snap.exists) { res.status(404).json({ error: "Order not found" }); return; }
-    const order = snap.data() as OrderDoc;
-    const newTotal = Math.max(0, Number(order.subtotal) - Number(order.discount ?? 0) + shippingAmount);
-    const amountPaid = Number(order.amountPaid ?? 0);
-    let paymentStatus: "unpaid" | "partial" | "paid" = "unpaid";
-    if (amountPaid >= newTotal && newTotal > 0) paymentStatus = "paid";
-    else if (amountPaid > 0) paymentStatus = "partial";
-    await ref.update({ shipping: shippingAmount, total: newTotal, shippingConfirmed: true, freeDelivery: shippingAmount === 0, paymentStatus });
-    const dto = await loadOrderById(req.params.id);
-    res.json(dto);
   });
 
   // Admin: delete a completed/cancelled order
