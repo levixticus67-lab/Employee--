@@ -58,7 +58,6 @@ function OrderCard({ order, email, onRefresh }: { order: Order; email: string; o
       });
       if (!res.ok) throw new Error();
       setShowThankYou(true);
-      onRefresh();
     } catch { toast.error("Could not update order status"); } finally { setMarking(false); }
   };
 
@@ -207,7 +206,13 @@ function OrderCard({ order, email, onRefresh }: { order: Order; email: string; o
         </div>
       )}
 
-      <Dialog open={showThankYou} onOpenChange={setShowThankYou}>
+      <Dialog
+        open={showThankYou}
+        onOpenChange={(open) => {
+          setShowThankYou(open);
+          if (!open) onRefresh();
+        }}
+      >
         <DialogContent className="max-w-sm text-center border-white/50 shadow-2xl" style={{ background: "linear-gradient(135deg, #fff9f0 0%, #fef3ff 50%, #f0f9ff 100%)" }}>
           <div className="py-4 px-2 space-y-4">
             <div className="text-5xl animate-bounce">🌺</div>
@@ -221,7 +226,7 @@ function OrderCard({ order, email, onRefresh }: { order: Order; email: string; o
               We can't wait to see you again soon! 💛
             </p>
             <button
-              onClick={() => setShowThankYou(false)}
+              onClick={() => { setShowThankYou(false); onRefresh(); }}
               className="mt-2 px-7 py-2.5 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white rounded-full text-sm font-medium transition-all shadow-md"
             >
               You're Welcome! 💐
