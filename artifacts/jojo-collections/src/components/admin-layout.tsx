@@ -1,14 +1,94 @@
 import { Link, useLocation } from "wouter";
 import { useAuth } from "@/components/auth-context";
 import { toast } from "sonner";
+import { useState, useEffect, useRef } from "react";
+import { apiFetch } from "@/lib/api";
 import {
   LayoutDashboard, Package, ShoppingCart, MessageSquare,
   Tag, Gift, BookOpen, Upload, Settings, Home, LogOut, BarChart2, Archive,
 } from "lucide-react";
 
+const FLOWERS = ["🌸", "🌺", "🌼", "🌻", "🌹", "💐", "🌷", "✨"];
+
+function loadSeenReceivedAdmin(): Set<string> {
+  try {
+    return new Set<string>(JSON.parse(localStorage.getItem("jojo-seen-received") ?? "[]") as string[]);
+  } catch {
+    return new Set<string>();
+  }
+}
+
+function FlowerCelebration({ onDone }: { onDone: () => void }) {
+  useEffect(() => {
+    const t = setTimeout(onDone, 4500);
+    return () => clearTimeout(t);
+  }, [onDone]);
+
+  const particles = Array.from({ length: 36 }, (_, i) => ({
+    id: i,
+    emoji: FLOWERS[i % FLOWERS.length]!,
+    left: parseFloat(((i / 36) * 98 + Math.random() * 3).toFixed(1)),
+    delay: parseFloat((Math.random() * 2).toFixed(2)),
+    duration: parseFloat((2.5 + Math.random() * 1.5).toFixed(2)),
+    size: Math.round(22 + Math.random() * 26),
+  }));
+
+  return (
+    <div className="fixed inset-0 pointer-events-none z-[9999] overflow-hidden">
+      <style>{`
+        @keyframes adminFlowerRise {
+          0%   { transform: translateY(0) rotate(0deg);    opacity: 1; }
+          80%  { opacity: 1; }
+          100% { transform: translateY(-120vh) rotate(360deg); opacity: 0; }
+        }
+      `}</style>
+      {particles.map((p) => (
+        <div
+          key={p.id}
+          style={{
+            position: "absolute",
+            left: `${p.left}%`,
+            bottom: "-70px",
+            fontSize: `${p.size}px`,
+            animation: `adminFlowerRise ${p.duration}s ${p.delay}s ease-out forwards`,
+          }}
+        >
+          {p.emoji}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export function AdminLayout({ children }: { children: React.ReactNode }) {
   const [location, setLocation] = useLocation();
   const { adminLogout } = useAuth();
+  const [showCelebration, setShowCelebration] = useState(false);
+  const seenReceivedRef = useRef<Set<string>>(loadSeenReceivedAdmin());
+
+  useEffect(() => {
+    const checkReceived = async () => {
+      try {
+        const res = await apiFetch("/api/admin/orders");
+        if (!res.ok) return;
+        const orders: any[] = await res.json();
+        const newReceived = orders.filter(
+          (o) => o.status === "received" && !seenReceivedRef.current.has(o.id)
+        );
+        if (newReceived.length > 0) {
+          newReceived.forEach((o) => seenReceivedRef.current.add(o.id));
+          try {
+            localStorage.setItem("jojo-seen-received", JSON.stringify([...seenReceivedRef.current]));
+          } catch {}
+          setShowCelebration(true);
+        }
+      } catch {}
+    };
+
+    checkReceived();
+    const interval = setInterval(checkReceived, 30_000);
+    return () => clearInterval(interval);
+  }, []);
 
   const navLinks = [
     { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
@@ -36,6 +116,8 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="min-h-screen flex bg-transparent">
+      {showCelebration && <FlowerCelebration onDone={() => setShowCelebration(false)} />}
+
       {/* Sidebar */}
       <aside className="w-64 glass-panel border-r border-white/30 hidden md:flex flex-col relative z-20">
         <div className="h-20 flex items-center px-6 border-b border-white/20">
