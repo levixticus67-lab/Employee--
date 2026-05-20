@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { AdminLayout } from "@/components/admin-layout";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -6,6 +6,7 @@ import { Package, MapPin, CreditCard, Phone, Wallet, Trash2, CheckCircle2, Truck
 import { toast } from "sonner";
 import { apiFetch } from "@/lib/api";
 import { useListAdminOrders } from "@workspace/api-client-react";
+import { useCurrency } from "@/components/currency-context";
 
 const ALL_STATUSES = ["pending", "processing", "shipped", "delivered", "cancelled", "received"];
 const ADMIN_SET_STATUSES = ["pending", "processing", "shipped", "delivered", "cancelled"];
@@ -27,6 +28,50 @@ const PAYMENT_STATUS_COLORS: Record<string, string> = {
   paid: "bg-green-100 text-green-700",
 };
 
+const FLOWERS = ["🌸", "🌺", "🌼", "🌻", "🌹", "💐", "🌷", "✨"];
+
+function FlowerCelebration({ onDone }: { onDone: () => void }) {
+  useEffect(() => {
+    const t = setTimeout(onDone, 4000);
+    return () => clearTimeout(t);
+  }, [onDone]);
+
+  const particles = Array.from({ length: 32 }, (_, i) => ({
+    id: i,
+    emoji: FLOWERS[i % FLOWERS.length]!,
+    left: Math.round((i / 32) * 98 + Math.random() * 4 - 2),
+    delay: parseFloat((Math.random() * 1.8).toFixed(2)),
+    duration: parseFloat((2.2 + Math.random() * 1.6).toFixed(2)),
+    size: Math.round(20 + Math.random() * 24),
+  }));
+
+  return (
+    <div className="fixed inset-0 pointer-events-none z-[9999] overflow-hidden">
+      <style>{`
+        @keyframes flowerRise {
+          0%   { transform: translateY(0)      rotate(0deg);   opacity: 1; }
+          75%  { opacity: 1; }
+          100% { transform: translateY(-115vh) rotate(360deg); opacity: 0; }
+        }
+      `}</style>
+      {particles.map((p) => (
+        <div
+          key={p.id}
+          style={{
+            position: "absolute",
+            left: `${p.left}%`,
+            bottom: "-60px",
+            fontSize: `${p.size}px`,
+            animation: `flowerRise ${p.duration}s ${p.delay}s ease-out forwards`,
+          }}
+        >
+          {p.emoji}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export default function AdminOrders() {
   const [filterMode, setFilterMode] = useState(ACTIVE_FILTER);
   const [selectedOrder, setSelectedOrder] = useState<any>(null);
@@ -34,8 +79,16 @@ export default function AdminOrders() {
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [paymentAmount, setPaymentAmount] = useState("");
   const [recordingPayment, setRecordingPayment] = useState(false);
-    const [shippingInput, setShippingInput] = useState("");
-    const [settingShipping, setSettingShipping] = useState(false);
+  const [shippingInput, setShippingInput] = useState("");
+  const [settingShipping, setSettingShipping] = useState(false);
+  const [showCelebration, setShowCelebration] = useState(false);
+
+  const { format, symbol } = useCurrency();
+
+  const seenReceivedRef = useRef<Set<string>>(new Set(() => {
+    try { return JSON.parse(localStorage.getItem("jojo-seen-received") ?? "[]") as string[]; }
+    catch { return []; }
+  }()));
 
   const queryStatus = !["active", "all"].includes(filterMode) ? filterMode : undefined;
   const includeArchived = filterMode === "all";
@@ -45,7 +98,20 @@ export default function AdminOrders() {
     ...(includeArchived ? { includeArchived: "true" } : {}),
   } as any);
 
-  // Active filter: exclude archived (delivered/cancelled/received)
+  useEffect(() => {
+    if (!rawOrders) return;
+    const newReceived = (rawOrders as any[]).filter(
+      (o) => o.status === "received" && !seenReceivedRef.current.has(o.id)
+    );
+    if (newReceived.length > 0) {
+      newReceived.forEach((o) => seenReceivedRef.current.add(o.id));
+      try {
+        localStorage.setItem("jojo-seen-received", JSON.stringify([...seenReceivedRef.current]));
+      } catch {}
+      setShowCelebration(true);
+    }
+  }, [rawOrders]);
+
   const orders = filterMode === ACTIVE_FILTER
     ? rawOrders?.filter((o: any) => !o.archived)
     : rawOrders;
@@ -89,7 +155,7 @@ export default function AdminOrders() {
       });
       if (!res.ok) throw new Error();
       const updated = await res.json();
-      toast.success(`Payment of $${amount.toFixed(2)} recorded`);
+      toast.success(`Payment of ${format(amount)} recorded`);
       setSelectedOrder(updated);
       setPaymentAmount("");
       refetch();
@@ -97,28 +163,34 @@ export default function AdminOrders() {
   };
 
   const handleSetShipping = async () => {
-      const amount = parseFloat(shippingInput);
-      if (isNaN(amount) || amount < 0 || !selectedOrder) return;
-      setSettingShipping(true);
-      try {
-        const res = await apiFetch(`/api/admin/orders/${selectedOrder.id}/shipping`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ shipping: amount }),
-        });
-        if (!res.ok) throw new Error();
-        const updated = await res.json();
-        toast.success(amount === 0 ? "Free delivery confirmed!" : `Delivery fee set to ${amount.toFixed(2)}`);
-        setSelectedOrder(updated);
-        setShippingInput("");
-        refetch();
-      } catch { toast.error("Failed to set delivery fee"); } finally { setSettingShipping(false); }
-    };
+    const amount = parseFloat(shippingInput);
+    if (isNaN(amount) || amount < 0 || !selectedOrder) return;
+    setSettingShipping(true);
+    try {
+      const res = await apiFetch(`/api/admin/orders/${selectedOrder.id}/shipping`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ shipping: amount }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        toast.error((err as any)?.error ?? "Failed to set delivery fee");
+        return;
+      }
+      const updated = await res.json();
+      toast.success(amount === 0 ? "Free delivery confirmed!" : `Delivery fee set to ${format(amount)}`);
+      setSelectedOrder(updated);
+      setShippingInput("");
+      refetch();
+    } catch { toast.error("Failed to set delivery fee"); } finally { setSettingShipping(false); }
+  };
 
-    const canDelete = (o: any) => ["cancelled", "delivered", "received"].includes(o?.status);
+  const canDelete = (o: any) => ["cancelled", "delivered", "received"].includes(o?.status);
 
   return (
     <AdminLayout>
+      {showCelebration && <FlowerCelebration onDone={() => setShowCelebration(false)} />}
+
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
         <div>
           <h1 className="text-3xl font-serif text-blue-950 mb-2">Orders</h1>
@@ -163,16 +235,21 @@ export default function AdminOrders() {
                       <p className="text-xs text-blue-800/70">{order.customerEmail}</p>
                       {order.buyerPhone && <p className="text-xs text-blue-600">{order.buyerPhone}</p>}
                     </td>
-                    <td className="px-6 py-4 font-medium text-blue-950">${order.total.toFixed(2)}</td>
+                    <td className="px-6 py-4 font-medium text-blue-950">{format(order.total)}</td>
                     <td className="px-6 py-4">
                       <span className={`text-xs px-2 py-0.5 rounded-full font-medium capitalize ${PAYMENT_STATUS_COLORS[order.paymentStatus] ?? "bg-gray-100 text-gray-700"}`}>
                         {order.paymentStatus === "partial" ? `${((order.amountPaid / order.total) * 100).toFixed(0)}% paid` : order.paymentStatus}
                       </span>
                     </td>
                     <td className="px-6 py-4">
-                      <span className={`text-xs px-2.5 py-1 rounded-full border capitalize font-medium ${STATUS_COLORS[order.status] ?? "bg-gray-100 text-gray-800 border-gray-200"}`}>
-                        {order.status}
-                      </span>
+                      <div className="flex items-center gap-1.5">
+                        <span className={`text-xs px-2.5 py-1 rounded-full border capitalize font-medium ${STATUS_COLORS[order.status] ?? "bg-gray-100 text-gray-800 border-gray-200"}`}>
+                          {order.status}
+                        </span>
+                        {order.status === "received" && (
+                          <span title="Customer confirmed receipt — please mark as Delivered" className="text-base leading-none">📦</span>
+                        )}
+                      </div>
                     </td>
                     <td className="px-6 py-4">
                       <button onClick={(e) => { e.stopPropagation(); setSelectedOrder(order); setPaymentAmount(""); setShippingInput(""); }} className="text-sm text-blue-600 hover:text-blue-800 font-medium mr-3">
@@ -220,10 +297,19 @@ export default function AdminOrders() {
                 </div>
               </div>
               <p className="text-sm text-blue-800/70 mt-1">{new Date(selectedOrder.createdAt).toLocaleString()}</p>
+
+              {selectedOrder.status === "received" && (
+                <div className="mt-3 bg-emerald-50/40 border border-emerald-200/60 rounded-xl p-3 flex items-start gap-3">
+                  <span className="text-2xl leading-none mt-0.5">📦</span>
+                  <div>
+                    <p className="text-sm font-semibold text-emerald-800">Customer confirmed they received this order!</p>
+                    <p className="text-xs text-emerald-700/80 mt-0.5">Use the dropdown above to change the status to <strong>Delivered</strong> to complete the order.</p>
+                  </div>
+                </div>
+              )}
             </DialogHeader>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-              {/* Customer & Shipping */}
               <div className="glass-card rounded-xl p-4 border-white/30">
                 <div className="flex items-center gap-2 mb-3 text-blue-950 font-medium"><MapPin className="w-4 h-4 text-blue-600" /> Customer & Shipping</div>
                 <p className="text-sm font-medium text-blue-950">{selectedOrder.customerName}</p>
@@ -237,14 +323,13 @@ export default function AdminOrders() {
                 <div className="mt-2 text-sm text-blue-800/80 whitespace-pre-line">{selectedOrder.shippingAddress}</div>
               </div>
 
-              {/* Financial Summary */}
               <div className="glass-card rounded-xl p-4 border-white/30">
                 <div className="flex items-center gap-2 mb-3 text-blue-950 font-medium"><CreditCard className="w-4 h-4 text-blue-600" /> Financial Summary</div>
                 <div className="space-y-2 text-sm">
-                  <div className="flex justify-between text-blue-800/80"><span>Subtotal</span><span>${selectedOrder.subtotal.toFixed(2)}</span></div>
-                  {selectedOrder.discount > 0 && <div className="flex justify-between text-green-700"><span>Discount</span><span>−${selectedOrder.discount.toFixed(2)}</span></div>}
-                  <div className="flex justify-between text-blue-800/80"><span>Shipping</span><span>${selectedOrder.shipping.toFixed(2)}</span></div>
-                  <div className="flex justify-between font-medium text-blue-950 pt-2 border-t border-white/20"><span>Total</span><span>${selectedOrder.total.toFixed(2)}</span></div>
+                  <div className="flex justify-between text-blue-800/80"><span>Subtotal</span><span>{format(selectedOrder.subtotal)}</span></div>
+                  {selectedOrder.discount > 0 && <div className="flex justify-between text-green-700"><span>Discount</span><span>−{format(selectedOrder.discount)}</span></div>}
+                  <div className="flex justify-between text-blue-800/80"><span>Shipping</span><span>{format(selectedOrder.shipping)}</span></div>
+                  <div className="flex justify-between font-medium text-blue-950 pt-2 border-t border-white/20"><span>Total</span><span>{format(selectedOrder.total)}</span></div>
                 </div>
                 <div className="mt-3 pt-3 border-t border-white/20 space-y-1.5">
                   <div className="flex items-center justify-between">
@@ -253,70 +338,78 @@ export default function AdminOrders() {
                   </div>
                   {selectedOrder.paymentStatus !== "unpaid" && (
                     <div className="flex justify-between text-xs text-blue-800/80">
-                      <span>Amount paid</span><span className="text-green-700 font-medium">${selectedOrder.amountPaid.toFixed(2)}</span>
+                      <span>Amount paid</span><span className="text-green-700 font-medium">{format(selectedOrder.amountPaid)}</span>
                     </div>
                   )}
                   {selectedOrder.paymentStatus === "partial" && (
                     <div className="flex justify-between text-xs text-blue-800/80">
-                      <span>Remaining</span><span className="text-amber-700 font-medium">${(selectedOrder.total - selectedOrder.amountPaid).toFixed(2)}</span>
+                      <span>Remaining</span><span className="text-amber-700 font-medium">{format(selectedOrder.total - selectedOrder.amountPaid)}</span>
                     </div>
                   )}
                 </div>
               </div>
             </div>
 
-              {/* Set Delivery Fee */}
-              {!(selectedOrder as any).shippingConfirmed ? (
-                <div className="glass-card rounded-xl p-4 border-orange-200/50 bg-orange-50/10 mb-6">
-                  <div className="flex items-center gap-2 mb-2 text-blue-950 font-medium">
-                    <Truck className="w-4 h-4 text-orange-500" /> Set Delivery Fee
-                  </div>
-                  <p className="text-xs text-blue-800/70 mb-3">
-                    Review the customer's address and items, then enter the delivery cost. Enter 0 for free delivery.
-                  </p>
-                  <div className="flex gap-2">
-                    <input type="number" min="0" step="0.01" value={shippingInput} onChange={(e) => setShippingInput(e.target.value)} placeholder="0.00"
-                      className="flex-1 glass-card rounded-xl px-4 py-2 text-blue-950 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 border-white/40" />
-                    <Button onClick={handleSetShipping} disabled={settingShipping || shippingInput === ""} className="rounded-xl text-sm h-auto py-2 px-4">
-                      {settingShipping ? "..." : "Confirm"}
-                    </Button>
-                  </div>
+            {!(selectedOrder as any).shippingConfirmed ? (
+              <div className="glass-card rounded-xl p-4 border-orange-200/50 bg-orange-50/10 mb-6">
+                <div className="flex items-center gap-2 mb-2 text-blue-950 font-medium">
+                  <Truck className="w-4 h-4 text-orange-500" /> Set Delivery Fee
                 </div>
-              ) : (
-                <div className="glass-card rounded-xl p-3 border-green-200/50 bg-green-50/10 mb-6 flex items-center gap-2">
-                  {(selectedOrder as any).freeDelivery ? <Gift className="w-4 h-4 text-green-600 flex-shrink-0" /> : <CheckCircle2 className="w-4 h-4 text-green-600 flex-shrink-0" />}
-                  <span className="text-sm text-green-800 font-medium">
-                    {(selectedOrder as any).freeDelivery ? "Free delivery confirmed" : `Delivery fee: ${selectedOrder.shipping.toFixed(2)}`}
-                  </span>
-                  <button onClick={() => setSelectedOrder((prev: any) => ({ ...prev, shippingConfirmed: false }))} className="ml-auto text-xs text-blue-500 hover:underline">Change</button>
+                <p className="text-xs text-blue-800/70 mb-3">
+                  Review the customer's address and items, then enter the delivery cost in <strong>USD</strong> (the app converts it to the customer's currency automatically). Enter 0 for free delivery.
+                </p>
+                <div className="flex gap-2">
+                  <div className="relative flex-1">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-blue-400 text-sm font-medium select-none">{symbol}</span>
+                    <input
+                      type="number" min="0" step="0.01"
+                      value={shippingInput}
+                      onChange={(e) => setShippingInput(e.target.value)}
+                      placeholder="0.00"
+                      className="w-full glass-card rounded-xl pl-8 pr-4 py-2 text-blue-950 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 border-white/40"
+                    />
+                  </div>
+                  <Button onClick={handleSetShipping} disabled={settingShipping || shippingInput === ""} className="rounded-xl text-sm h-auto py-2 px-4">
+                    {settingShipping ? "..." : "Confirm"}
+                  </Button>
                 </div>
-              )}
+              </div>
+            ) : (
+              <div className="glass-card rounded-xl p-3 border-green-200/50 bg-green-50/10 mb-6 flex items-center gap-2">
+                {(selectedOrder as any).freeDelivery ? <Gift className="w-4 h-4 text-green-600 flex-shrink-0" /> : <CheckCircle2 className="w-4 h-4 text-green-600 flex-shrink-0" />}
+                <span className="text-sm text-green-800 font-medium">
+                  {(selectedOrder as any).freeDelivery ? "Free delivery confirmed" : `Delivery fee: ${format(selectedOrder.shipping)}`}
+                </span>
+                <button onClick={() => setSelectedOrder((prev: any) => ({ ...prev, shippingConfirmed: false }))} className="ml-auto text-xs text-blue-500 hover:underline">Change</button>
+              </div>
+            )}
 
-              {/* Record Payment */}
-              {selectedOrder.paymentStatus !== "paid" && (
-                <div className="glass-card rounded-xl p-4 border-white/30 mb-6">
+            {selectedOrder.paymentStatus !== "paid" && (
+              <div className="glass-card rounded-xl p-4 border-white/30 mb-6">
                 <div className="flex items-center gap-2 mb-3 text-blue-950 font-medium"><Wallet className="w-4 h-4 text-blue-600" /> Record Payment</div>
                 <div className="flex gap-2">
-                  <input
-                    type="number" min="0.01" step="0.01"
-                    placeholder="Amount received ($)"
-                    value={paymentAmount}
-                    onChange={(e) => setPaymentAmount(e.target.value)}
-                    className="flex-1 glass-card rounded-xl px-4 py-2.5 text-blue-950 border-white/40 focus:outline-none focus:ring-2 focus:ring-blue-400"
-                  />
+                  <div className="relative flex-1">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-blue-400 text-sm font-medium select-none">{symbol}</span>
+                    <input
+                      type="number" min="0.01" step="0.01"
+                      placeholder="Amount received"
+                      value={paymentAmount}
+                      onChange={(e) => setPaymentAmount(e.target.value)}
+                      className="w-full glass-card rounded-xl pl-8 pr-4 py-2.5 text-blue-950 border-white/40 focus:outline-none focus:ring-2 focus:ring-blue-400"
+                    />
+                  </div>
                   <Button onClick={handleRecordPayment} disabled={recordingPayment || !paymentAmount} className="bg-blue-600 hover:bg-blue-700 text-white rounded-xl px-5">
                     {recordingPayment ? "..." : "Record"}
                   </Button>
                 </div>
                 {selectedOrder.paymentStatus === "partial" && (
                   <button onClick={() => setPaymentAmount((selectedOrder.total - selectedOrder.amountPaid).toFixed(2))} className="mt-2 text-xs text-blue-600 hover:underline">
-                    Fill remaining: ${(selectedOrder.total - selectedOrder.amountPaid).toFixed(2)}
+                    Fill remaining: {format(selectedOrder.total - selectedOrder.amountPaid)}
                   </button>
                 )}
               </div>
             )}
 
-            {/* Items */}
             <div>
               <div className="flex items-center gap-2 mb-4 text-blue-950 font-medium">
                 <Package className="w-4 h-4 text-blue-600" /> Items ({selectedOrder.items.length})
@@ -332,8 +425,8 @@ export default function AdminOrders() {
                       <p className="text-xs text-blue-800/70">{item.brand}</p>
                     </div>
                     <div className="text-right text-sm">
-                      <p className="text-blue-900/80">{item.quantity} × ${item.price.toFixed(2)}</p>
-                      <p className="font-medium text-blue-950">${(item.quantity * item.price).toFixed(2)}</p>
+                      <p className="text-blue-900/80">{item.quantity} × {format(item.price)}</p>
+                      <p className="font-medium text-blue-950">{format(item.quantity * item.price)}</p>
                     </div>
                   </div>
                 ))}
