@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "wouter";
 import { Layout } from "@/components/layout";
 import { useGetCurrentUser } from "@workspace/api-client-react";
@@ -237,14 +237,15 @@ export default function MyOrders() {
   const { data: session, isLoading: sessionLoading } = useGetCurrentUser();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(false);
+  const hasLoadedRef = useRef(false);
 
-  const loadOrders = (email: string) => {
-    setLoading(true);
+  const loadOrders = (email: string, silent = false) => {
+    if (!silent) setLoading(true);
     apiFetch(`/api/orders/by-email/${encodeURIComponent(email)}`)
       .then((r) => r.json())
-      .then(setOrders)
+      .then((data) => { setOrders(data); hasLoadedRef.current = true; })
       .catch(() => {})
-      .finally(() => setLoading(false));
+      .finally(() => { if (!silent) setLoading(false); });
   };
 
   useEffect(() => {
@@ -294,7 +295,7 @@ export default function MyOrders() {
                 key={order.id}
                 order={order}
                 email={session.user!.email}
-                onRefresh={() => loadOrders(session.user!.email)}
+                onRefresh={() => loadOrders(session.user!.email, true)}
               />
             ))}
           </div>
