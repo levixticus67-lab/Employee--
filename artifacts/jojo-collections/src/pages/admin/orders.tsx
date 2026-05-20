@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState } from "react";
 import { AdminLayout } from "@/components/admin-layout";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -28,58 +28,6 @@ const PAYMENT_STATUS_COLORS: Record<string, string> = {
   paid: "bg-green-100 text-green-700",
 };
 
-const FLOWERS = ["🌸", "🌺", "🌼", "🌻", "🌹", "💐", "🌷", "✨"];
-
-function loadSeenReceived(): Set<string> {
-  try {
-    return new Set<string>(JSON.parse(localStorage.getItem("jojo-seen-received") ?? "[]") as string[]);
-  } catch {
-    return new Set<string>();
-  }
-}
-
-function FlowerCelebration({ onDone }: { onDone: () => void }) {
-  useEffect(() => {
-    const t = setTimeout(onDone, 4000);
-    return () => clearTimeout(t);
-  }, [onDone]);
-
-  const particles = Array.from({ length: 32 }, (_, i) => ({
-    id: i,
-    emoji: FLOWERS[i % FLOWERS.length]!,
-    left: Math.round((i / 32) * 98 + Math.random() * 4 - 2),
-    delay: parseFloat((Math.random() * 1.8).toFixed(2)),
-    duration: parseFloat((2.2 + Math.random() * 1.6).toFixed(2)),
-    size: Math.round(20 + Math.random() * 24),
-  }));
-
-  return (
-    <div className="fixed inset-0 pointer-events-none z-[9999] overflow-hidden">
-      <style>{`
-        @keyframes flowerRise {
-          0%   { transform: translateY(0)      rotate(0deg);   opacity: 1; }
-          75%  { opacity: 1; }
-          100% { transform: translateY(-115vh) rotate(360deg); opacity: 0; }
-        }
-      `}</style>
-      {particles.map((p) => (
-        <div
-          key={p.id}
-          style={{
-            position: "absolute",
-            left: `${p.left}%`,
-            bottom: "-60px",
-            fontSize: `${p.size}px`,
-            animation: `flowerRise ${p.duration}s ${p.delay}s ease-out forwards`,
-          }}
-        >
-          {p.emoji}
-        </div>
-      ))}
-    </div>
-  );
-}
-
 export default function AdminOrders() {
   const [filterMode, setFilterMode] = useState(ACTIVE_FILTER);
   const [selectedOrder, setSelectedOrder] = useState<any>(null);
@@ -89,11 +37,8 @@ export default function AdminOrders() {
   const [recordingPayment, setRecordingPayment] = useState(false);
   const [shippingInput, setShippingInput] = useState("");
   const [settingShipping, setSettingShipping] = useState(false);
-  const [showCelebration, setShowCelebration] = useState(false);
 
   const { format, symbol } = useCurrency();
-
-  const seenReceivedRef = useRef<Set<string>>(loadSeenReceived());
 
   const queryStatus = !["active", "all"].includes(filterMode) ? filterMode : undefined;
   const includeArchived = filterMode === "all";
@@ -102,20 +47,6 @@ export default function AdminOrders() {
     status: queryStatus,
     ...(includeArchived ? { includeArchived: "true" } : {}),
   } as any);
-
-  useEffect(() => {
-    if (!rawOrders) return;
-    const newReceived = (rawOrders as any[]).filter(
-      (o) => o.status === "received" && !seenReceivedRef.current.has(o.id)
-    );
-    if (newReceived.length > 0) {
-      newReceived.forEach((o) => seenReceivedRef.current.add(o.id));
-      try {
-        localStorage.setItem("jojo-seen-received", JSON.stringify([...seenReceivedRef.current]));
-      } catch {}
-      setShowCelebration(true);
-    }
-  }, [rawOrders]);
 
   const orders = filterMode === ACTIVE_FILTER
     ? rawOrders?.filter((o: any) => !o.archived)
@@ -363,18 +294,18 @@ export default function AdminOrders() {
                 <p className="text-xs text-blue-800/70 mb-3">
                   Review the customer's address and items, then enter the delivery cost. Enter 0 for free delivery.
                 </p>
-                <div className="flex gap-2">
-                  <div className="flex flex-1 rounded-xl overflow-hidden border border-white/40 glass-card focus-within:ring-2 focus-within:ring-blue-400">
-                    <span className="px-3 flex items-center text-sm font-semibold text-blue-700 bg-white/20 border-r border-white/40 select-none">{symbol}</span>
+                <div className="flex gap-2 items-end">
+                  <div className="flex-1">
+                    <label className="block text-[11px] font-medium text-blue-700/70 mb-1">Amount ({symbol})</label>
                     <input
                       type="number" min="0" step="0.01"
                       value={shippingInput}
                       onChange={(e) => setShippingInput(e.target.value)}
                       placeholder="0.00"
-                      className="flex-1 px-3 py-2 text-blue-950 text-sm bg-transparent focus:outline-none"
+                      className="w-full glass-card rounded-xl px-4 py-2 text-blue-950 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 border-white/40"
                     />
                   </div>
-                  <Button onClick={handleSetShipping} disabled={settingShipping || shippingInput === ""} className="rounded-xl text-sm h-auto py-2 px-4">
+                  <Button onClick={handleSetShipping} disabled={settingShipping || shippingInput === ""} className="rounded-xl text-sm h-auto py-2 px-4 mb-0">
                     {settingShipping ? "..." : "Confirm"}
                   </Button>
                 </div>
@@ -392,15 +323,15 @@ export default function AdminOrders() {
             {selectedOrder.paymentStatus !== "paid" && (
               <div className="glass-card rounded-xl p-4 border-white/30 mb-6">
                 <div className="flex items-center gap-2 mb-3 text-blue-950 font-medium"><Wallet className="w-4 h-4 text-blue-600" /> Record Payment</div>
-                <div className="flex gap-2">
-                  <div className="flex flex-1 rounded-xl overflow-hidden border border-white/40 glass-card focus-within:ring-2 focus-within:ring-blue-400">
-                    <span className="px-3 flex items-center text-sm font-semibold text-blue-700 bg-white/20 border-r border-white/40 select-none">{symbol}</span>
+                <div className="flex gap-2 items-end">
+                  <div className="flex-1">
+                    <label className="block text-[11px] font-medium text-blue-700/70 mb-1">Amount received ({symbol})</label>
                     <input
                       type="number" min="0.01" step="0.01"
-                      placeholder="Amount received"
+                      placeholder="0.00"
                       value={paymentAmount}
                       onChange={(e) => setPaymentAmount(e.target.value)}
-                      className="flex-1 px-3 py-2.5 text-blue-950 bg-transparent focus:outline-none"
+                      className="w-full glass-card rounded-xl px-4 py-2.5 text-blue-950 border-white/40 focus:outline-none focus:ring-2 focus:ring-blue-400"
                     />
                   </div>
                   <Button onClick={handleRecordPayment} disabled={recordingPayment || !paymentAmount} className="bg-blue-600 hover:bg-blue-700 text-white rounded-xl px-5">
