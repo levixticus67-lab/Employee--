@@ -18,7 +18,7 @@ import {
   UpdateReviewStatusBody,
 } from "@workspace/api-zod";
 import { loadProductsWithStats } from "./products";
-import { loadAllOrders, type OrderDto } from "./orders";
+import { loadAllOrders, loadOrderById, type OrderDto } from "./orders";
 import { toReviewDto } from "./reviews";
 
 const router: IRouter = Router();
