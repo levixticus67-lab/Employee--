@@ -9,38 +9,7 @@ import {
 } from "lucide-react";
 
 const FLOWERS = ["🌸", "🌺", "🌼", "🌻", "🌹", "💐", "🌷", "✨"];
-
-function loadSeenReceivedAdmin(): Set<string> {
-  try {
-    return new Set<string>(JSON.parse(localStorage.getItem("jojo-seen-received") ?? "[]") as string[]);
-  } catch {
-    return new Set<string>();
-  }
-}
-
-function hasPendingCelebration(): boolean {
-  try {
-    return localStorage.getItem("jojo-pending-celebration") === "1";
-  } catch {
-    return false;
-  }
-}
-
-function consumePendingCelebration(): boolean {
-  try {
-    const had = localStorage.getItem("jojo-pending-celebration") === "1";
-    if (had) localStorage.removeItem("jojo-pending-celebration");
-    return had;
-  } catch {
-    return false;
-  }
-}
-
-function markPendingCelebration() {
-  try {
-    localStorage.setItem("jojo-pending-celebration", "1");
-  } catch {}
-}
+const RECENT_WINDOW_MS = 5 * 60 * 1000; // 5 minutes
 
 function FlowerCelebration({ onDone }: { onDone: () => void }) {
   useEffect(() => {
@@ -87,8 +56,10 @@ function FlowerCelebration({ onDone }: { onDone: () => void }) {
 export function AdminLayout({ children }: { children: React.ReactNode }) {
   const [location, setLocation] = useLocation();
   const { adminLogout } = useAuth();
-  const [showCelebration, setShowCelebration] = useState<boolean>(() => consumePendingCelebration());
-  const seenReceivedRef = useRef<Set<string>>(loadSeenReceivedAdmin());
+  const [showCelebration, setShowCelebration] = useState(false);
+  // In-memory only — never persisted. Resets on each AdminLayout mount so
+  // a fresh page always re-evaluates recent orders against the time window.
+  const celebratedRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
     const checkReceived = async () => {
@@ -96,15 +67,21 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
         const res = await apiFetch("/api/admin/orders");
         if (!res.ok) return;
         const orders: any[] = await res.json();
-        const newReceived = orders.filter(
-          (o) => o.status === "received" && !seenReceivedRef.current.has(o.id)
-        );
-        if (newReceived.length > 0) {
-          newReceived.forEach((o) => seenReceivedRef.current.add(o.id));
-          try {
-            localStorage.setItem("jojo-seen-received", JSON.stringify([...seenReceivedRef.current]));
-          } catch {}
-          markPendingCelebration();
+        const now = Date.now();
+
+        const fresh = orders.filter((o) => {
+          if (o.status !== "received") return false;
+          if (celebratedRef.current.has(o.id)) return false;
+          const entry = (o.statusHistory ?? []).find((h: any) => h.status === "received");
+          if (!entry) return false;
+          return now - new Date(entry.timestamp).getTime() <= RECENT_WINDOW_MS;
+        });
+
+        // Mark every received order as celebrated so we don't re-trigger
+        // on the next poll within this same page session.
+        orders.filter((o) => o.status === "received").forEach((o) => celebratedRef.current.add(o.id));
+
+        if (fresh.length > 0) {
           setShowCelebration(true);
         }
       } catch {}
