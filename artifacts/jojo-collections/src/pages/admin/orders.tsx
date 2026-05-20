@@ -361,17 +361,17 @@ export default function AdminOrders() {
                   <Truck className="w-4 h-4 text-orange-500" /> Set Delivery Fee
                 </div>
                 <p className="text-xs text-blue-800/70 mb-3">
-                  Review the customer's address and items, then enter the delivery cost in <strong>USD</strong> (the app converts it to the customer's currency automatically). Enter 0 for free delivery.
+                  Review the customer's address and items, then enter the delivery cost. Enter 0 for free delivery.
                 </p>
                 <div className="flex gap-2">
-                  <div className="relative flex-1">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-blue-400 text-sm font-medium select-none">{symbol}</span>
+                  <div className="flex flex-1 rounded-xl overflow-hidden border border-white/40 glass-card focus-within:ring-2 focus-within:ring-blue-400">
+                    <span className="px-3 flex items-center text-sm font-semibold text-blue-700 bg-white/20 border-r border-white/40 select-none">{symbol}</span>
                     <input
                       type="number" min="0" step="0.01"
                       value={shippingInput}
                       onChange={(e) => setShippingInput(e.target.value)}
                       placeholder="0.00"
-                      className="w-full glass-card rounded-xl pl-8 pr-4 py-2 text-blue-950 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 border-white/40"
+                      className="flex-1 px-3 py-2 text-blue-950 text-sm bg-transparent focus:outline-none"
                     />
                   </div>
                   <Button onClick={handleSetShipping} disabled={settingShipping || shippingInput === ""} className="rounded-xl text-sm h-auto py-2 px-4">
@@ -393,14 +393,14 @@ export default function AdminOrders() {
               <div className="glass-card rounded-xl p-4 border-white/30 mb-6">
                 <div className="flex items-center gap-2 mb-3 text-blue-950 font-medium"><Wallet className="w-4 h-4 text-blue-600" /> Record Payment</div>
                 <div className="flex gap-2">
-                  <div className="relative flex-1">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-blue-400 text-sm font-medium select-none">{symbol}</span>
+                  <div className="flex flex-1 rounded-xl overflow-hidden border border-white/40 glass-card focus-within:ring-2 focus-within:ring-blue-400">
+                    <span className="px-3 flex items-center text-sm font-semibold text-blue-700 bg-white/20 border-r border-white/40 select-none">{symbol}</span>
                     <input
                       type="number" min="0.01" step="0.01"
                       placeholder="Amount received"
                       value={paymentAmount}
                       onChange={(e) => setPaymentAmount(e.target.value)}
-                      className="w-full glass-card rounded-xl pl-8 pr-4 py-2.5 text-blue-950 border-white/40 focus:outline-none focus:ring-2 focus:ring-blue-400"
+                      className="flex-1 px-3 py-2.5 text-blue-950 bg-transparent focus:outline-none"
                     />
                   </div>
                   <Button onClick={handleRecordPayment} disabled={recordingPayment || !paymentAmount} className="bg-blue-600 hover:bg-blue-700 text-white rounded-xl px-5">
