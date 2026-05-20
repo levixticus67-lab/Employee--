@@ -125,8 +125,6 @@ export default function AdminOrders() {
 
   return (
     <AdminLayout>
-      {showCelebration && <FlowerCelebration onDone={() => setShowCelebration(false)} />}
-
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
         <div>
           <h1 className="text-3xl font-serif text-blue-950 mb-2">Orders</h1>
