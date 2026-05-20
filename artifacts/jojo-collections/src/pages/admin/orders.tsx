@@ -30,6 +30,14 @@ const PAYMENT_STATUS_COLORS: Record<string, string> = {
 
 const FLOWERS = ["🌸", "🌺", "🌼", "🌻", "🌹", "💐", "🌷", "✨"];
 
+function loadSeenReceived(): Set<string> {
+  try {
+    return new Set<string>(JSON.parse(localStorage.getItem("jojo-seen-received") ?? "[]") as string[]);
+  } catch {
+    return new Set<string>();
+  }
+}
+
 function FlowerCelebration({ onDone }: { onDone: () => void }) {
   useEffect(() => {
     const t = setTimeout(onDone, 4000);
@@ -85,10 +93,7 @@ export default function AdminOrders() {
 
   const { format, symbol } = useCurrency();
 
-  const seenReceivedRef = useRef<Set<string>>(new Set(() => {
-    try { return JSON.parse(localStorage.getItem("jojo-seen-received") ?? "[]") as string[]; }
-    catch { return []; }
-  }()));
+  const seenReceivedRef = useRef<Set<string>>(loadSeenReceived());
 
   const queryStatus = !["active", "all"].includes(filterMode) ? filterMode : undefined;
   const includeArchived = filterMode === "all";
