@@ -213,12 +213,12 @@ function OrderCard({ order, email, onRefresh }: { order: Order; email: string; o
             <div className="text-5xl animate-bounce">🌺</div>
             <h2 className="text-2xl font-serif text-blue-950">Thank You So Much!</h2>
             <p className="text-blue-900/80 leading-relaxed text-sm">
-              We are so glad your order arrived safely! 🌸<br /><br />
-              Your support truly means the world to us at <strong>Jojo Collections</strong>. Every single purchase helps us grow and keep bringing you the finest fragrances.
+              We are so happy your order arrived safely! 🌸<br /><br />
+              Your support truly means the world to us. Every single purchase helps us grow and keep bringing you the finest fragrances.
             </p>
             <p className="text-sm text-purple-700/80 italic">
               We hope you absolutely love your new fragrance. ✨<br />
-              We can't wait to serve you again! 💛
+              We can't wait to see you again soon! 💛
             </p>
             <button
               onClick={() => setShowThankYou(false)}
