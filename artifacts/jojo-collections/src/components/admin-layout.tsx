@@ -10,6 +10,27 @@ import { Link, useLocation } from "wouter";
 
   const FLOWERS = ["🌸", "🌺", "🌼", "🌻", "🌹", "💐", "🌷", "✨"];
   const RECENT_WINDOW_MS = 5 * 60 * 1000;
+  const COOLDOWN_MS = 60_000;
+  const CELEBRATED_KEY = "jojo-celebrated-orders";
+  const LAST_CELEBRATED_KEY = "jojo-last-celebrated-at";
+
+  function loadCelebrated(): Set<string> {
+    try { return new Set(JSON.parse(localStorage.getItem(CELEBRATED_KEY) ?? "[]") as string[]); }
+    catch { return new Set(); }
+  }
+
+  function saveCelebrated(set: Set<string>) {
+    try { localStorage.setItem(CELEBRATED_KEY, JSON.stringify([...set])); } catch {}
+  }
+
+  function isOnCooldown(): boolean {
+    try { return Date.now() - Number(localStorage.getItem(LAST_CELEBRATED_KEY) ?? 0) < COOLDOWN_MS; }
+    catch { return false; }
+  }
+
+  function markCooldown() {
+    try { localStorage.setItem(LAST_CELEBRATED_KEY, String(Date.now())); } catch {}
+  }
 
   function FlowerCelebration({ onDone }: { onDone: () => void }) {
     useEffect(() => {
@@ -58,19 +79,16 @@ import { Link, useLocation } from "wouter";
     const { adminLogout } = useAuth();
     const [showCelebration, setShowCelebration] = useState(false);
     const [receivedCount, setReceivedCount] = useState(0);
-    // In-memory only — resets on each AdminLayout mount so every page
-    // re-evaluates the recency window cleanly.
-    const celebratedRef = useRef<Set<string>>(new Set());
+    // Persisted in localStorage so navigating between pages doesn't reset it
+    const celebratedRef = useRef<Set<string>>(loadCelebrated());
 
     useEffect(() => {
       const checkReceived = async () => {
         try {
-          // Must include archived=true — received orders are archived by the backend
           const res = await apiFetch("/api/admin/orders?status=received&includeArchived=true");
           if (!res.ok) return;
           const orders: any[] = await res.json();
 
-          // Update sidebar badge with live total
           setReceivedCount(orders.length);
 
           const now = Date.now();
@@ -81,10 +99,14 @@ import { Link, useLocation } from "wouter";
             return now - new Date(entry.timestamp).getTime() <= RECENT_WINDOW_MS;
           });
 
-          // Mark all as celebrated so we don't re-trigger on the next poll
+          // Always mark every received order as seen so future polls skip them
           orders.forEach((o) => celebratedRef.current.add(o.id));
+          saveCelebrated(celebratedRef.current);
 
-          if (fresh.length > 0) {
+          // Only fire flowers if there are fresh orders AND we are not in the
+          // 1-minute cooldown window (prevents re-triggering on page navigation)
+          if (fresh.length > 0 && !isOnCooldown()) {
+            markCooldown();
             setShowCelebration(true);
           }
         } catch {}
@@ -123,7 +145,6 @@ import { Link, useLocation } from "wouter";
       <div className="min-h-screen flex bg-transparent">
         {showCelebration && <FlowerCelebration onDone={() => setShowCelebration(false)} />}
 
-        {/* Sidebar */}
         <aside className="w-64 glass-panel border-r border-white/30 hidden md:flex flex-col relative z-20">
           <div className="h-20 flex items-center px-6 border-b border-white/20">
             <Link href="/admin" className="text-xl font-serif text-blue-950 font-bold tracking-wider">
@@ -167,9 +188,7 @@ import { Link, useLocation } from "wouter";
           </div>
         </aside>
 
-        {/* Main Content */}
         <main className="flex-1 flex flex-col min-w-0 relative z-10">
-          {/* Mobile Header */}
           <header className="md:hidden glass-panel h-16 flex items-center justify-between px-4 border-b border-white/30">
             <span className="font-serif font-bold text-blue-950">JOJO ADMIN</span>
             <div className="flex items-center gap-3">
@@ -177,8 +196,6 @@ import { Link, useLocation } from "wouter";
               <button type="button" onClick={handleLogout} className="text-sm text-red-700 underline">Sign out</button>
             </div>
           </header>
-
-          {/* Page Content */}
           <div className="flex-1 p-4 md:p-8 overflow-auto">
             <div className="max-w-6xl mx-auto">
               {children}
