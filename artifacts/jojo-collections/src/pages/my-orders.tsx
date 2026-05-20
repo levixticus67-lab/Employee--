@@ -5,6 +5,7 @@ import { useGetCurrentUser } from "@workspace/api-client-react";
 import { useCurrency } from "@/components/currency-context";
 import { Package, Clock, Truck, PackageCheck, XCircle, ChevronDown, ChevronUp, Smartphone, CreditCard, CheckCircle2, Trash2, Wallet } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { apiFetch } from "@/lib/api";
 
@@ -38,6 +39,7 @@ function OrderCard({ order, email, onRefresh }: { order: Order; email: string; o
   const [expanded, setExpanded] = useState(false);
   const [marking, setMarking] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [showThankYou, setShowThankYou] = useState(false);
   const StatusIcon = STATUS_ICONS[order.status] ?? Package;
   const currentIdx = STATUS_STEPS.indexOf(order.status);
   const isCancelled = order.status === "cancelled";
@@ -55,7 +57,7 @@ function OrderCard({ order, email, onRefresh }: { order: Order; email: string; o
         body: JSON.stringify({ email }),
       });
       if (!res.ok) throw new Error();
-      toast.success("Order marked as received!");
+      setShowThankYou(true);
       onRefresh();
     } catch { toast.error("Could not update order status"); } finally { setMarking(false); }
   };
@@ -204,6 +206,29 @@ function OrderCard({ order, email, onRefresh }: { order: Order; email: string; o
           </div>
         </div>
       )}
+
+      <Dialog open={showThankYou} onOpenChange={setShowThankYou}>
+        <DialogContent className="max-w-sm text-center border-white/50 shadow-2xl" style={{ background: "linear-gradient(135deg, #fff9f0 0%, #fef3ff 50%, #f0f9ff 100%)" }}>
+          <div className="py-4 px-2 space-y-4">
+            <div className="text-5xl animate-bounce">🌺</div>
+            <h2 className="text-2xl font-serif text-blue-950">Thank You So Much!</h2>
+            <p className="text-blue-900/80 leading-relaxed text-sm">
+              We are so glad your order arrived safely! 🌸<br /><br />
+              Your support truly means the world to us at <strong>Jojo Collections</strong>. Every single purchase helps us grow and keep bringing you the finest fragrances.
+            </p>
+            <p className="text-sm text-purple-700/80 italic">
+              We hope you absolutely love your new fragrance. ✨<br />
+              We can't wait to serve you again! 💛
+            </p>
+            <button
+              onClick={() => setShowThankYou(false)}
+              className="mt-2 px-7 py-2.5 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white rounded-full text-sm font-medium transition-all shadow-md"
+            >
+              You're Welcome! 💐
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
