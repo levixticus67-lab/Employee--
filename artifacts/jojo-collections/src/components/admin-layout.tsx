@@ -18,6 +18,30 @@ function loadSeenReceivedAdmin(): Set<string> {
   }
 }
 
+function hasPendingCelebration(): boolean {
+  try {
+    return localStorage.getItem("jojo-pending-celebration") === "1";
+  } catch {
+    return false;
+  }
+}
+
+function consumePendingCelebration(): boolean {
+  try {
+    const had = localStorage.getItem("jojo-pending-celebration") === "1";
+    if (had) localStorage.removeItem("jojo-pending-celebration");
+    return had;
+  } catch {
+    return false;
+  }
+}
+
+function markPendingCelebration() {
+  try {
+    localStorage.setItem("jojo-pending-celebration", "1");
+  } catch {}
+}
+
 function FlowerCelebration({ onDone }: { onDone: () => void }) {
   useEffect(() => {
     const t = setTimeout(onDone, 4500);
@@ -63,7 +87,7 @@ function FlowerCelebration({ onDone }: { onDone: () => void }) {
 export function AdminLayout({ children }: { children: React.ReactNode }) {
   const [location, setLocation] = useLocation();
   const { adminLogout } = useAuth();
-  const [showCelebration, setShowCelebration] = useState(false);
+  const [showCelebration, setShowCelebration] = useState<boolean>(() => consumePendingCelebration());
   const seenReceivedRef = useRef<Set<string>>(loadSeenReceivedAdmin());
 
   useEffect(() => {
@@ -80,13 +104,14 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
           try {
             localStorage.setItem("jojo-seen-received", JSON.stringify([...seenReceivedRef.current]));
           } catch {}
+          markPendingCelebration();
           setShowCelebration(true);
         }
       } catch {}
     };
 
     checkReceived();
-    const interval = setInterval(checkReceived, 30_000);
+    const interval = setInterval(checkReceived, 10_000);
     return () => clearInterval(interval);
   }, []);
 
