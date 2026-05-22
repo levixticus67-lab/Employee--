@@ -1,7 +1,7 @@
-import { Switch, Route, Router as WouterRouter, Redirect } from "wouter";
+import { Switch, Route, Router as WouterRouter, Redirect, useLocation } from "wouter";
   import { useEffect } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { Toaster } from "sonner";
+import { Toaster, toast } from "sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { CartProvider } from "@/components/cart-context";
 import { AuthProvider, useAuth } from "@/components/auth-context";
@@ -45,6 +45,21 @@ function AdminRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+function ProtectedRoute({ children }: { children: React.ReactNode }) {
+  const { user, loading } = useAuth();
+  const [, setLocation] = useLocation();
+  useEffect(() => {
+    if (!loading && user && user.emailVerified === false) {
+      toast.error("Please check your inbox and verify your email link to activate your account and log in.", { duration: 6000 });
+      setLocation("/");
+    }
+  }, [loading, user, setLocation]);
+  if (loading) return <div className="min-h-screen flex items-center justify-center text-blue-800/70">Loading…</div>;
+  if (!user) return <Redirect to="/login" />;
+  if (user.emailVerified === false) return null;
+  return <>{children}</>;
+}
+
 function Router() {
   return (
     <Switch>
@@ -52,7 +67,7 @@ function Router() {
       <Route path="/shop" component={Shop} />
       <Route path="/product/:id" component={ProductDetail} />
       <Route path="/cart" component={Cart} />
-      <Route path="/checkout" component={Checkout} />
+      <Route path="/checkout"><ProtectedRoute><Checkout /></ProtectedRoute></Route>
       <Route path="/order/:id" component={OrderConfirmation} />
       <Route path="/login" component={LoginPage} />
       <Route path="/signup" component={SignupPage} />
@@ -60,7 +75,7 @@ function Router() {
       <Route path="/blog" component={BlogPage} />
       <Route path="/blog/:id" component={BlogPostPage} />
       <Route path="/bundles" component={BundlesPage} />
-      <Route path="/my-orders" component={MyOrders} />
+      <Route path="/my-orders"><ProtectedRoute><MyOrders /></ProtectedRoute></Route>
 
       <Route path="/admin/login" component={AdminLoginPage} />
       <Route path="/admin"><AdminRoute><Dashboard /></AdminRoute></Route>
