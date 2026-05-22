@@ -51,6 +51,7 @@ export const COLLECTIONS = {
   settings: "settings",
   storageFolders: "storageFolders",
   storageItems: "storageItems",
+  paymentTransactions: "paymentTransactions",
 } as const;
 
 export { Timestamp };
@@ -118,7 +119,7 @@ export type OrderDoc = {
   freeDelivery: boolean;
   total: number;
   amountPaid: number;
-  paymentStatus: "unpaid" | "partial" | "paid";
+  paymentStatus: "unpaid" | "partial" | "paid" | "pending" | "failed";
   status: OrderStatus;
   statusHistory: OrderStatusHistoryEntry[];
   paymentMethod: string;
@@ -126,6 +127,8 @@ export type OrderDoc = {
   couponCode: string | null;
   discount: number;
   archived: boolean;
+  txRef: string | null;
+  flwRef: string | null;
   createdAt: Timestamp;
 };
 
@@ -162,6 +165,20 @@ export type CouponUsageDoc = {
   userId: string;
   payerPhoneNumber: string;
   createdAt: Timestamp;
+};
+
+export type PaymentTransactionDoc = {
+  orderId: string;
+  amount: number;
+  currency: string;
+  payerPhone: string;
+  payerName: string;
+  payerEmail: string;
+  txRef: string;
+  flwRef: string;
+  status: "pending" | "successful" | "failed";
+  createdAt: Timestamp;
+  completedAt: Timestamp | null;
 };
 
 export type BundleDoc = {
