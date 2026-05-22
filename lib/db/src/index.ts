@@ -44,6 +44,7 @@ export const COLLECTIONS = {
   users: "users",
   sessions: "sessions",
   coupons: "coupons",
+  couponUsages: "couponUsages",
   bundles: "bundles",
   blogPosts: "blogPosts",
   stockAlerts: "stockAlerts",
@@ -133,6 +134,9 @@ export type UserDoc = {
   email: string;
   passwordHash: string;
   createdAt: Timestamp;
+  emailVerified?: boolean;
+  firebaseUid?: string | null;
+  phoneNumber?: string | null;
 };
 
 export type SessionDoc = {
@@ -149,6 +153,14 @@ export type CouponDoc = {
   active: boolean;
   uses: number;
   maxUses: number | null;
+  expiryDate?: string | null;
+  createdAt: Timestamp;
+};
+
+export type CouponUsageDoc = {
+  couponId: string;
+  userId: string;
+  payerPhoneNumber: string;
   createdAt: Timestamp;
 };
 
