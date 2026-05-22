@@ -6,22 +6,23 @@ import { useCurrency } from "@/components/currency-context";
 import { Button } from "@/components/ui/button";
 import {
   CheckCircle2, Package, MapPin, CreditCard, Clock, Truck, PackageCheck,
-  XCircle, Tag, Smartphone, Loader2, ShieldCheck, AlertCircle,
+  XCircle, Tag, Smartphone, Loader2, ShieldCheck, ExternalLink,
 } from "lucide-react";
 
 const STATUS_CONFIG: Record<string, { label: string; icon: typeof Clock; color: string }> = {
-  pending: { label: "Order Placed", icon: Clock, color: "text-yellow-600" },
-  processing: { label: "Processing", icon: Package, color: "text-blue-600" },
-  shipped: { label: "Shipped", icon: Truck, color: "text-indigo-600" },
-  delivered: { label: "Delivered", icon: PackageCheck, color: "text-green-600" },
-  cancelled: { label: "Cancelled", icon: XCircle, color: "text-red-600" },
+  pending:   { label: "Order Placed",  icon: Clock,        color: "text-yellow-600" },
+  processing:{ label: "Processing",   icon: Package,      color: "text-blue-600"   },
+  shipped:   { label: "Shipped",      icon: Truck,        color: "text-indigo-600" },
+  delivered: { label: "Delivered",    icon: PackageCheck, color: "text-green-600"  },
+  cancelled: { label: "Cancelled",    icon: XCircle,      color: "text-red-600"    },
 };
 
 const PAYMENT_LABELS: Record<string, string> = {
-  online: "Online Payment",
-  mtn_momo: "MTN Mobile Money",
-  airtel_money: "Airtel Money",
+  pesapal:          "Pesapal (Mobile Money / Card)",
+  mtn_momo:         "MTN Mobile Money",
+  airtel_money:     "Airtel Money",
   cash_on_delivery: "Cash on Delivery",
+  online:           "Online Payment",
 };
 
 export default function OrderConfirmation() {
@@ -36,18 +37,16 @@ export default function OrderConfirmation() {
 
   const o = order as any;
   const paymentPending = o?.paymentStatus === "pending";
-  const paymentFailed = o?.paymentStatus === "failed";
+  const paymentFailed  = o?.paymentStatus === "failed";
 
-  // Poll every 3 s while payment is pending
+  // Poll every 4 s while payment confirmation is pending (Pesapal IPN may arrive shortly)
   useEffect(() => {
     if (!paymentPending) {
       if (pollRef.current) clearInterval(pollRef.current);
       return;
     }
-    pollRef.current = setInterval(() => refetch(), 3000);
-    return () => {
-      if (pollRef.current) clearInterval(pollRef.current);
-    };
+    pollRef.current = setInterval(() => refetch(), 4000);
+    return () => { if (pollRef.current) clearInterval(pollRef.current); };
   }, [paymentPending, refetch]);
 
   if (isLoading) {
@@ -72,9 +71,9 @@ export default function OrderConfirmation() {
 
   const statusHistory: { status: string; timestamp: string }[] = o.statusHistory ?? [];
   const allStatuses = ["pending", "processing", "shipped", "delivered"];
-  const currentStatusIdx = allStatuses.indexOf(o.status);
+  const currentIdx  = allStatuses.indexOf(o.status);
 
-  // ── Payment pending state ────────────────────────────────────────────────
+  // ── Payment pending ───────────────────────────────────────────────────────
   if (paymentPending) {
     return (
       <Layout>
@@ -84,21 +83,22 @@ export default function OrderConfirmation() {
               <Loader2 className="w-10 h-10 text-blue-600 animate-spin" />
             </div>
             <div>
-              <h2 className="text-2xl font-serif text-blue-950 mb-3">Awaiting Payment</h2>
-              <p className="text-blue-800/70 text-sm mb-1">Order #{order.id.slice(0, 8).toUpperCase()}</p>
+              <h2 className="text-2xl font-serif text-blue-950 mb-2">Confirming Payment</h2>
+              <p className="text-blue-800/60 text-sm mb-1">
+                Order #{order.id.slice(0, 8).toUpperCase()}
+              </p>
               <p className="text-blue-800/60 text-sm leading-relaxed mt-3">
-                Please complete the mobile money PIN prompt on your phone. This page will update
-                automatically once your payment is confirmed.
+                We're waiting for Pesapal to confirm your payment. If you completed the transaction, this page will update automatically in a few moments.
               </p>
             </div>
-            <div className="flex items-center gap-2 text-xs text-blue-800/50 justify-center">
-              <ShieldCheck className="w-3.5 h-3.5" />
-              <span>Secured by Flutterwave</span>
+            <div className="glass-card rounded-xl px-4 py-3 bg-amber-50/30 border-amber-200/50 text-left space-y-1">
+              <p className="text-xs font-medium text-amber-900">If you paid via mobile money:</p>
+              <p className="text-xs text-amber-800">Make sure you entered your PIN when prompted on your phone.</p>
             </div>
-            <button
-              onClick={() => refetch()}
-              className="text-xs text-blue-600 underline hover:no-underline"
-            >
+            <div className="flex items-center gap-2 text-xs text-blue-800/50 justify-center">
+              <ShieldCheck className="w-3.5 h-3.5" /> Secured by Pesapal
+            </div>
+            <button onClick={() => refetch()} className="text-xs text-blue-600 underline hover:no-underline">
               Refresh status
             </button>
           </div>
@@ -107,7 +107,7 @@ export default function OrderConfirmation() {
     );
   }
 
-  // ── Payment failed state ─────────────────────────────────────────────────
+  // ── Payment failed ────────────────────────────────────────────────────────
   if (paymentFailed) {
     return (
       <Layout>
@@ -117,10 +117,9 @@ export default function OrderConfirmation() {
               <XCircle className="w-10 h-10 text-red-600" />
             </div>
             <div>
-              <h2 className="text-2xl font-serif text-blue-950 mb-3">Payment Failed</h2>
+              <h2 className="text-2xl font-serif text-blue-950 mb-3">Payment Not Completed</h2>
               <p className="text-blue-800/70 text-sm leading-relaxed">
-                Your mobile money payment was not completed. This may be due to an incorrect PIN,
-                insufficient balance, or the prompt expiring.
+                Your Pesapal payment was not completed. This could be due to an incorrect PIN, insufficient balance, or the session expiring.
               </p>
             </div>
             <div className="flex flex-col gap-3">
@@ -141,7 +140,7 @@ export default function OrderConfirmation() {
     );
   }
 
-  // ── Confirmed / normal order view ────────────────────────────────────────
+  // ── Confirmed order ───────────────────────────────────────────────────────
   return (
     <Layout>
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-16 text-center">
@@ -155,7 +154,7 @@ export default function OrderConfirmation() {
           </p>
         </div>
 
-        {/* Order Status Timeline */}
+        {/* Status timeline */}
         <div className="glass-panel-heavy rounded-3xl p-8 border-white/50 text-left mb-8">
           <h2 className="text-xl font-serif text-blue-950 mb-6">Order Status</h2>
           {o.status === "cancelled" ? (
@@ -166,33 +165,17 @@ export default function OrderConfirmation() {
           ) : (
             <div className="flex items-start justify-between gap-2">
               {allStatuses.map((status, i) => {
-                const cfg = STATUS_CONFIG[status]!;
+                const cfg  = STATUS_CONFIG[status]!;
                 const Icon = cfg.icon;
-                const done = i <= currentStatusIdx;
-                const histEntry = statusHistory.find((h) => h.status === status);
+                const done = i <= currentIdx;
+                const hist = statusHistory.find((h) => h.status === status);
                 return (
                   <div key={status} className="flex-1 flex flex-col items-center text-center">
-                    <div
-                      className={`w-10 h-10 rounded-full flex items-center justify-center mb-2 border-2 transition-all ${
-                        done
-                          ? "bg-blue-600 border-blue-600"
-                          : "bg-white/30 border-white/40"
-                      }`}
-                    >
+                    <div className={`w-10 h-10 rounded-full flex items-center justify-center mb-2 border-2 transition-all ${done ? "bg-blue-600 border-blue-600" : "bg-white/30 border-white/40"}`}>
                       <Icon className={`w-5 h-5 ${done ? "text-white" : "text-blue-300"}`} />
                     </div>
-                    <p
-                      className={`text-xs font-medium ${
-                        done ? "text-blue-950" : "text-blue-800/50"
-                      }`}
-                    >
-                      {cfg.label}
-                    </p>
-                    {histEntry && (
-                      <p className="text-[10px] text-blue-800/40 mt-0.5">
-                        {new Date(histEntry.timestamp).toLocaleDateString()}
-                      </p>
-                    )}
+                    <p className={`text-xs font-medium ${done ? "text-blue-950" : "text-blue-800/50"}`}>{cfg.label}</p>
+                    {hist && <p className="text-[10px] text-blue-800/40 mt-0.5">{new Date(hist.timestamp).toLocaleDateString()}</p>}
                   </div>
                 );
               })}
@@ -209,9 +192,7 @@ export default function OrderConfirmation() {
               <p className="text-sm text-blue-900/80 mb-1">
                 Status: <span className="capitalize text-blue-700 font-medium">{order.status}</span>
               </p>
-              <p className="text-sm text-blue-900/80">
-                Date: {new Date(order.createdAt).toLocaleDateString()}
-              </p>
+              <p className="text-sm text-blue-900/80">Date: {new Date(order.createdAt).toLocaleDateString()}</p>
             </div>
             <div>
               <div className="flex items-center gap-2 mb-3 text-blue-950 font-medium">
@@ -228,24 +209,21 @@ export default function OrderConfirmation() {
                 <Smartphone className="w-3.5 h-3.5" />
                 {PAYMENT_LABELS[o.paymentMethod] ?? o.paymentMethod ?? "Online"}
               </p>
-              {o.paymentNumber && (
-                <p className="text-sm text-blue-900/80 mb-1">{o.paymentNumber}</p>
-              )}
+              {o.paymentNumber && <p className="text-sm text-blue-900/80 mb-1">{o.paymentNumber}</p>}
               {o.paymentStatus === "paid" && (
                 <p className="text-xs text-green-700 font-medium flex items-center gap-1 mb-1">
                   <CheckCircle2 className="w-3.5 h-3.5" /> Payment confirmed
                 </p>
               )}
-              {o.flwRef && (
-                <p className="text-[10px] text-blue-800/40 font-mono break-all">
-                  Ref: {o.flwRef}
+              {o.pesapalTrackingId && (
+                <p className="text-[10px] text-blue-800/40 font-mono break-all mt-1">
+                  Pesapal ref: {o.pesapalTrackingId}
                 </p>
               )}
               <p className="text-sm text-blue-900/80 mb-1">Subtotal: {format(order.subtotal)}</p>
               {o.discount > 0 && (
                 <p className="text-sm text-green-700 mb-1 flex items-center gap-1">
-                  <Tag className="w-3 h-3" /> Discount: −{format(o.discount)}{" "}
-                  {o.couponCode && `(${o.couponCode})`}
+                  <Tag className="w-3 h-3" /> Discount: −{format(o.discount)} {o.couponCode && `(${o.couponCode})`}
                 </p>
               )}
               {o.freeDelivery ? (
@@ -255,9 +233,7 @@ export default function OrderConfirmation() {
               ) : o.shippingConfirmed ? (
                 <p className="text-sm text-blue-900/80 mb-1">Delivery: {format(order.shipping)}</p>
               ) : (
-                <p className="text-sm text-orange-600/90 mb-1 italic">
-                  Delivery: Being confirmed by store
-                </p>
+                <p className="text-sm text-orange-600/90 mb-1 italic">Delivery fee: being confirmed by store</p>
               )}
               <p className="text-sm font-medium text-blue-950 border-t border-white/30 mt-1 pt-1">
                 Total: {format(order.total)}
@@ -272,25 +248,15 @@ export default function OrderConfirmation() {
             {order.items.map((item) => (
               <div key={item.productId} className="flex items-center gap-4">
                 <div className="w-16 h-16 glass-card rounded-lg p-1 flex-shrink-0">
-                  {item.imageUrl ? (
-                    <img
-                      src={item.imageUrl}
-                      alt={item.name}
-                      className="w-full h-full object-contain"
-                    />
-                  ) : (
-                    <div className="w-full h-full bg-white/20 rounded flex items-center justify-center text-[10px] text-blue-400">
-                      Img
-                    </div>
-                  )}
+                  {item.imageUrl
+                    ? <img src={item.imageUrl} alt={item.name} className="w-full h-full object-contain" />
+                    : <div className="w-full h-full bg-white/20 rounded flex items-center justify-center text-[10px] text-blue-400">Img</div>}
                 </div>
                 <div className="flex-1">
                   <p className="text-md font-medium text-blue-950">{item.name}</p>
                   <p className="text-sm text-blue-800/70">Qty: {item.quantity}</p>
                 </div>
-                <div className="font-medium text-blue-900">
-                  {format(item.price * item.quantity)}
-                </div>
+                <div className="font-medium text-blue-900">{format(item.price * item.quantity)}</div>
               </div>
             ))}
           </div>
