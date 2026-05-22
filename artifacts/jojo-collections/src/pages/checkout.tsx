@@ -108,7 +108,13 @@ export default function Checkout() {
           }
           clearCart(); toast.success("Order placed!"); setLocation(`/order/${order.id}`);
         },
-        onError: () => toast.error("Failed to place order. Please try again."),
+        onError: (err: unknown) => {
+          const msg =
+            err && typeof err === "object" && "data" in err
+              ? ((err as { data?: { error?: string } }).data?.error ?? "Failed to place order. Please try again.")
+              : "Failed to place order. Please try again.";
+          toast.error(msg, { duration: 6000 });
+        },
       }
     );
   };
