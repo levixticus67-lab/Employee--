@@ -471,9 +471,9 @@ router.get("/admin/coupons", async (_req, res) => {
 });
 
 router.post("/admin/coupons", async (req, res) => {
-  const body = req.body as { code: string; type: string; value: number; minOrder?: number; maxUses?: number | null };
+  const body = req.body as { code: string; type: string; value: number; minOrder?: number; maxUses?: number | null; expiryDate?: string | null };
   if (!body.code || !body.type || !body.value) { res.status(400).json({ error: "code, type and value are required" }); return; }
-  const data: CouponDoc = { code: body.code.toUpperCase().trim(), type: body.type as "percentage" | "fixed", value: Number(body.value), minOrder: Number(body.minOrder ?? 0), active: true, uses: 0, maxUses: body.maxUses ?? null, createdAt: Timestamp.now() };
+  const data: CouponDoc = { code: body.code.toUpperCase().trim(), type: body.type as "percentage" | "fixed", value: Number(body.value), minOrder: Number(body.minOrder ?? 0), active: true, uses: 0, maxUses: body.maxUses ?? null, expiryDate: body.expiryDate ?? null, createdAt: Timestamp.now() };
   const ref = await firestore.collection(COLLECTIONS.coupons).add(data);
   res.status(201).json({ id: ref.id, ...data, createdAt: new Date().toISOString() });
 });
@@ -501,6 +501,7 @@ router.post("/coupons/validate", async (req, res) => {
   const doc = snap.docs[0]!;
   const c = doc.data() as CouponDoc;
   if (!c.active) { res.status(400).json({ error: "Coupon is no longer active" }); return; }
+  if (c.expiryDate && new Date(c.expiryDate) < new Date()) { res.status(400).json({ error: "This coupon has expired" }); return; }
   if (c.maxUses !== null && c.uses >= c.maxUses) { res.status(400).json({ error: "Coupon usage limit reached" }); return; }
   if (orderTotal < c.minOrder) { res.status(400).json({ error: `Minimum order $${c.minOrder} required` }); return; }
   const discount = c.type === "percentage" ? (orderTotal * c.value) / 100 : Math.min(c.value, orderTotal);
