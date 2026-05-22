@@ -1,11 +1,15 @@
+import { useEffect, useRef } from "react";
 import { useRoute, Link } from "wouter";
 import { useGetOrder } from "@workspace/api-client-react";
 import { Layout } from "@/components/layout";
 import { useCurrency } from "@/components/currency-context";
 import { Button } from "@/components/ui/button";
-import { CheckCircle2, Package, MapPin, CreditCard, Clock, Truck, PackageCheck, XCircle, Tag, Smartphone } from "lucide-react";
+import {
+  CheckCircle2, Package, MapPin, CreditCard, Clock, Truck, PackageCheck,
+  XCircle, Tag, Smartphone, Loader2, ShieldCheck, AlertCircle,
+} from "lucide-react";
 
-const STATUS_CONFIG: Record<string, { label: string; icon: any; color: string }> = {
+const STATUS_CONFIG: Record<string, { label: string; icon: typeof Clock; color: string }> = {
   pending: { label: "Order Placed", icon: Clock, color: "text-yellow-600" },
   processing: { label: "Processing", icon: Package, color: "text-blue-600" },
   shipped: { label: "Shipped", icon: Truck, color: "text-indigo-600" },
@@ -17,16 +21,34 @@ const PAYMENT_LABELS: Record<string, string> = {
   online: "Online Payment",
   mtn_momo: "MTN Mobile Money",
   airtel_money: "Airtel Money",
+  cash_on_delivery: "Cash on Delivery",
 };
 
 export default function OrderConfirmation() {
   const [, params] = useRoute("/order/:id");
   const orderId = params?.id || "";
   const { format } = useCurrency();
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  const { data: order, isLoading } = useGetOrder(orderId, {
+  const { data: order, isLoading, refetch } = useGetOrder(orderId, {
     query: { enabled: !!orderId } as any,
   });
+
+  const o = order as any;
+  const paymentPending = o?.paymentStatus === "pending";
+  const paymentFailed = o?.paymentStatus === "failed";
+
+  // Poll every 3 s while payment is pending
+  useEffect(() => {
+    if (!paymentPending) {
+      if (pollRef.current) clearInterval(pollRef.current);
+      return;
+    }
+    pollRef.current = setInterval(() => refetch(), 3000);
+    return () => {
+      if (pollRef.current) clearInterval(pollRef.current);
+    };
+  }, [paymentPending, refetch]);
 
   if (isLoading) {
     return (
@@ -48,11 +70,78 @@ export default function OrderConfirmation() {
     );
   }
 
-  const o = order as any;
   const statusHistory: { status: string; timestamp: string }[] = o.statusHistory ?? [];
   const allStatuses = ["pending", "processing", "shipped", "delivered"];
   const currentStatusIdx = allStatuses.indexOf(o.status);
 
+  // ── Payment pending state ────────────────────────────────────────────────
+  if (paymentPending) {
+    return (
+      <Layout>
+        <div className="max-w-lg mx-auto px-4 py-20 text-center">
+          <div className="glass-panel-heavy rounded-3xl p-10 border-white/50 space-y-6">
+            <div className="w-20 h-20 rounded-full bg-blue-100/60 flex items-center justify-center mx-auto">
+              <Loader2 className="w-10 h-10 text-blue-600 animate-spin" />
+            </div>
+            <div>
+              <h2 className="text-2xl font-serif text-blue-950 mb-3">Awaiting Payment</h2>
+              <p className="text-blue-800/70 text-sm mb-1">Order #{order.id.slice(0, 8).toUpperCase()}</p>
+              <p className="text-blue-800/60 text-sm leading-relaxed mt-3">
+                Please complete the mobile money PIN prompt on your phone. This page will update
+                automatically once your payment is confirmed.
+              </p>
+            </div>
+            <div className="flex items-center gap-2 text-xs text-blue-800/50 justify-center">
+              <ShieldCheck className="w-3.5 h-3.5" />
+              <span>Secured by Flutterwave</span>
+            </div>
+            <button
+              onClick={() => refetch()}
+              className="text-xs text-blue-600 underline hover:no-underline"
+            >
+              Refresh status
+            </button>
+          </div>
+        </div>
+      </Layout>
+    );
+  }
+
+  // ── Payment failed state ─────────────────────────────────────────────────
+  if (paymentFailed) {
+    return (
+      <Layout>
+        <div className="max-w-lg mx-auto px-4 py-20 text-center">
+          <div className="glass-panel-heavy rounded-3xl p-10 border-white/50 space-y-6">
+            <div className="w-20 h-20 rounded-full bg-red-100/60 flex items-center justify-center mx-auto">
+              <XCircle className="w-10 h-10 text-red-600" />
+            </div>
+            <div>
+              <h2 className="text-2xl font-serif text-blue-950 mb-3">Payment Failed</h2>
+              <p className="text-blue-800/70 text-sm leading-relaxed">
+                Your mobile money payment was not completed. This may be due to an incorrect PIN,
+                insufficient balance, or the prompt expiring.
+              </p>
+            </div>
+            <div className="flex flex-col gap-3">
+              <Link href="/checkout">
+                <Button className="w-full rounded-xl bg-blue-600 hover:bg-blue-700 text-white">
+                  Try Again
+                </Button>
+              </Link>
+              <Link href="/shop">
+                <Button variant="outline" className="w-full rounded-xl glass-card border-white/40 text-blue-900">
+                  Continue Shopping
+                </Button>
+              </Link>
+            </div>
+          </div>
+        </div>
+      </Layout>
+    );
+  }
+
+  // ── Confirmed / normal order view ────────────────────────────────────────
   return (
     <Layout>
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-16 text-center">
@@ -69,7 +158,6 @@ export default function OrderConfirmation() {
         {/* Order Status Timeline */}
         <div className="glass-panel-heavy rounded-3xl p-8 border-white/50 text-left mb-8">
           <h2 className="text-xl font-serif text-blue-950 mb-6">Order Status</h2>
-
           {o.status === "cancelled" ? (
             <div className="flex items-center gap-3 text-red-700 bg-red-50/30 rounded-xl p-4">
               <XCircle className="w-5 h-5 flex-shrink-0" />
@@ -84,17 +172,26 @@ export default function OrderConfirmation() {
                 const histEntry = statusHistory.find((h) => h.status === status);
                 return (
                   <div key={status} className="flex-1 flex flex-col items-center text-center">
-                    <div className={`w-10 h-10 rounded-full flex items-center justify-center mb-2 border-2 transition-all ${
-                      done ? "bg-blue-600 border-blue-600" : "bg-white/30 border-white/40"
-                    }`}>
+                    <div
+                      className={`w-10 h-10 rounded-full flex items-center justify-center mb-2 border-2 transition-all ${
+                        done
+                          ? "bg-blue-600 border-blue-600"
+                          : "bg-white/30 border-white/40"
+                      }`}
+                    >
                       <Icon className={`w-5 h-5 ${done ? "text-white" : "text-blue-300"}`} />
                     </div>
-                    {i < allStatuses.length - 1 && (
-                      <div className={`absolute mt-5 ml-10 h-0.5 w-full max-w-[60%] transition-all ${done ? "bg-blue-500" : "bg-white/30"}`} style={{ left: "50%", top: 0 }} />
-                    )}
-                    <p className={`text-xs font-medium ${done ? "text-blue-950" : "text-blue-800/50"}`}>{cfg.label}</p>
+                    <p
+                      className={`text-xs font-medium ${
+                        done ? "text-blue-950" : "text-blue-800/50"
+                      }`}
+                    >
+                      {cfg.label}
+                    </p>
                     {histEntry && (
-                      <p className="text-[10px] text-blue-800/40 mt-0.5">{new Date(histEntry.timestamp).toLocaleDateString()}</p>
+                      <p className="text-[10px] text-blue-800/40 mt-0.5">
+                        {new Date(histEntry.timestamp).toLocaleDateString()}
+                      </p>
                     )}
                   </div>
                 );
@@ -109,8 +206,12 @@ export default function OrderConfirmation() {
               <div className="flex items-center gap-2 mb-3 text-blue-950 font-medium">
                 <Package className="w-5 h-5 text-blue-600" /> Order Info
               </div>
-              <p className="text-sm text-blue-900/80 mb-1">Status: <span className="capitalize text-blue-700 font-medium">{order.status}</span></p>
-              <p className="text-sm text-blue-900/80">Date: {new Date(order.createdAt).toLocaleDateString()}</p>
+              <p className="text-sm text-blue-900/80 mb-1">
+                Status: <span className="capitalize text-blue-700 font-medium">{order.status}</span>
+              </p>
+              <p className="text-sm text-blue-900/80">
+                Date: {new Date(order.createdAt).toLocaleDateString()}
+              </p>
             </div>
             <div>
               <div className="flex items-center gap-2 mb-3 text-blue-950 font-medium">
@@ -127,23 +228,40 @@ export default function OrderConfirmation() {
                 <Smartphone className="w-3.5 h-3.5" />
                 {PAYMENT_LABELS[o.paymentMethod] ?? o.paymentMethod ?? "Online"}
               </p>
-              {o.paymentNumber && <p className="text-sm text-blue-900/80 mb-1">{o.paymentNumber}</p>}
+              {o.paymentNumber && (
+                <p className="text-sm text-blue-900/80 mb-1">{o.paymentNumber}</p>
+              )}
+              {o.paymentStatus === "paid" && (
+                <p className="text-xs text-green-700 font-medium flex items-center gap-1 mb-1">
+                  <CheckCircle2 className="w-3.5 h-3.5" /> Payment confirmed
+                </p>
+              )}
+              {o.flwRef && (
+                <p className="text-[10px] text-blue-800/40 font-mono break-all">
+                  Ref: {o.flwRef}
+                </p>
+              )}
               <p className="text-sm text-blue-900/80 mb-1">Subtotal: {format(order.subtotal)}</p>
               {o.discount > 0 && (
                 <p className="text-sm text-green-700 mb-1 flex items-center gap-1">
-                  <Tag className="w-3 h-3" /> Discount: −{format(o.discount)} {o.couponCode && `(${o.couponCode})`}
+                  <Tag className="w-3 h-3" /> Discount: −{format(o.discount)}{" "}
+                  {o.couponCode && `(${o.couponCode})`}
                 </p>
               )}
-              {(o as any).freeDelivery ? (
-                  <p className="text-sm text-green-700 mb-1 font-medium flex items-center gap-1">
-                    <Truck className="w-3.5 h-3.5" /> Free delivery
-                  </p>
-                ) : (o as any).shippingConfirmed ? (
-                  <p className="text-sm text-blue-900/80 mb-1">Delivery: {format(order.shipping)}</p>
-                ) : (
-                  <p className="text-sm text-orange-600/90 mb-1 italic">Delivery: Being confirmed by store</p>
-                )}
-              <p className="text-sm font-medium text-blue-950 border-t border-white/30 mt-1 pt-1">Total: {format(order.total)}</p>
+              {o.freeDelivery ? (
+                <p className="text-sm text-green-700 mb-1 font-medium flex items-center gap-1">
+                  <Truck className="w-3.5 h-3.5" /> Free delivery
+                </p>
+              ) : o.shippingConfirmed ? (
+                <p className="text-sm text-blue-900/80 mb-1">Delivery: {format(order.shipping)}</p>
+              ) : (
+                <p className="text-sm text-orange-600/90 mb-1 italic">
+                  Delivery: Being confirmed by store
+                </p>
+              )}
+              <p className="text-sm font-medium text-blue-950 border-t border-white/30 mt-1 pt-1">
+                Total: {format(order.total)}
+              </p>
             </div>
           </div>
         </div>
@@ -155,9 +273,15 @@ export default function OrderConfirmation() {
               <div key={item.productId} className="flex items-center gap-4">
                 <div className="w-16 h-16 glass-card rounded-lg p-1 flex-shrink-0">
                   {item.imageUrl ? (
-                    <img src={item.imageUrl} alt={item.name} className="w-full h-full object-contain" />
+                    <img
+                      src={item.imageUrl}
+                      alt={item.name}
+                      className="w-full h-full object-contain"
+                    />
                   ) : (
-                    <div className="w-full h-full bg-white/20 rounded flex items-center justify-center text-[10px] text-blue-400">Img</div>
+                    <div className="w-full h-full bg-white/20 rounded flex items-center justify-center text-[10px] text-blue-400">
+                      Img
+                    </div>
                   )}
                 </div>
                 <div className="flex-1">
