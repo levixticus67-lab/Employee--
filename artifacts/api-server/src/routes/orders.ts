@@ -1,5 +1,15 @@
 import { Router, type IRouter } from "express";
-import { firestore, COLLECTIONS, Timestamp, type OrderDoc, type OrderItemDoc, type ProductDoc, type CouponDoc } from "@workspace/db";
+import {
+  firestore,
+  COLLECTIONS,
+  Timestamp,
+  type OrderDoc,
+  type OrderItemDoc,
+  type ProductDoc,
+  type CouponDoc,
+  type CouponUsageDoc,
+  type UserDoc,
+} from "@workspace/db";
 import { CreateOrderBody } from "@workspace/api-zod";
 
 const router: IRouter = Router();
@@ -17,6 +27,7 @@ export type OrderDto = {
   amountPaid: number; paymentStatus: string;
   discount: number; couponCode: string | null; paymentMethod: string;
   paymentNumber: string | null; status: string;
+  shippingConfirmed: boolean; freeDelivery: boolean;
   statusHistory: { status: string; timestamp: string }[]; createdAt: string;
   archived: boolean;
 };
@@ -77,15 +88,77 @@ router.post("/orders", async (req, res) => {
 
   const productRefs = body.items.map((i) => firestore.collection(COLLECTIONS.products).doc(i.productId));
 
-  let discount = 0;
-  let couponCode: string | null = null;
   const couponInput = rawBody["couponCode"] as string | undefined;
   const buyerPhone = (rawBody["buyerPhone"] as string) || null;
+  const paymentNumber = (rawBody["paymentNumber"] as string) || null;
   const requestedAmountPaid = Number(rawBody["amountPaid"] ?? 0);
+  const userId = req.session?.userId ?? null;
+
+  // ── 1. Phone binding check ────────────────────────────────────────────────
+  if (userId && paymentNumber) {
+    const phoneQuery = await firestore
+      .collection(COLLECTIONS.users)
+      .where("phoneNumber", "==", paymentNumber)
+      .limit(1)
+      .get();
+    if (!phoneQuery.empty && phoneQuery.docs[0]!.id !== userId) {
+      res.status(400).json({
+        error:
+          "This phone number is already linked to another account. Please use your own registered payment number.",
+      });
+      return;
+    }
+  }
+
+  // ── 2. Coupon usage pre-checks ────────────────────────────────────────────
+  let preFetchedCouponId: string | null = null;
+  if (couponInput) {
+    const preCouponSnap = await firestore
+      .collection(COLLECTIONS.coupons)
+      .where("code", "==", couponInput.toUpperCase().trim())
+      .limit(1)
+      .get();
+    if (!preCouponSnap.empty) {
+      preFetchedCouponId = preCouponSnap.docs[0]!.id;
+
+      if (userId) {
+        const usageByUser = await firestore
+          .collection(COLLECTIONS.couponUsages)
+          .where("couponId", "==", preFetchedCouponId)
+          .where("userId", "==", userId)
+          .limit(1)
+          .get();
+        if (!usageByUser.empty) {
+          res.status(400).json({
+            error: "This account or payment method has already redeemed this promotion.",
+          });
+          return;
+        }
+      }
+
+      if (paymentNumber) {
+        const usageByPhone = await firestore
+          .collection(COLLECTIONS.couponUsages)
+          .where("couponId", "==", preFetchedCouponId)
+          .where("payerPhoneNumber", "==", paymentNumber)
+          .limit(1)
+          .get();
+        if (!usageByPhone.empty) {
+          res.status(400).json({
+            error: "This account or payment method has already redeemed this promotion.",
+          });
+          return;
+        }
+      }
+    }
+  }
 
   // Fetch free delivery threshold from store settings
   const settingsSnap = await firestore.collection(COLLECTIONS.settings).doc("public").get();
   const freeThreshold = settingsSnap.exists ? Number(settingsSnap.data()?.["freeDeliveryThreshold"] ?? 0) : 0;
+
+  let discount = 0;
+  let couponCode: string | null = null;
 
   try {
     const newOrderRef = firestore.collection(COLLECTIONS.orders).doc();
@@ -110,22 +183,31 @@ router.post("/orders", async (req, res) => {
         if (!couponSnap.empty) {
           const couponDoc = couponSnap.docs[0]!;
           const c = couponDoc.data() as CouponDoc;
-          if (c.active && (c.maxUses === null || c.uses < c.maxUses) && subtotal >= c.minOrder) {
+          const isExpired = c.expiryDate ? new Date(c.expiryDate) < new Date() : false;
+          if (c.active && !isExpired && (c.maxUses === null || c.uses < c.maxUses) && subtotal >= c.minOrder) {
             discount = c.type === "percentage" ? Math.round((subtotal * c.value) / 100 * 100) / 100 : Math.min(c.value, subtotal);
             couponCode = c.code;
             tx.update(couponDoc.ref, { uses: c.uses + 1 });
+
+            const usageRef = firestore.collection(COLLECTIONS.couponUsages).doc();
+            const usageData: CouponUsageDoc = {
+              couponId: couponDoc.id,
+              userId: userId ?? "",
+              payerPhoneNumber: paymentNumber ?? "",
+              createdAt: Timestamp.now(),
+            };
+            tx.set(usageRef, usageData);
           }
         }
       }
 
       const orderValue = subtotal - discount;
-        const qualifiesFreeDelivery = freeThreshold > 0 && orderValue >= freeThreshold;
-        const shipping = 0; // always starts at 0 – admin sets it, or it's free
-        const shippingConfirmed = qualifiesFreeDelivery;
-        const freeDelivery = qualifiesFreeDelivery;
-        const total = Math.max(0, subtotal - discount); // shipping is 0 at creation
+      const qualifiesFreeDelivery = freeThreshold > 0 && orderValue >= freeThreshold;
+      const shipping = 0;
+      const shippingConfirmed = qualifiesFreeDelivery;
+      const freeDelivery = qualifiesFreeDelivery;
+      const total = Math.max(0, subtotal - discount);
       const paymentMethod = (rawBody["paymentMethod"] as string) || "online";
-      const paymentNumber = (rawBody["paymentNumber"] as string) || null;
 
       const amountPaid = Math.min(requestedAmountPaid, total);
       let paymentStatus: "unpaid" | "partial" | "paid" = "unpaid";
@@ -153,6 +235,22 @@ router.post("/orders", async (req, res) => {
         tx.update(snap.ref, { stock: p.stock - reqItem.quantity });
       }
     });
+
+    // ── 3. Bind phone number to user on first successful use ─────────────────
+    if (userId && paymentNumber) {
+      try {
+        const userRef = firestore.collection(COLLECTIONS.users).doc(userId);
+        const userSnap = await userRef.get();
+        if (userSnap.exists) {
+          const u = userSnap.data() as UserDoc;
+          if (!u.phoneNumber) {
+            await userRef.update({ phoneNumber: paymentNumber });
+          }
+        }
+      } catch (err) {
+        req.log.warn({ err }, "Failed to bind phone number to user");
+      }
+    }
 
     const dto = await loadOrderById(newOrderRef.id);
     res.status(201).json(dto);
