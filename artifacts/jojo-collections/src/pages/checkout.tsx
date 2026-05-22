@@ -81,31 +81,12 @@ export default function Checkout() {
           customerName: form.customerName, customerEmail: form.customerEmail,
           shippingAddress: form.shippingAddress, items: items.map((item) => ({ productId: item.product.id, quantity: item.quantity })),
           couponCode: couponResult?.code, paymentMethod, paymentNumber: paymentMethod !== "online" ? paymentNumber : undefined,
+          buyerPhone: form.buyerPhone || undefined,
+          amountPaid: amountPaidNow,
         } as any,
-        ...(({} as any)),
       },
       {
-        onSuccess: async (order) => {
-          // Record partial payment if applicable
-          if (amountPaidNow > 0 && amountPaidNow < total) {
-            await apiFetch(`/api/orders/${order.id}/payment`, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ email: form.customerEmail, amount: amountPaidNow }),
-            }).catch(() => {});
-          } else if (amountPaidNow >= total) {
-            await apiFetch(`/api/orders/${order.id}/payment`, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ email: form.customerEmail, amount: total }),
-            }).catch(() => {});
-          }
-          // Save buyerPhone via payment endpoint by re-using order update
-          if (form.buyerPhone.trim()) {
-            await apiFetch(`/api/admin/orders/${order.id}/status`, {
-              method: "GET",
-            }).catch(() => {});
-          }
+        onSuccess: (order) => {
           clearCart(); toast.success("Order placed!"); setLocation(`/order/${order.id}`);
         },
         onError: (err: unknown) => {
