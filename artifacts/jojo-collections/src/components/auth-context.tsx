@@ -30,6 +30,7 @@ type AuthContextValue = {
   adminLogin: (password: string) => Promise<void>;
   adminLogout: () => Promise<void>;
   refresh: () => Promise<void>;
+  resendVerificationEmail: () => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -78,7 +79,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           const credential = await createUserWithEmailAndPassword(auth, email, password);
           firebaseUid = credential.user.uid;
           await sendEmailVerification(credential.user);
-          await firebaseSignOut(auth);
+          // Keep the Firebase user signed in so resendVerificationEmail can work.
+          // The backend session is NOT established for unverified users, so
+          // protected routes remain inaccessible until email is verified.
         } catch (fbErr: unknown) {
           const code = (fbErr as { code?: string }).code ?? "";
           if (code === "auth/email-already-in-use") {
@@ -98,6 +101,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         await signupMut.mutateAsync({ data: { name, email, password } });
         await refresh();
       }
+    },
+
+    resendVerificationEmail: async () => {
+      if (!auth || !auth.currentUser) {
+        throw new Error("No pending verification session found. Please sign up again.");
+      }
+      await sendEmailVerification(auth.currentUser);
     },
 
     login: async (email, password) => {
