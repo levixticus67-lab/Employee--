@@ -1,12 +1,33 @@
-import { useState, type FormEvent } from "react";
+import { useState, useEffect, type FormEvent } from "react";
 import { Link, useLocation } from "wouter";
 import { toast } from "sonner";
 import { Layout } from "@/components/layout";
 import { useAuth, EmailVerificationSentError } from "@/components/auth-context";
-import { Mail, CheckCircle } from "lucide-react";
+import { Mail, CheckCircle, RefreshCw, Clock } from "lucide-react";
+
+// Per-email rate limit: max 2 resends per 24 h, stored in localStorage
+function getResendState(email: string): { count: number; windowStart: number } {
+  try {
+    const raw = localStorage.getItem(`vEmail_resends_${email}`);
+    if (!raw) return { count: 0, windowStart: Date.now() };
+    const parsed = JSON.parse(raw) as { count: number; windowStart: number };
+    const hoursSince = (Date.now() - parsed.windowStart) / 3_600_000;
+    if (hoursSince >= 24) {
+      localStorage.removeItem(`vEmail_resends_${email}`);
+      return { count: 0, windowStart: Date.now() };
+    }
+    return parsed;
+  } catch {
+    return { count: 0, windowStart: Date.now() };
+  }
+}
+
+function saveResendState(email: string, count: number, windowStart: number) {
+  localStorage.setItem(`vEmail_resends_${email}`, JSON.stringify({ count, windowStart }));
+}
 
 export default function SignupPage() {
-  const { signup } = useAuth();
+  const { signup, resendVerificationEmail } = useAuth();
   const [, setLocation] = useLocation();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -14,6 +35,22 @@ export default function SignupPage() {
   const [submitting, setSubmitting] = useState(false);
   const [verificationSent, setVerificationSent] = useState(false);
   const [verificationEmail, setVerificationEmail] = useState("");
+
+  // Resend state
+  const [resendCount, setResendCount] = useState(0);
+  const [resendWindowStart, setResendWindowStart] = useState(Date.now());
+  const [resending, setResending] = useState(false);
+
+  const MAX_RESENDS = 2;
+  const resendExhausted = resendCount >= MAX_RESENDS;
+
+  // Load resend state from localStorage when verification screen appears
+  useEffect(() => {
+    if (!verificationSent || !verificationEmail) return;
+    const state = getResendState(verificationEmail);
+    setResendCount(state.count);
+    setResendWindowStart(state.windowStart);
+  }, [verificationSent, verificationEmail]);
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
@@ -42,6 +79,26 @@ export default function SignupPage() {
     }
   }
 
+  async function handleResend() {
+    if (resendExhausted || resending) return;
+    setResending(true);
+    try {
+      await resendVerificationEmail();
+      const newCount = resendCount + 1;
+      setResendCount(newCount);
+      saveResendState(verificationEmail, newCount, resendWindowStart);
+      if (newCount >= MAX_RESENDS) {
+        toast.success("Verification email sent. This is your last resend for today.");
+      } else {
+        toast.success("Verification email sent again!");
+      }
+    } catch {
+      toast.error("Could not resend the verification email. Please try again later.");
+    } finally {
+      setResending(false);
+    }
+  }
+
   if (verificationSent) {
     return (
       <Layout>
@@ -67,16 +124,36 @@ export default function SignupPage() {
             >
               Go to Login
             </Link>
-            <p className="text-center text-xs text-blue-800/50 mt-4">
-              Didn't receive it? Check your spam folder or{" "}
-              <button
-                onClick={() => setVerificationSent(false)}
-                className="text-blue-700 underline hover:no-underline"
-              >
-                try again
-              </button>
-              .
-            </p>
+
+            {/* Resend section */}
+            <div className="mt-6 pt-6 border-t border-white/20">
+              {resendExhausted ? (
+                <div className="flex items-start gap-2 text-left bg-amber-50/40 border border-amber-200/50 rounded-xl px-4 py-3">
+                  <Clock className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
+                  <p className="text-sm text-amber-800">
+                    You've used all your resends for today. Please check your spam folder or try again tomorrow.
+                  </p>
+                </div>
+              ) : (
+                <p className="text-xs text-blue-800/50">
+                  Didn't receive it? Check your spam folder or{" "}
+                  <button
+                    onClick={handleResend}
+                    disabled={resending}
+                    className="inline-flex items-center gap-1 text-blue-700 underline hover:no-underline disabled:opacity-50"
+                  >
+                    {resending ? (
+                      <>
+                        <RefreshCw className="w-3 h-3 animate-spin" /> Sending…
+                      </>
+                    ) : (
+                      `resend it (${MAX_RESENDS - resendCount} left)`
+                    )}
+                  </button>
+                  .
+                </p>
+              )}
+            </div>
           </div>
         </div>
       </Layout>
