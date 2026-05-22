@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { AdminLayout } from "@/components/admin-layout";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Plus, Edit2, Trash2, Tag, ToggleLeft, ToggleRight } from "lucide-react";
+import { Plus, Edit2, Trash2, Tag, ToggleLeft, ToggleRight, CalendarDays } from "lucide-react";
 import { toast } from "sonner";
 import { apiFetch } from "@/lib/api";
 
@@ -15,10 +15,11 @@ type Coupon = {
   active: boolean;
   uses: number;
   maxUses: number | null;
+  expiryDate?: string | null;
   createdAt: string;
 };
 
-const empty = { code: "", type: "percentage" as const, value: 10, minOrder: 0, maxUses: "" };
+const empty = { code: "", type: "percentage" as const, value: 10, minOrder: 0, maxUses: "", expiryDate: "" };
 
 export default function AdminCoupons() {
   const [coupons, setCoupons] = useState<Coupon[]>([]);
@@ -37,14 +38,27 @@ export default function AdminCoupons() {
   const openCreate = () => { setEditing(null); setForm(empty); setOpen(true); };
   const openEdit = (c: Coupon) => {
     setEditing(c);
-    setForm({ code: c.code, type: c.type, value: c.value, minOrder: c.minOrder, maxUses: c.maxUses !== null ? String(c.maxUses) : "" });
+    setForm({
+      code: c.code,
+      type: c.type,
+      value: c.value,
+      minOrder: c.minOrder,
+      maxUses: c.maxUses !== null ? String(c.maxUses) : "",
+      expiryDate: c.expiryDate ? c.expiryDate.split("T")[0]! : "",
+    });
     setOpen(true);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
-    const payload = { ...form, value: Number(form.value), minOrder: Number(form.minOrder), maxUses: form.maxUses ? Number(form.maxUses) : null };
+    const payload = {
+      ...form,
+      value: Number(form.value),
+      minOrder: Number(form.minOrder),
+      maxUses: form.maxUses ? Number(form.maxUses) : null,
+      expiryDate: form.expiryDate ? new Date(form.expiryDate).toISOString() : null,
+    };
     try {
       if (editing) {
         await apiFetch(`/api/admin/coupons/${editing.id}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
@@ -70,6 +84,8 @@ export default function AdminCoupons() {
     load();
   };
 
+  const isExpired = (c: Coupon) => Boolean(c.expiryDate && new Date(c.expiryDate) < new Date());
+
   return (
     <AdminLayout>
       <div className="flex justify-between items-center mb-8">
@@ -86,22 +102,23 @@ export default function AdminCoupons() {
         <table className="w-full text-left">
           <thead className="bg-white/20 border-b border-white/30">
             <tr>
-              {["Code", "Discount", "Min Order", "Uses", "Status", "Actions"].map((h) => (
+              {["Code", "Discount", "Min Order", "Uses", "Expires", "Status", "Actions"].map((h) => (
                 <th key={h} className="px-6 py-4 text-sm font-medium text-blue-950">{h}</th>
               ))}
             </tr>
           </thead>
           <tbody className="divide-y divide-white/20">
             {loading ? (
-              <tr><td colSpan={6} className="px-6 py-8 text-center text-blue-800">Loading...</td></tr>
+              <tr><td colSpan={7} className="px-6 py-8 text-center text-blue-800">Loading...</td></tr>
             ) : coupons.length === 0 ? (
-              <tr><td colSpan={6} className="px-6 py-8 text-center text-blue-800">No coupons yet.</td></tr>
+              <tr><td colSpan={7} className="px-6 py-8 text-center text-blue-800">No coupons yet.</td></tr>
             ) : coupons.map((c) => (
-              <tr key={c.id} className="hover:bg-white/10 transition-colors">
+              <tr key={c.id} className={`hover:bg-white/10 transition-colors ${isExpired(c) ? "opacity-60" : ""}`}>
                 <td className="px-6 py-4">
                   <div className="flex items-center gap-2">
                     <Tag className="w-4 h-4 text-blue-500" />
                     <span className="font-mono font-bold text-blue-950">{c.code}</span>
+                    {isExpired(c) && <span className="text-xs text-red-600 font-medium bg-red-50 px-1.5 py-0.5 rounded">Expired</span>}
                   </div>
                 </td>
                 <td className="px-6 py-4 text-sm text-blue-900">
@@ -109,6 +126,16 @@ export default function AdminCoupons() {
                 </td>
                 <td className="px-6 py-4 text-sm text-blue-900">${c.minOrder}</td>
                 <td className="px-6 py-4 text-sm text-blue-900">{c.uses}{c.maxUses ? ` / ${c.maxUses}` : ""}</td>
+                <td className="px-6 py-4 text-sm text-blue-900">
+                  {c.expiryDate ? (
+                    <span className={`flex items-center gap-1 ${isExpired(c) ? "text-red-600" : "text-blue-900"}`}>
+                      <CalendarDays className="w-3.5 h-3.5" />
+                      {new Date(c.expiryDate).toLocaleDateString()}
+                    </span>
+                  ) : (
+                    <span className="text-blue-800/40">—</span>
+                  )}
+                </td>
                 <td className="px-6 py-4">
                   <button onClick={() => toggleActive(c)} className="flex items-center gap-1 text-sm font-medium">
                     {c.active
@@ -141,7 +168,7 @@ export default function AdminCoupons() {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-blue-900/80 mb-1">Type</label>
-                <select value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value as any })} className="w-full glass-card rounded-lg px-3 py-2 text-blue-950 border-white/40 focus:ring-2 focus:ring-blue-400 focus:outline-none">
+                <select value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value as "percentage" | "fixed" })} className="w-full glass-card rounded-lg px-3 py-2 text-blue-950 border-white/40 focus:ring-2 focus:ring-blue-400 focus:outline-none">
                   <option value="percentage">Percentage (%)</option>
                   <option value="fixed">Fixed ($)</option>
                 </select>
@@ -160,6 +187,10 @@ export default function AdminCoupons() {
                 <label className="block text-sm font-medium text-blue-900/80 mb-1">Max Uses (blank = unlimited)</label>
                 <input type="number" min="1" value={form.maxUses} onChange={(e) => setForm({ ...form, maxUses: e.target.value })} placeholder="∞" className="w-full glass-card rounded-lg px-3 py-2 text-blue-950 border-white/40 focus:ring-2 focus:ring-blue-400 focus:outline-none" />
               </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-blue-900/80 mb-1 flex items-center gap-1.5"><CalendarDays className="w-3.5 h-3.5" /> Expiry Date (blank = no expiry)</label>
+              <input type="date" value={form.expiryDate} onChange={(e) => setForm({ ...form, expiryDate: e.target.value })} min={new Date().toISOString().split("T")[0]} className="w-full glass-card rounded-lg px-3 py-2 text-blue-950 border-white/40 focus:ring-2 focus:ring-blue-400 focus:outline-none" />
             </div>
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setOpen(false)} className="glass-card text-blue-900 border-white/40">Cancel</Button>
