@@ -18,7 +18,7 @@ import {
 import { auth, isFirebaseConfigured } from "@/lib/firebase";
 import { apiFetch } from "@/lib/api";
 
-type AuthUser = { id: string; name: string; email: string };
+type AuthUser = { id: string; name: string; email: string; emailVerified: boolean };
 
 type AuthContextValue = {
   user: AuthUser | null;
