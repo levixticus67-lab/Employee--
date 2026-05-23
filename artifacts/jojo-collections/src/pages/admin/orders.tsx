@@ -82,7 +82,7 @@ export default function AdminOrders() {
   const [shippingInput,   setShippingInput]   = useState("");
   const [settingShipping, setSettingShipping] = useState(false);
 
-  const { format, symbol } = useCurrency();
+  const { format, symbol, convert, rates, currency } = useCurrency();
   const queryStatus    = !["active","all"].includes(filterMode) ? filterMode : undefined;
   const includeArchived = filterMode === "all";
 
@@ -117,8 +117,11 @@ export default function AdminOrders() {
   };
 
   const handleRecordPayment = async () => {
-    const amount = parseFloat(paymentAmount);
-    if (!amount || amount <= 0 || !selectedOrder) return;
+    const displayAmount = parseFloat(paymentAmount);
+    if (!displayAmount || displayAmount <= 0 || !selectedOrder) return;
+    // Convert from display currency back to USD for the API
+    const rate = rates[currency] ?? 1;
+    const amount = displayAmount / rate;
     setRecordingPayment(true);
     try {
       const res = await apiFetch(`/api/admin/orders/${selectedOrder.id}/payment`, {
@@ -133,8 +136,11 @@ export default function AdminOrders() {
   };
 
   const handleSetShipping = async () => {
-    const amount = parseFloat(shippingInput);
-    if (isNaN(amount) || amount < 0 || !selectedOrder) return;
+    const displayAmount = parseFloat(shippingInput);
+    if (isNaN(displayAmount) || displayAmount < 0 || !selectedOrder) return;
+    // Convert from display currency back to USD for the API
+    const rate = rates[currency] ?? 1;
+    const amount = displayAmount / rate;
     setSettingShipping(true);
     try {
       const res = await apiFetch(`/api/admin/orders/${selectedOrder.id}/shipping`, {
@@ -348,9 +354,9 @@ export default function AdminOrders() {
                 <p className="text-xs text-blue-800/70 mb-3">Review the customer's address and items, then enter the delivery cost. Enter 0 for free delivery.</p>
                 <div className="flex gap-2 items-end">
                   <div className="flex-1">
-                    <label className="block text-[11px] font-medium text-blue-700/70 mb-1">Amount ({symbol})</label>
-                    <input type="number" min="0" step="0.01" value={shippingInput}
-                      onChange={(e) => setShippingInput(e.target.value)} placeholder="0.00"
+                    <label className="block text-[11px] font-medium text-blue-700/70 mb-1">Amount in {symbol.trim() ? symbol.trim() : currency}</label>
+                    <input type="number" min="0" step={currency === "UGX" ? "1" : "0.01"} value={shippingInput}
+                      onChange={(e) => setShippingInput(e.target.value)} placeholder={currency === "UGX" ? "0" : "0.00"}
                       className="w-full glass-card rounded-xl px-4 py-2 text-blue-950 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 border-white/40" />
                   </div>
                   <Button onClick={handleSetShipping} disabled={settingShipping || shippingInput === ""} className="rounded-xl text-sm h-auto py-2 px-4">
@@ -377,8 +383,8 @@ export default function AdminOrders() {
                 <p className="text-xs text-blue-800/60 mb-3">Record the amount collected at delivery.</p>
                 <div className="flex gap-2 items-end">
                   <div className="flex-1">
-                    <label className="block text-[11px] font-medium text-blue-700/70 mb-1">Amount received ({symbol})</label>
-                    <input type="number" min="0.01" step="0.01" placeholder="0.00"
+                    <label className="block text-[11px] font-medium text-blue-700/70 mb-1">Amount received in {symbol.trim() ? symbol.trim() : currency}</label>
+                    <input type="number" min="0.01" step={currency === "UGX" ? "1" : "0.01"} placeholder={currency === "UGX" ? "0" : "0.00"}
                       value={paymentAmount} onChange={(e) => setPaymentAmount(e.target.value)}
                       className="w-full glass-card rounded-xl px-4 py-2.5 text-blue-950 border-white/40 focus:outline-none focus:ring-2 focus:ring-blue-400" />
                   </div>
@@ -387,7 +393,7 @@ export default function AdminOrders() {
                     {recordingPayment ? "..." : "Record"}
                   </Button>
                 </div>
-                <button onClick={() => setPaymentAmount(selectedOrder.total.toFixed(2))} className="mt-2 text-xs text-blue-600 hover:underline">
+                <button onClick={() => setPaymentAmount(currency === 'UGX' ? String(Math.round(convert(selectedOrder.total))) : convert(selectedOrder.total).toFixed(2))} className="mt-2 text-xs text-blue-600 hover:underline">
                   Fill full amount: {format(selectedOrder.total)}
                 </button>
               </div>
