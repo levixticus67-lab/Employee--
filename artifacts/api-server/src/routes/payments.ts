@@ -7,6 +7,7 @@ import express, { Router, type IRouter } from "express";
   } from "@workspace/db";
   import { CreateOrderBody } from "@workspace/api-zod";
   import { loadOrderById } from "./orders";
+import { getUsdToUgxRate } from "../lib/exchangeRate";
 
   const router: IRouter = Router();
 
@@ -20,11 +21,10 @@ import express, { Router, type IRouter } from "express";
   const FRONTEND_URL    = (process.env["FRONTEND_URL"]            ?? "").replace(/\/$/, "");
   const BACKEND_URL     = (process.env["RENDER_EXTERNAL_URL"] ?? process.env["BACKEND_URL"] ?? "").replace(/\/$/, "");
 
-  // Currency: prices in the DB are stored in USD. Pesapal transacts in UGX.
-  // Set USD_TO_UGX_RATE on Render to the current exchange rate (default 3700).
-  // Set PESAPAL_CURRENCY if you ever switch to a different currency (default UGX).
-  const PESAPAL_CURRENCY    = process.env["PESAPAL_CURRENCY"]    ?? "UGX";
-  const USD_TO_PESAPAL_RATE = parseFloat(process.env["USD_TO_UGX_RATE"] ?? "3700");
+  // Currency: DB prices are stored in USD. Pesapal transacts in UGX.
+  // Exchange rate is fetched live from open.er-api.com (1h cache) via getUsdToUgxRate().
+  // Set PESAPAL_CURRENCY if you ever switch currency (default UGX).
+  const PESAPAL_CURRENCY = process.env["PESAPAL_CURRENCY"] ?? "UGX";
 
   interface TokenCache { value: string; expiresAt: number }
   let tokenCache: TokenCache | null = null;
@@ -226,10 +226,11 @@ import express, { Router, type IRouter } from "express";
       // - If the customer chose to pay a partial deposit, use that amount (clamped to [1, total])
       // - Otherwise charge the full order total
       // Amounts in DB are USD; Pesapal requires UGX — multiply by the exchange rate.
+      const ugxRate = await getUsdToUgxRate();
       const chargeUSD = (partialAmountInput && partialAmountInput > 0 && partialAmountInput < finalTotal)
         ? Math.min(partialAmountInput, finalTotal)
         : finalTotal;
-      const pesapalAmount = Math.round(chargeUSD * USD_TO_PESAPAL_RATE);
+      const pesapalAmount = Math.round(chargeUSD * ugxRate);
       const isPartialPayment = chargeUSD < finalTotal;
 
       const submitRes = await fetch(`${PESAPAL_BASE}/api/Transactions/SubmitOrderRequest`, {
@@ -331,7 +332,8 @@ import express, { Router, type IRouter } from "express";
           // Pesapal reports the confirmed amount in the transaction currency (UGX).
           // Convert back to USD for amountPaid so it's comparable to order.total.
           const confirmedUGX = statusData.amount ?? 0;
-          const confirmedUSD = Math.round((confirmedUGX / USD_TO_PESAPAL_RATE) * 100) / 100;
+          const ipnRate = await getUsdToUgxRate();
+          const confirmedUSD = Math.round((confirmedUGX / ipnRate) * 100) / 100;
           const newAmountPaid = confirmedUSD;
           // If the confirmed payment covers the full order total, mark as paid.
           // If only a deposit was paid, mark as pending (balance owed at delivery).
@@ -393,7 +395,8 @@ import express, { Router, type IRouter } from "express";
       const token      = await getPesapalToken();
       const statusData = await queryTransactionStatus(token, raw["pesapalTrackingId"] as string);
       if (statusData.payment_status_description?.toUpperCase() === "COMPLETED" || statusData.status_code === 1) {
-        const confirmedUSD = Math.round(((statusData.amount ?? 0) / USD_TO_PESAPAL_RATE) * 100) / 100;
+        const statusRate = await getUsdToUgxRate();
+      const confirmedUSD = Math.round(((statusData.amount ?? 0) / statusRate) * 100) / 100;
         const newStatus    = confirmedUSD >= order.total - 0.01 ? "paid" : "pending";
         await orderRef.update({ paymentStatus: newStatus, amountPaid: confirmedUSD });
       }
