@@ -36,10 +36,7 @@ import express, { Router, type IRouter } from "express";
       body: JSON.stringify({ consumer_key: CONSUMER_KEY, consumer_secret: CONSUMER_SECRET }),
     });
     const data = (await res.json()) as { token?: string; expiryDate?: string; error?: unknown };
-    if (!data.token) {
-      const detail = JSON.stringify(data.error ?? data);
-      throw new Error(`Pesapal auth failed (env=${PESAPAL_ENV}): ${detail}`);
-    }
+    if (!data.token) throw new Error(`Pesapal auth failed: ${JSON.stringify(data.error ?? data)}`);
     tokenCache = { value: data.token, expiresAt: new Date(data.expiryDate!).getTime() };
     return data.token;
   }
@@ -47,13 +44,6 @@ import express, { Router, type IRouter } from "express";
   let cachedIpnId: string | null = STORED_IPN_ID || null;
   async function getOrRegisterIpnId(token: string): Promise<string> {
     if (cachedIpnId) return cachedIpnId;
-    if (!BACKEND_URL) {
-      throw new Error(
-        "Cannot register Pesapal IPN: BACKEND_URL / RENDER_EXTERNAL_URL env var is not set. " +
-        "Set it to your API server's public URL (e.g. https://jojo-api.onrender.com) on Render, " +
-        "or pre-register the IPN in the Pesapal dashboard and set PESAPAL_IPN_ID."
-      );
-    }
     const ipnUrl = `${BACKEND_URL}/api/payments/ipn`;
     const res = await fetch(`${PESAPAL_BASE}/api/URLSetup/RegisterIPN`, {
       method: "POST", headers: { "Content-Type": "application/json", Accept: "application/json", Authorization: `Bearer ${token}` },
