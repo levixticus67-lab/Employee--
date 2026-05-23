@@ -4,7 +4,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Button } from "@/components/ui/button";
 import {
   Package, MapPin, CreditCard, Phone, Wallet, Trash2, CheckCircle2,
-  Truck, Gift, ShieldCheck, AlertCircle, Loader2,
+  Truck, Gift, ShieldCheck, AlertCircle, Loader2, MessageSquare,
 } from "lucide-react";
 import { toast } from "sonner";
 import { apiFetch } from "@/lib/api";
@@ -195,9 +195,15 @@ export default function AdminOrders() {
                   <td className="px-6 py-4 font-mono text-sm text-blue-900">{order.id.slice(0,8)}</td>
                   <td className="px-6 py-4 text-sm text-blue-800/80">{new Date(order.createdAt).toLocaleDateString()}</td>
                   <td className="px-6 py-4">
-                    <p className="font-medium text-blue-950">{order.customerName}</p>
+                    <div className="flex items-center gap-1.5">
+                      <p className="font-medium text-blue-950">{order.customerName}</p>
+                      {order.giftWrapping && <span title="Gift order" className="text-base leading-none">🎁</span>}
+                    </div>
                     <p className="text-xs text-blue-800/70">{order.customerEmail}</p>
-                    {order.paymentNumber && <p className="text-xs text-blue-600 font-mono">{order.paymentNumber}</p>}
+                    {order.buyerPhone && (
+                      <p className="text-[11px] text-blue-600 font-medium mt-0.5">📞 {order.buyerPhone}</p>
+                    )}
+                    {order.paymentNumber && <p className="text-xs text-blue-600/70 font-mono">{order.paymentNumber}</p>}
                   </td>
                   <td className="px-6 py-4 font-medium text-blue-950">{format(order.total)}</td>
                   <td className="px-6 py-4">
@@ -285,9 +291,12 @@ export default function AdminOrders() {
                 <p className="text-sm font-medium text-blue-950">{selectedOrder.customerName}</p>
                 <p className="text-sm text-blue-800/80">{selectedOrder.customerEmail}</p>
                 {selectedOrder.buyerPhone && (
-                  <div className="flex items-center gap-1.5 mt-1.5 text-sm text-blue-700">
-                    <Phone className="w-3.5 h-3.5 text-blue-500" />
-                    <a href={`tel:${selectedOrder.buyerPhone}`} className="hover:underline font-medium">{selectedOrder.buyerPhone}</a>
+                  <div className="mt-2 flex items-center gap-2.5 bg-blue-50/50 border border-blue-200/50 rounded-lg px-3 py-2">
+                    <Phone className="w-4 h-4 text-blue-500 flex-shrink-0" />
+                    <div>
+                      <p className="text-[10px] font-bold text-blue-600 uppercase tracking-wide">Follow-up contact</p>
+                      <a href={"tel:" + selectedOrder.buyerPhone} className="text-sm font-semibold text-blue-900 hover:underline">{selectedOrder.buyerPhone}</a>
+                    </div>
                   </div>
                 )}
                 <div className="mt-2 text-sm text-blue-800/80 whitespace-pre-line">{selectedOrder.shippingAddress}</div>
@@ -345,6 +354,31 @@ export default function AdminOrders() {
               </div>
             </div>
 
+
+            {/* Gift order indicator */}
+            {selectedOrder.giftWrapping && (
+              <div className="glass-card rounded-xl p-4 border-pink-200/50 bg-pink-50/10 mb-6">
+                <div className="flex items-start gap-3">
+                  <span className="text-2xl leading-none mt-0.5 flex-shrink-0">🎁</span>
+                  <div className="flex-1">
+                    <p className="text-sm font-semibold text-pink-800 mb-1">Gift Order — wrap beautifully before delivering</p>
+                    {selectedOrder.giftNote ? (
+                      <div>
+                        <div className="flex items-center gap-1.5 mb-1">
+                          <MessageSquare className="w-3.5 h-3.5 text-pink-400" />
+                          <span className="text-[10px] font-bold text-pink-600 uppercase tracking-wide">Gift message from customer</span>
+                        </div>
+                        <p className="text-sm text-pink-900 italic leading-relaxed bg-pink-50/60 rounded-lg px-3 py-2.5 border border-pink-200/50">
+                          &ldquo;{selectedOrder.giftNote}&rdquo;
+                        </p>
+                      </div>
+                    ) : (
+                      <p className="text-xs text-pink-700/70">No personal message — wrap and surprise!</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
             {/* Shipping fee */}
             {!selectedOrder.shippingConfirmed ? (
               <div className="glass-card rounded-xl p-4 border-orange-200/50 bg-orange-50/10 mb-6">
