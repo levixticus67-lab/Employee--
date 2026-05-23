@@ -1,4 +1,5 @@
-import { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import { createContext, useContext, useState, useEffect, type ReactNode } from "react";
+import { useAuth } from "@/components/auth-context";
 
 interface WishlistContextType {
   wishlist: string[];
@@ -9,25 +10,39 @@ interface WishlistContextType {
 
 const WishlistContext = createContext<WishlistContextType | undefined>(undefined);
 
+function storageKey(firebaseUid: string | null | undefined): string {
+  return firebaseUid ? `jojo-wishlist-${firebaseUid}` : "jojo-wishlist-guest";
+}
+
 export function WishlistProvider({ children }: { children: ReactNode }) {
+  const { user } = useAuth();
+  const uid = user?.firebaseUid ?? null;
+  const key = storageKey(uid);
+
   const [wishlist, setWishlist] = useState<string[]>(() => {
     try {
-      const saved = localStorage.getItem("jojo-wishlist");
-      return saved ? JSON.parse(saved) : [];
-    } catch {
-      return [];
-    }
+      const saved = localStorage.getItem(key);
+      return saved ? (JSON.parse(saved) as string[]) : [];
+    } catch { return []; }
   });
 
+  // Reload whenever the user changes (login / logout / uid hydration)
   useEffect(() => {
-    try { localStorage.setItem("jojo-wishlist", JSON.stringify(wishlist)); } catch {}
-  }, [wishlist]);
+    try {
+      const saved = localStorage.getItem(key);
+      setWishlist(saved ? (JSON.parse(saved) as string[]) : []);
+    } catch { setWishlist([]); }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key]);
 
-  const toggle = (productId: string) => {
+  useEffect(() => {
+    try { localStorage.setItem(key, JSON.stringify(wishlist)); } catch {}
+  }, [wishlist, key]);
+
+  const toggle = (productId: string) =>
     setWishlist((prev) =>
-      prev.includes(productId) ? prev.filter((id) => id !== productId) : [...prev, productId]
+      prev.includes(productId) ? prev.filter((id) => id !== productId) : [...prev, productId],
     );
-  };
 
   const isWishlisted = (productId: string) => wishlist.includes(productId);
 
