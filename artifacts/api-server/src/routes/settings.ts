@@ -1,6 +1,7 @@
 import { Router, type IRouter } from "express";
 import { firestore } from "@workspace/db";
 import { requireAdmin } from "../middlewares/requireAdmin";
+import { getLiveRates } from "../lib/exchangeRate";
 
 const router: IRouter = Router();
 const SETTINGS_DOC = "settings/global";
@@ -110,6 +111,16 @@ router.get("/admin/low-stock", requireAdmin, async (_req, res) => {
   } catch {
     res.json([]);
   }
+});
+
+router.get("/exchange-rates", async (_req, res) => {
+  const rates = await getLiveRates();
+  res.json({
+    USD: 1,
+    UGX: rates["UGX"] ?? 3700,
+    EUR: rates["EUR"] ?? 0.92,
+    GBP: rates["GBP"] ?? 0.79,
+  });
 });
 
 export default router;
