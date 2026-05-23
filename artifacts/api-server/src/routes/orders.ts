@@ -7,6 +7,28 @@ import {
 import { CreateOrderBody } from "@workspace/api-zod";
 
 const router: IRouter = Router();
+// Simple in-memory rate limiter — prevents bots spamming POST /orders
+const orderRateLimiter = new Map<string, { count: number; resetAt: number }>();
+function checkOrderRateLimit(ip: string): boolean {
+  const now = Date.now();
+  const window = 15 * 60 * 1000; // 15-minute window
+  const maxPerWindow = 8; // max 8 orders per IP per 15 min
+  const entry = orderRateLimiter.get(ip);
+  if (!entry || now > entry.resetAt) {
+    orderRateLimiter.set(ip, { count: 1, resetAt: now + window });
+    return true;
+  }
+  if (entry.count >= maxPerWindow) return false;
+  entry.count++;
+  return true;
+}
+// Purge old entries every 30 minutes to prevent memory leak
+setInterval(() => {
+  const now = Date.now();
+  for (const [k, v] of orderRateLimiter) { if (now > v.resetAt) orderRateLimiter.delete(k); }
+}, 30 * 60 * 1000);
+
+
 
 function tsToIso(value: unknown): string {
   if (value instanceof Timestamp) return value.toDate().toISOString();
@@ -74,6 +96,11 @@ router.get("/orders/by-email/:email", async (req, res) => {
 });
 
 router.post("/orders", async (req, res) => {
+  const ip = (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() ?? req.socket.remoteAddress ?? "unknown";
+  if (!checkOrderRateLimit(ip)) {
+    res.status(429).json({ error: "Too many orders placed from this connection — please wait a few minutes and try again." });
+    return;
+  }
   const parsed = CreateOrderBody.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: "Invalid order payload" }); return; }
   const body    = parsed.data;
@@ -143,21 +170,37 @@ router.post("/orders", async (req, res) => {
         subtotal += itemPrice * reqItem.quantity;
       }
 
-      if (couponInput) {
-        const cSnap = await firestore.collection(COLLECTIONS.coupons).where("code", "==", couponInput.toUpperCase().trim()).get();
-        if (!cSnap.empty) {
-          const cDoc = cSnap.docs[0]!;
-          const c    = cDoc.data() as CouponDoc;
+      if (couponInput && preFetchedCouponId) {
+        // Use predictable document IDs as mutex locks — strongly consistent inside transaction
+        const sanitize = (s: string) => s.replace(/[^a-zA-Z0-9_-]/g, "_").slice(0, 64);
+        const couponRef   = firestore.collection(COLLECTIONS.coupons).doc(preFetchedCouponId);
+        const userLockId  = canonicalUid   ? `${preFetchedCouponId}_u_${sanitize(canonicalUid)}`   : null;
+        const phoneLockId = paymentNumber  ? `${preFetchedCouponId}_p_${sanitize(paymentNumber)}` : null;
+        const userLockRef  = userLockId  ? firestore.collection(COLLECTIONS.couponUsages).doc(userLockId)  : null;
+        const phoneLockRef = phoneLockId ? firestore.collection(COLLECTIONS.couponUsages).doc(phoneLockId) : null;
+
+        // Read the coupon and any existing lock docs inside the transaction (ACID guarantee)
+        const couponSnap   = await tx.get(couponRef);
+        const userLockSnap  = userLockRef  ? await tx.get(userLockRef)  : null;
+        const phoneLockSnap = phoneLockRef ? await tx.get(phoneLockRef) : null;
+
+        if (userLockSnap?.exists)  throw new Error("This account has already redeemed this promotion.");
+        if (phoneLockSnap?.exists) throw new Error("This payment number has already redeemed this promotion.");
+
+        if (couponSnap.exists) {
+          const c = couponSnap.data() as CouponDoc;
           const expired = c.expiryDate ? new Date(c.expiryDate) < new Date() : false;
           if (c.active && !expired && (c.maxUses === null || c.uses < c.maxUses) && subtotal >= c.minOrder) {
             discount   = c.type === "percentage" ? Math.round((subtotal * c.value / 100) * 100) / 100 : Math.min(c.value, subtotal);
             couponCode = c.code;
-            tx.update(cDoc.ref, { uses: (c.uses ?? 0) + 1 });
+            tx.update(couponRef, { uses: (c.uses ?? 0) + 1 });
+            // Write lock documents — next concurrent transaction will see these and be blocked
+            if (userLockRef)  tx.set(userLockRef,  { couponId: preFetchedCouponId, userId: canonicalUid, type: "user_lock",  createdAt: Timestamp.now() });
+            if (phoneLockRef) tx.set(phoneLockRef, { couponId: preFetchedCouponId, userId: canonicalUid, type: "phone_lock", payerPhoneNumber: paymentNumber ?? "", createdAt: Timestamp.now() });
+            // Human-readable record for admin history
             tx.set(firestore.collection(COLLECTIONS.couponUsages).doc(), {
-              couponId: cDoc.id,
-              userId: canonicalUid,
-              payerPhoneNumber: paymentNumber ?? "",
-              createdAt: Timestamp.now(),
+              couponId: preFetchedCouponId, userId: canonicalUid,
+              payerPhoneNumber: paymentNumber ?? "", createdAt: Timestamp.now(),
             } satisfies CouponUsageDoc);
           }
         }
