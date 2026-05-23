@@ -92,6 +92,10 @@ export type OrderDoc = {
   txRef: string | null;
   /** Pesapal's order_tracking_id from SubmitOrderRequest response */
   pesapalTrackingId: string | null;
+  /** Customer requested gift wrapping */
+  giftWrapping?: boolean;
+  /** Personal message for gift orders */
+  giftNote?: string | null;
   createdAt: Timestamp;
 };
 
