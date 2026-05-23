@@ -97,6 +97,8 @@ import { getUsdToUgxRate } from "../lib/exchangeRate";
     // Partial payment: amount (USD) the customer wants to pay now via Pesapal.
     // Must be > 0 and <= order total. Defaults to full total if not provided.
     const partialAmountInput = rawBody["amountToPay"] as number | undefined;
+    const giftWrapping = Boolean(rawBody["giftWrapping"] ?? false);
+    const giftNote     = (rawBody["giftNote"] as string | undefined) ?? null;
     const isOnline = paymentMethod !== "cash_on_delivery";
 
     const userId       = req.session?.userId      ?? null;
@@ -195,6 +197,7 @@ import { getUsdToUgxRate } from "../lib/exchangeRate";
           status: "pending",
           statusHistory: [{ status: "pending", timestamp: new Date().toISOString() }],
           archived: false, txRef: isOnline ? txRef : null, pesapalTrackingId: null,
+          giftWrapping, giftNote,
           createdAt: Timestamp.now(),
         };
         tx.set(newOrderRef, order);
