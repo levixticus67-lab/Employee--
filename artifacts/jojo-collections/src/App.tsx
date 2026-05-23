@@ -38,7 +38,8 @@ import AdminBlog     from "@/pages/admin/blog";
 import AdminAnalytics from "@/pages/admin/analytics";
 import AdminSettings from "@/pages/admin/settings";
 import AdminStorage  from "@/pages/admin/storage";
-import BulkImport    from "@/pages/admin/bulk-import";
+import BulkImport       from "@/pages/admin/bulk-import";
+import AdminExchangeRates from "@/pages/admin/exchange-rates";
 
 const queryClient = new QueryClient();
 
@@ -122,7 +123,8 @@ function Router() {
       {/* ── Admin ── */}
       <Route path="/admin/login" component={AdminLoginPage} />
       <Route path="/admin">           <AdminRoute><Dashboard /></AdminRoute></Route>
-      <Route path="/admin/analytics"> <AdminRoute><AdminAnalytics /></AdminRoute></Route>
+      <Route path="/admin/analytics">      <AdminRoute><AdminAnalytics /></AdminRoute></Route>
+      <Route path="/admin/exchange-rates"><AdminRoute><AdminExchangeRates /></AdminRoute></Route>
       <Route path="/admin/products">  <AdminRoute><AdminProducts /></AdminRoute></Route>
       <Route path="/admin/orders">    <AdminRoute><AdminOrders /></AdminRoute></Route>
       <Route path="/admin/reviews">   <AdminRoute><AdminReviews /></AdminRoute></Route>
