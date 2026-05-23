@@ -45,6 +45,7 @@ export type OrderDto = {
   shippingConfirmed: boolean; freeDelivery: boolean;
   statusHistory: { status: string; timestamp: string }[]; createdAt: string;
   archived: boolean; txRef: string | null; pesapalTrackingId: string | null;
+  giftWrapping: boolean; giftNote: string | null;
 };
 
 function docToDto(id: string, d: OrderDoc): OrderDto {
@@ -63,6 +64,8 @@ function docToDto(id: string, d: OrderDoc): OrderDto {
     createdAt: tsToIso(d.createdAt), archived: d.archived ?? false,
     txRef: (raw["txRef"] as string | null) ?? null,
     pesapalTrackingId: (raw["pesapalTrackingId"] as string | null) ?? null,
+    giftWrapping: Boolean(raw["giftWrapping"] ?? false),
+    giftNote: (raw["giftNote"] as string | null) ?? null,
   };
 }
 
