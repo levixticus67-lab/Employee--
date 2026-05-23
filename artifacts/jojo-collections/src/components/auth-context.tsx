@@ -11,14 +11,19 @@ import {
   useLogin,
   useSignup,
   useLogout,
-  useAdminLogin,
   useAdminLogout,
   getGetCurrentUserQueryKey,
 } from "@workspace/api-client-react";
 import { auth, isFirebaseConfigured } from "@/lib/firebase";
 import { apiFetch } from "@/lib/api";
 
-type AuthUser = { id: string; name: string; email: string; emailVerified: boolean };
+type AuthUser = {
+  id: string;
+  name: string;
+  email: string;
+  emailVerified: boolean;
+  firebaseUid: string | null;
+};
 
 type AuthContextValue = {
   user: AuthUser | null;
@@ -27,7 +32,7 @@ type AuthContextValue = {
   login: (email: string, password: string) => Promise<void>;
   signup: (name: string, email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
-  adminLogin: (password: string) => Promise<void>;
+  adminLogin: (email: string, password: string) => Promise<void>;
   adminLogout: () => Promise<void>;
   refresh: () => Promise<void>;
   resendVerificationEmail: () => Promise<void>;
@@ -36,10 +41,7 @@ type AuthContextValue = {
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 export class EmailVerificationSentError extends Error {
-  constructor() {
-    super("EMAIL_VERIFICATION_SENT");
-    this.name = "EmailVerificationSentError";
-  }
+  constructor() { super("EMAIL_VERIFICATION_SENT"); this.name = "EmailVerificationSentError"; }
 }
 
 export class EmailNotVerifiedError extends Error {
@@ -50,38 +52,30 @@ export class EmailNotVerifiedError extends Error {
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const qc = useQueryClient();
+  const qc    = useQueryClient();
   const meKey = getGetCurrentUserQueryKey();
   const { data, isLoading } = useGetCurrentUser({
     query: { staleTime: 60_000, retry: false } as any,
   });
 
-  const refresh = async () => {
-    await qc.invalidateQueries({ queryKey: meKey });
-  };
+  const refresh = async () => { await qc.invalidateQueries({ queryKey: meKey }); };
 
-  const loginMut = useLogin();
-  const signupMut = useSignup();
-  const logoutMut = useLogout();
-  const adminLoginMut = useAdminLogin();
+  const loginMut       = useLogin();
+  const signupMut      = useSignup();
+  const logoutMut      = useLogout();
   const adminLogoutMut = useAdminLogout();
 
   const value: AuthContextValue = {
-    user: (data?.user as AuthUser | null | undefined) ?? null,
+    user:    (data?.user as AuthUser | null | undefined) ?? null,
     isAdmin: Boolean(data?.isAdmin),
     loading: isLoading,
     refresh,
 
     signup: async (name, email, password) => {
       if (isFirebaseConfigured && auth) {
-        let firebaseUid: string | null = null;
         try {
           const credential = await createUserWithEmailAndPassword(auth, email, password);
-          firebaseUid = credential.user.uid;
           await sendEmailVerification(credential.user);
-          // Keep the Firebase user signed in so resendVerificationEmail can work.
-          // The backend session is NOT established for unverified users, so
-          // protected routes remain inaccessible until email is verified.
         } catch (fbErr: unknown) {
           const code = (fbErr as { code?: string }).code ?? "";
           if (code === "auth/email-already-in-use") {
@@ -94,7 +88,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         await apiFetch("/api/auth/signup", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ name, email, password, firebaseUid }),
+          body: JSON.stringify({ name, email, password, firebaseUid: auth.currentUser?.uid }),
         });
         throw new EmailVerificationSentError();
       } else {
@@ -104,9 +98,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     },
 
     resendVerificationEmail: async () => {
-      if (!auth || !auth.currentUser) {
-        throw new Error("No pending verification session found. Please sign up again.");
-      }
+      if (!auth || !auth.currentUser) throw new Error("No pending verification session found. Please sign up again.");
       await sendEmailVerification(auth.currentUser);
     },
 
@@ -115,24 +107,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         let idToken: string;
         try {
           const credential = await signInWithEmailAndPassword(auth, email, password);
-          if (!credential.user.emailVerified) {
-            await firebaseSignOut(auth);
-            throw new EmailNotVerifiedError();
-          }
+          if (!credential.user.emailVerified) { await firebaseSignOut(auth); throw new EmailNotVerifiedError(); }
           idToken = await credential.user.getIdToken();
           await firebaseSignOut(auth);
         } catch (fbErr: unknown) {
           if (fbErr instanceof EmailNotVerifiedError) throw fbErr;
           const code = (fbErr as { code?: string }).code ?? "";
-          if (
-            code === "auth/user-not-found" ||
-            code === "auth/wrong-password" ||
-            code === "auth/invalid-credential" ||
-            code === "auth/invalid-email"
-          ) {
-            throw Object.assign(new Error("Invalid email or password"), {
-              data: { error: "Invalid email or password" },
-            });
+          if (["auth/user-not-found","auth/wrong-password","auth/invalid-credential","auth/invalid-email"].includes(code)) {
+            throw Object.assign(new Error("Invalid email or password"), { data: { error: "Invalid email or password" } });
           }
           throw fbErr;
         }
@@ -143,7 +125,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         });
         if (!res.ok) {
           const body = (await res.json().catch(() => ({}))) as Record<string, unknown>;
-          const msg = (body["error"] as string | undefined) ?? "Login failed";
+          const msg  = (body["error"] as string | undefined) ?? "Login failed";
           throw Object.assign(new Error(msg), { data: { error: msg } });
         }
         await refresh();
@@ -153,18 +135,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     },
 
-    logout: async () => {
-      await logoutMut.mutateAsync();
+    logout: async () => { await logoutMut.mutateAsync(); await refresh(); },
+
+    adminLogin: async (email: string, password: string) => {
+      const res = await apiFetch("/api/admin/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      });
+      if (!res.ok) {
+        const body = (await res.json().catch(() => ({}))) as Record<string, unknown>;
+        throw new Error((body["error"] as string | undefined) ?? "Invalid admin credentials");
+      }
       await refresh();
     },
-    adminLogin: async (password) => {
-      await adminLoginMut.mutateAsync({ data: { password } });
-      await refresh();
-    },
-    adminLogout: async () => {
-      await adminLogoutMut.mutateAsync();
-      await refresh();
-    },
+
+    adminLogout: async () => { await adminLogoutMut.mutateAsync(); await refresh(); },
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
