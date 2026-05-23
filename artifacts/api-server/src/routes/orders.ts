@@ -59,12 +59,15 @@ export async function loadAllOrders(filterStatus?: string, includeArchived?: boo
   return orders;
 }
 
+// Customer: list orders by email — excludes orders hidden by the customer
 router.get("/orders/by-email/:email", async (req, res) => {
   try {
     const email = decodeURIComponent(req.params.email).toLowerCase().trim();
     const snap = await firestore.collection(COLLECTIONS.orders).where("customerEmail", "==", email).get();
     const orders = snap.docs
       .map((d) => docToDto(d.id, d.data() as OrderDoc))
+      // Only show orders the customer hasn't hidden
+      .filter((o) => !(o as unknown as Record<string, unknown>)["hiddenByCustomer"])
       .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
     res.json(orders);
   } catch { res.json([]); }
@@ -152,7 +155,7 @@ router.post("/orders", async (req, res) => {
             tx.update(cDoc.ref, { uses: (c.uses ?? 0) + 1 });
             tx.set(firestore.collection(COLLECTIONS.couponUsages).doc(), {
               couponId: cDoc.id,
-              userId: canonicalUid,         // Firebase UID preferred, Firestore doc ID as fallback
+              userId: canonicalUid,
               payerPhoneNumber: paymentNumber ?? "",
               createdAt: Timestamp.now(),
             } satisfies CouponUsageDoc);
@@ -234,6 +237,8 @@ router.post("/orders/:id/payment", async (req, res) => {
   res.json(await loadOrderById(req.params.id));
 });
 
+// Customer delete: soft-delete only — hides the order from the customer's view
+// but keeps the order document in Firestore so admin logs remain intact.
 router.delete("/orders/:id", async (req, res) => {
   const { email } = req.body as { email?: string };
   const ref  = firestore.collection(COLLECTIONS.orders).doc(req.params.id);
@@ -241,8 +246,11 @@ router.delete("/orders/:id", async (req, res) => {
   if (!snap.exists) { res.status(404).json({ error: "Order not found" }); return; }
   const order = snap.data() as OrderDoc;
   if (email && order.customerEmail.toLowerCase() !== email.toLowerCase()) { res.status(403).json({ error: "Unauthorized" }); return; }
-  if (!["cancelled", "received", "delivered"].includes(order.status)) { res.status(400).json({ error: "Only cancelled or received orders can be deleted" }); return; }
-  await ref.delete();
+  if (!["cancelled", "received", "delivered"].includes(order.status)) {
+    res.status(400).json({ error: "Only cancelled or received orders can be removed" }); return;
+  }
+  // Soft delete: mark as hidden for the customer, do NOT delete the document
+  await ref.update({ hiddenByCustomer: true });
   res.status(204).send();
 });
 
