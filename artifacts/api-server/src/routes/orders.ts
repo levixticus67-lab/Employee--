@@ -16,16 +16,13 @@ function tsToIso(value: unknown): string {
 
 export type OrderDto = {
   id: string; customerName: string; customerEmail: string; shippingAddress: string;
-  buyerPhone: string | null;
-  items: OrderItemDoc[]; subtotal: number; shipping: number; total: number;
-  amountPaid: number; paymentStatus: string;
-  discount: number; couponCode: string | null; paymentMethod: string;
-  paymentNumber: string | null; status: string;
+  buyerPhone: string | null; items: OrderItemDoc[];
+  subtotal: number; shipping: number; total: number; amountPaid: number;
+  paymentStatus: string; discount: number; couponCode: string | null;
+  paymentMethod: string; paymentNumber: string | null; status: string;
   shippingConfirmed: boolean; freeDelivery: boolean;
   statusHistory: { status: string; timestamp: string }[]; createdAt: string;
-  archived: boolean;
-  txRef: string | null;
-  pesapalTrackingId: string | null;
+  archived: boolean; txRef: string | null; pesapalTrackingId: string | null;
 };
 
 function docToDto(id: string, d: OrderDoc): OrderDto {
@@ -38,12 +35,10 @@ function docToDto(id: string, d: OrderDoc): OrderDto {
     amountPaid: Number(d.amountPaid ?? 0), paymentStatus: d.paymentStatus ?? "unpaid",
     discount: Number(d.discount ?? 0), couponCode: d.couponCode ?? null,
     paymentMethod: d.paymentMethod ?? "online", paymentNumber: d.paymentNumber ?? null,
-    shippingConfirmed: d.shippingConfirmed ?? false,
-    freeDelivery: d.freeDelivery ?? false,
+    shippingConfirmed: d.shippingConfirmed ?? false, freeDelivery: d.freeDelivery ?? false,
     status: d.status,
     statusHistory: (d.statusHistory ?? []) as { status: string; timestamp: string }[],
-    createdAt: tsToIso(d.createdAt),
-    archived: d.archived ?? false,
+    createdAt: tsToIso(d.createdAt), archived: d.archived ?? false,
     txRef: (raw["txRef"] as string | null) ?? null,
     pesapalTrackingId: (raw["pesapalTrackingId"] as string | null) ?? null,
   };
@@ -67,8 +62,7 @@ export async function loadAllOrders(filterStatus?: string, includeArchived?: boo
 router.get("/orders/by-email/:email", async (req, res) => {
   try {
     const email = decodeURIComponent(req.params.email).toLowerCase().trim();
-    const snap = await firestore.collection(COLLECTIONS.orders)
-      .where("customerEmail", "==", email).get();
+    const snap = await firestore.collection(COLLECTIONS.orders).where("customerEmail", "==", email).get();
     const orders = snap.docs
       .map((d) => docToDto(d.id, d.data() as OrderDoc))
       .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
@@ -79,46 +73,45 @@ router.get("/orders/by-email/:email", async (req, res) => {
 router.post("/orders", async (req, res) => {
   const parsed = CreateOrderBody.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: "Invalid order payload" }); return; }
-  const body = parsed.data;
+  const body    = parsed.data;
   const rawBody = req.body as Record<string, unknown>;
 
-  const productRefs  = body.items.map((i) => firestore.collection(COLLECTIONS.products).doc(i.productId));
-  const couponInput  = rawBody["couponCode"] as string | undefined;
-  const buyerPhone   = (rawBody["buyerPhone"]   as string) || null;
+  const productRefs   = body.items.map((i) => firestore.collection(COLLECTIONS.products).doc(i.productId));
+  const couponInput   = rawBody["couponCode"] as string | undefined;
+  const buyerPhone    = (rawBody["buyerPhone"]    as string) || null;
   const paymentNumber = (rawBody["paymentNumber"] as string) || null;
   const requestedAmountPaid = Number(rawBody["amountPaid"] ?? 0);
-  const userId = req.session?.userId ?? null;
 
+  // Canonical user identity: Firebase UID preferred, Firestore doc ID as fallback
+  const userId       = req.session?.userId      ?? null;
+  const firebaseUid  = req.session?.firebaseUid  ?? null;
+  const canonicalUid = firebaseUid ?? userId ?? "";
+
+  // Phone binding check
   if (userId && paymentNumber) {
-    const phoneQuery = await firestore.collection(COLLECTIONS.users)
+    const phoneQ = await firestore.collection(COLLECTIONS.users)
       .where("phoneNumber", "==", paymentNumber).limit(1).get();
-    if (!phoneQuery.empty && phoneQuery.docs[0]!.id !== userId) {
-      res.status(400).json({ error: "This phone number is already linked to another account. Please use your own registered payment number." });
-      return;
+    if (!phoneQ.empty && phoneQ.docs[0]!.id !== userId) {
+      res.status(400).json({ error: "This phone number is already linked to another account. Please use your own registered payment number." }); return;
     }
   }
 
+  // Coupon pre-check (outside transaction to give early feedback)
   let preFetchedCouponId: string | null = null;
   if (couponInput) {
     const preCouponSnap = await firestore.collection(COLLECTIONS.coupons)
       .where("code", "==", couponInput.toUpperCase().trim()).limit(1).get();
     if (!preCouponSnap.empty) {
       preFetchedCouponId = preCouponSnap.docs[0]!.id;
-      if (userId) {
-        const usageByUser = await firestore.collection(COLLECTIONS.couponUsages)
-          .where("couponId", "==", preFetchedCouponId).where("userId", "==", userId).limit(1).get();
-        if (!usageByUser.empty) {
-          res.status(400).json({ error: "This account or payment method has already redeemed this promotion." });
-          return;
-        }
+      if (canonicalUid) {
+        const uByUser = await firestore.collection(COLLECTIONS.couponUsages)
+          .where("couponId", "==", preFetchedCouponId).where("userId", "==", canonicalUid).limit(1).get();
+        if (!uByUser.empty) { res.status(400).json({ error: "This account has already redeemed this promotion." }); return; }
       }
       if (paymentNumber) {
-        const usageByPhone = await firestore.collection(COLLECTIONS.couponUsages)
+        const uByPhone = await firestore.collection(COLLECTIONS.couponUsages)
           .where("couponId", "==", preFetchedCouponId).where("payerPhoneNumber", "==", paymentNumber).limit(1).get();
-        if (!usageByPhone.empty) {
-          res.status(400).json({ error: "This account or payment method has already redeemed this promotion." });
-          return;
-        }
+        if (!uByPhone.empty) { res.status(400).json({ error: "This payment number has already redeemed this promotion." }); return; }
       }
     }
   }
@@ -137,37 +130,40 @@ router.post("/orders", async (req, res) => {
       let subtotal = 0;
 
       for (let i = 0; i < productSnaps.length; i++) {
-        const snap = productSnaps[i]!;
+        const snap    = productSnaps[i]!;
         const reqItem = body.items[i]!;
         if (!snap.exists) throw new Error(`Product ${reqItem.productId} not found`);
         const p = snap.data() as ProductDoc;
         if (p.stock < reqItem.quantity) throw new Error(`Insufficient stock for ${p.name}`);
         const itemPrice = Number(p.salePrice ?? p.price ?? 0);
-        items.push({ productId: snap.id, name: p.name ?? "Unknown product", brand: p.brand ?? "", price: itemPrice, quantity: reqItem.quantity, imageUrl: p.imageUrl ?? null });
+        items.push({ productId: snap.id, name: p.name ?? "", brand: p.brand ?? "", price: itemPrice, quantity: reqItem.quantity, imageUrl: p.imageUrl ?? null });
         subtotal += itemPrice * reqItem.quantity;
       }
 
       if (couponInput) {
-        const couponSnap = await firestore.collection(COLLECTIONS.coupons).where("code", "==", couponInput.toUpperCase().trim()).get();
-        if (!couponSnap.empty) {
-          const couponDoc = couponSnap.docs[0]!;
-          const c = couponDoc.data() as CouponDoc;
-          const isExpired = c.expiryDate ? new Date(c.expiryDate) < new Date() : false;
-          if (c.active && !isExpired && (c.maxUses === null || c.uses < c.maxUses) && subtotal >= c.minOrder) {
-            discount = c.type === "percentage" ? Math.round((subtotal * c.value) / 100 * 100) / 100 : Math.min(c.value, subtotal);
+        const cSnap = await firestore.collection(COLLECTIONS.coupons).where("code", "==", couponInput.toUpperCase().trim()).get();
+        if (!cSnap.empty) {
+          const cDoc = cSnap.docs[0]!;
+          const c    = cDoc.data() as CouponDoc;
+          const expired = c.expiryDate ? new Date(c.expiryDate) < new Date() : false;
+          if (c.active && !expired && (c.maxUses === null || c.uses < c.maxUses) && subtotal >= c.minOrder) {
+            discount   = c.type === "percentage" ? Math.round((subtotal * c.value / 100) * 100) / 100 : Math.min(c.value, subtotal);
             couponCode = c.code;
-            tx.update(couponDoc.ref, { uses: c.uses + 1 });
-            const usageRef = firestore.collection(COLLECTIONS.couponUsages).doc();
-            tx.set(usageRef, { couponId: couponDoc.id, userId: userId ?? "", payerPhoneNumber: paymentNumber ?? "", createdAt: Timestamp.now() } satisfies CouponUsageDoc);
+            tx.update(cDoc.ref, { uses: (c.uses ?? 0) + 1 });
+            tx.set(firestore.collection(COLLECTIONS.couponUsages).doc(), {
+              couponId: cDoc.id,
+              userId: canonicalUid,         // Firebase UID preferred, Firestore doc ID as fallback
+              payerPhoneNumber: paymentNumber ?? "",
+              createdAt: Timestamp.now(),
+            } satisfies CouponUsageDoc);
           }
         }
       }
 
-      const orderValue = subtotal - discount;
-      const qualifiesFreeDelivery = freeThreshold > 0 && orderValue >= freeThreshold;
       const total = Math.max(0, subtotal - discount);
+      const qualifyFree = freeThreshold > 0 && total >= freeThreshold;
       const paymentMethod = (rawBody["paymentMethod"] as string) || "online";
-      const amountPaid = Math.min(requestedAmountPaid, total);
+      const amountPaid    = Math.min(requestedAmountPaid, total);
       let paymentStatus: "unpaid" | "partial" | "paid" = "unpaid";
       if (amountPaid >= total) paymentStatus = "paid";
       else if (amountPaid > 0) paymentStatus = "partial";
@@ -177,7 +173,7 @@ router.post("/orders", async (req, res) => {
         shippingAddress: body.shippingAddress, buyerPhone, items,
         subtotal, shipping: 0, total, amountPaid, paymentStatus,
         discount, couponCode, paymentMethod, paymentNumber,
-        shippingConfirmed: qualifiesFreeDelivery, freeDelivery: qualifiesFreeDelivery,
+        shippingConfirmed: qualifyFree, freeDelivery: qualifyFree,
         status: "pending",
         statusHistory: [{ status: "pending", timestamp: new Date().toISOString() }],
         archived: false, txRef: null, pesapalTrackingId: null, createdAt: Timestamp.now(),
@@ -185,24 +181,20 @@ router.post("/orders", async (req, res) => {
       tx.set(newOrderRef, order);
       for (let i = 0; i < productSnaps.length; i++) {
         const snap = productSnaps[i]!;
-        const p = snap.data() as ProductDoc;
+        const p    = snap.data() as ProductDoc;
         tx.update(snap.ref, { stock: p.stock - body.items[i]!.quantity });
       }
     });
 
     if (userId && paymentNumber) {
       try {
-        const userRef = firestore.collection(COLLECTIONS.users).doc(userId);
-        const userSnap = await userRef.get();
-        if (userSnap.exists) {
-          const u = userSnap.data() as UserDoc;
-          if (!u.phoneNumber) await userRef.update({ phoneNumber: paymentNumber });
-        }
-      } catch (err) { req.log.warn({ err }, "Failed to bind phone number to user"); }
+        const uRef = firestore.collection(COLLECTIONS.users).doc(userId);
+        const uSnap = await uRef.get();
+        if (uSnap.exists) { const u = uSnap.data() as UserDoc; if (!u.phoneNumber) await uRef.update({ phoneNumber: paymentNumber }); }
+      } catch (err) { req.log.warn({ err }, "Could not bind phone to user"); }
     }
 
-    const dto = await loadOrderById(newOrderRef.id);
-    res.status(201).json(dto);
+    res.status(201).json(await loadOrderById(newOrderRef.id));
   } catch (err) {
     res.status(400).json({ error: err instanceof Error ? err.message : "Failed to place order" });
   }
@@ -216,14 +208,13 @@ router.get("/orders/:id", async (req, res) => {
 
 router.put("/orders/:id/received", async (req, res) => {
   const { email } = req.body as { email?: string };
-  const ref = firestore.collection(COLLECTIONS.orders).doc(req.params.id);
+  const ref  = firestore.collection(COLLECTIONS.orders).doc(req.params.id);
   const snap = await ref.get();
   if (!snap.exists) { res.status(404).json({ error: "Order not found" }); return; }
   const order = snap.data() as OrderDoc;
   if (email && order.customerEmail.toLowerCase() !== email.toLowerCase()) { res.status(403).json({ error: "Unauthorized" }); return; }
   if (!["delivered", "shipped"].includes(order.status)) { res.status(400).json({ error: "Order cannot be marked received in its current state" }); return; }
-  const history = order.statusHistory ?? [];
-  history.push({ status: "received", timestamp: new Date().toISOString() });
+  const history = [...(order.statusHistory ?? []), { status: "received", timestamp: new Date().toISOString() }];
   await ref.update({ status: "received", statusHistory: history, archived: true });
   res.json(await loadOrderById(req.params.id));
 });
@@ -231,7 +222,7 @@ router.put("/orders/:id/received", async (req, res) => {
 router.post("/orders/:id/payment", async (req, res) => {
   const { email, amount } = req.body as { email?: string; amount?: number };
   if (!amount || amount <= 0) { res.status(400).json({ error: "amount is required" }); return; }
-  const ref = firestore.collection(COLLECTIONS.orders).doc(req.params.id);
+  const ref  = firestore.collection(COLLECTIONS.orders).doc(req.params.id);
   const snap = await ref.get();
   if (!snap.exists) { res.status(404).json({ error: "Order not found" }); return; }
   const order = snap.data() as OrderDoc;
@@ -245,7 +236,7 @@ router.post("/orders/:id/payment", async (req, res) => {
 
 router.delete("/orders/:id", async (req, res) => {
   const { email } = req.body as { email?: string };
-  const ref = firestore.collection(COLLECTIONS.orders).doc(req.params.id);
+  const ref  = firestore.collection(COLLECTIONS.orders).doc(req.params.id);
   const snap = await ref.get();
   if (!snap.exists) { res.status(404).json({ error: "Order not found" }); return; }
   const order = snap.data() as OrderDoc;
