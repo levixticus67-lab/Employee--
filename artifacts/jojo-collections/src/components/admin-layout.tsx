@@ -5,7 +5,7 @@ import { Link, useLocation } from "wouter";
   import { apiFetch } from "@/lib/api";
   import {
     LayoutDashboard, Package, ShoppingCart, MessageSquare,
-    Tag, Gift, BookOpen, Upload, Settings, Home, LogOut, BarChart2, Archive,
+    Tag, Gift, BookOpen, Upload, Settings, Home, LogOut, BarChart2, Archive, TrendingUp,
   } from "lucide-react";
 
   const FLOWERS = ["🌸", "🌺", "🌼", "🌻", "🌹", "💐", "🌷", "✨"];
@@ -120,6 +120,7 @@ import { Link, useLocation } from "wouter";
     const navLinks = [
       { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
       { href: "/admin/analytics", label: "Analytics", icon: BarChart2 },
+      { href: "/admin/exchange-rates", label: "Exchange Rates", icon: TrendingUp },
       { href: "/admin/products", label: "Products", icon: Package },
       { href: "/admin/orders", label: "Orders", icon: ShoppingCart, badge: receivedCount > 0 ? receivedCount : undefined },
       { href: "/admin/reviews", label: "Reviews", icon: MessageSquare },
