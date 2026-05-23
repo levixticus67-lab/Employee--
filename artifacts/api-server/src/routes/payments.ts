@@ -250,12 +250,19 @@ import express, { Router, type IRouter } from "express";
       };
 
       if (!submitData.order_tracking_id || !submitData.redirect_url) {
-        await rollbackOrder(orderId, body.items);
-        const msg = typeof submitData.error === "object" && submitData.error !== null
-          ? ((submitData.error as Record<string, unknown>)["message"] as string | undefined) ?? "Payment initiation failed."
-          : (submitData.error as string) ?? "Payment initiation failed.";
-        res.status(400).json({ error: msg }); return;
-      }
+          await rollbackOrder(orderId, body.items);
+          req.log.error({ pesapalResponse: submitData }, "Pesapal SubmitOrderRequest rejected");
+          let pesapalMsg = "Payment initiation failed. Please try again or contact the store.";
+          if (submitData.error) {
+            if (typeof submitData.error === "object" && submitData.error !== null) {
+              const errObj = submitData.error as Record<string, unknown>;
+              pesapalMsg = (errObj["message"] as string) ?? (errObj["error_description"] as string) ?? JSON.stringify(submitData.error);
+            } else if (typeof submitData.error === "string") {
+              pesapalMsg = submitData.error;
+            }
+          }
+          res.status(400).json({ error: pesapalMsg }); return;
+        }
 
       await firestore.collection(COLLECTIONS.orders).doc(orderId).update({
         pesapalTrackingId: submitData.order_tracking_id,
