@@ -29,6 +29,6 @@ services:
       - key: PESAPAL_IPN_ID
         sync: false
       - key: PESAPAL_ENV
-        value: sandbox
+        value: production
       - key: FRONTEND_URL
         sync: false
