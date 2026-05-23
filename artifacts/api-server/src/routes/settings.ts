@@ -1,7 +1,7 @@
 import { Router, type IRouter } from "express";
 import { firestore } from "@workspace/db";
 import { requireAdmin } from "../middlewares/requireAdmin";
-import { getLiveRates } from "../lib/exchangeRate";
+import { getLiveRates, getRateHistory, setRateOverride, clearRateOverride, getOverrideDoc } from "../lib/exchangeRate";
 
 const router: IRouter = Router();
 const SETTINGS_DOC = "settings/global";
@@ -121,6 +121,35 @@ router.get("/exchange-rates", async (_req, res) => {
     EUR: rates["EUR"] ?? 0.92,
     GBP: rates["GBP"] ?? 0.79,
   });
+});
+
+// ── Exchange-rate admin endpoints ─────────────────────────────────────────────
+router.get("/admin/exchange-rates/history", requireAdmin, async (req, res) => {
+  const days = Math.min(30, Math.max(1, Number(req.query["days"]) || 7));
+  const history = await getRateHistory(days);
+  res.json(history);
+});
+
+router.get("/admin/exchange-rates/override", requireAdmin, async (_req, res) => {
+  const doc = await getOverrideDoc();
+  if (!doc) { res.status(404).json(null); return; }
+  res.json(doc);
+});
+
+router.post("/admin/exchange-rates/override", requireAdmin, async (req, res) => {
+  const body = req.body as { UGX?: number; EUR?: number; GBP?: number; expiresInHours?: number };
+  const rates: { UGX?: number; EUR?: number; GBP?: number } = {};
+  if (body.UGX && body.UGX > 0) rates.UGX = Number(body.UGX);
+  if (body.EUR && body.EUR > 0) rates.EUR = Number(body.EUR);
+  if (body.GBP && body.GBP > 0) rates.GBP = Number(body.GBP);
+  if (!Object.keys(rates).length) { res.status(400).json({ error: "Provide at least one rate" }); return; }
+  await setRateOverride(rates, body.expiresInHours || undefined);
+  res.json({ ok: true });
+});
+
+router.delete("/admin/exchange-rates/override", requireAdmin, async (_req, res) => {
+  await clearRateOverride();
+  res.json({ ok: true });
 });
 
 export default router;
