@@ -116,7 +116,7 @@ export default function SignupPage() {
             </p>
             <p className="font-medium text-blue-950 mb-6 break-all">{verificationEmail}</p>
             <p className="text-blue-800/60 text-sm mb-8">
-              Please check your inbox and verify your email link to activate your account and log in.
+              Please check your inbox (or spam/junk folder) and verify your email link to activate your account and log in.
             </p>
             <Link
               href="/login"
