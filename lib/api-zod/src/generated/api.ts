@@ -252,6 +252,8 @@ export const CreateOrderBody = zod.object({
       }),
     )
     .min(1),
+  giftWrapping: zod.boolean().optional(),
+  giftNote: zod.string().max(300).optional(),
 });
 
 /**
