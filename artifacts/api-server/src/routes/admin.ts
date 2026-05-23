@@ -501,7 +501,10 @@ router.get("/admin/coupons", async (_req, res) => {
 router.post("/admin/coupons", async (req, res) => {
   const body = req.body as { code: string; type: string; value: number; minOrder?: number; maxUses?: number | null; expiryDate?: string | null };
   if (!body.code || !body.type || !body.value) { res.status(400).json({ error: "code, type and value are required" }); return; }
-  const data: CouponDoc = { code: body.code.toUpperCase().trim(), type: body.type as "percentage" | "fixed", value: Number(body.value), minOrder: Number(body.minOrder ?? 0), active: true, uses: 0, maxUses: body.maxUses ?? null, expiryDate: body.expiryDate ?? null, createdAt: Timestamp.now() };
+  if (!body.maxUses || Number(body.maxUses) < 1) { res.status(400).json({ error: "maxUses is required and must be at least 1 — unlimited coupons are not allowed for security reasons" }); return; }
+  const couponValue = Number(body.value);
+  if (body.type === "percentage" && couponValue > 80) { res.status(400).json({ error: "Percentage coupons cannot exceed 80% — set a fixed-amount coupon for larger discounts" }); return; }
+  const data: CouponDoc = { code: body.code.toUpperCase().trim(), type: body.type as "percentage" | "fixed", value: couponValue, minOrder: Number(body.minOrder ?? 0), active: true, uses: 0, maxUses: Number(body.maxUses), expiryDate: body.expiryDate ?? null, createdAt: Timestamp.now() };
   const ref = await firestore.collection(COLLECTIONS.coupons).add(data);
   res.status(201).json({ id: ref.id, ...data, createdAt: new Date().toISOString() });
 });
@@ -510,7 +513,16 @@ router.put("/admin/coupons/:id", async (req, res) => {
   const ref = firestore.collection(COLLECTIONS.coupons).doc(req.params.id);
   const snap = await ref.get();
   if (!snap.exists) { res.status(404).json({ error: "Not found" }); return; }
-  await ref.update(req.body as Record<string, unknown>);
+  const updates = req.body as Record<string, unknown>;
+  if (updates["maxUses"] !== undefined && (Number(updates["maxUses"]) < 1 || updates["maxUses"] === null)) {
+    res.status(400).json({ error: "maxUses cannot be removed or set below 1" }); return;
+  }
+  if (updates["type"] === "percentage" || (snap.data() as CouponDoc).type === "percentage") {
+    if (updates["value"] !== undefined && Number(updates["value"]) > 80) {
+      res.status(400).json({ error: "Percentage coupons cannot exceed 80%" }); return;
+    }
+  }
+  await ref.update(updates);
   const fresh = await ref.get();
   const c = fresh.data() as CouponDoc;
   res.json({ id: fresh.id, ...c, createdAt: c.createdAt instanceof Timestamp ? c.createdAt.toDate().toISOString() : new Date().toISOString() });
@@ -521,7 +533,20 @@ router.delete("/admin/coupons/:id", async (req, res) => {
   res.status(204).send();
 });
 
+// Rate limiter for coupon validation — prevents bulk probing of codes
+const validateRateLimiter = new Map<string, { count: number; resetAt: number }>();
+function checkValidateRateLimit(ip: string): boolean {
+  const now = Date.now();
+  const entry = validateRateLimiter.get(ip);
+  if (!entry || now > entry.resetAt) { validateRateLimiter.set(ip, { count: 1, resetAt: now + 60_000 }); return true; }
+  if (entry.count >= 20) return false;
+  entry.count++;
+  return true;
+}
+
 router.post("/coupons/validate", async (req, res) => {
+  const ip = (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() ?? req.socket.remoteAddress ?? "unknown";
+  if (!checkValidateRateLimit(ip)) { res.status(429).json({ error: "Too many requests — slow down" }); return; }
   const { code, orderTotal } = req.body as { code: string; orderTotal: number };
   if (!code) { res.status(400).json({ error: "code required" }); return; }
   const snap = await firestore.collection(COLLECTIONS.coupons).where("code", "==", code.toUpperCase().trim()).get();
@@ -531,9 +556,10 @@ router.post("/coupons/validate", async (req, res) => {
   if (!c.active) { res.status(400).json({ error: "Coupon is no longer active" }); return; }
   if (c.expiryDate && new Date(c.expiryDate) < new Date()) { res.status(400).json({ error: "This coupon has expired" }); return; }
   if (c.maxUses !== null && c.uses >= c.maxUses) { res.status(400).json({ error: "Coupon usage limit reached" }); return; }
-  if (orderTotal < c.minOrder) { res.status(400).json({ error: `Minimum order $${c.minOrder} required` }); return; }
+  if (orderTotal < c.minOrder) { res.status(400).json({ error: `Minimum order ${c.minOrder} required` }); return; }
+  // Return only what the frontend needs — never expose uses, maxUses, or internal id
   const discount = c.type === "percentage" ? (orderTotal * c.value) / 100 : Math.min(c.value, orderTotal);
-  res.json({ id: doc.id, code: c.code, type: c.type, value: c.value, discount: Math.round(discount * 100) / 100 });
+  res.json({ code: c.code, discount: Math.round(discount * 100) / 100 });
 });
 
 // ─── Bundles ──────────────────────────────────────────────────────────────────
