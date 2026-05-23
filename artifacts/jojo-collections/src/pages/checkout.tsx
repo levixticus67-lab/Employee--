@@ -8,7 +8,7 @@ import { useState, useEffect } from "react";
   import { toast } from "sonner";
   import {
     Tag, CheckCircle, Truck, Info, Loader2, ShieldCheck, Smartphone, CreditCard,
-    MessageCircle,
+    MessageCircle, Gift,
   } from "lucide-react";
   import { apiFetch } from "@/lib/api";
 
@@ -40,6 +40,8 @@ import { useState, useEffect } from "react";
     // Partial payment state
     const [isPartialPayment, setIsPartialPayment] = useState(false);
     const [partialAmount, setPartialAmount]       = useState(0); // in USD (same units as product prices)
+    const [giftWrapping, setGiftWrapping]         = useState(false);
+    const [giftNote, setGiftNote]                 = useState("");
 
     useEffect(() => {
       if (session?.user) {
@@ -108,6 +110,8 @@ import { useState, useEffect } from "react";
             buyerPhone:      form.buyerPhone || undefined,
             items: items.map((i) => ({ productId: i.product.id, quantity: i.quantity })),
             couponCode:    couponResult?.code,
+            giftWrapping:  giftWrapping || undefined,
+            giftNote:      giftWrapping && giftNote.trim() ? giftNote.trim() : undefined,
             paymentMethod,
             paymentNumber: isOnline && paymentNumber.trim() ? paymentNumber : undefined,
             amountToPay,
@@ -241,6 +245,51 @@ import { useState, useEffect } from "react";
                     {couponError && <p className="text-xs text-red-700 mt-1">{couponError}</p>}
                   </div>
                 )}
+              </div>
+
+
+              {/* Gift Wrapping */}
+              <div>
+                <h2 className="text-lg font-serif text-blue-950 mb-3 flex items-center gap-2">
+                  <Gift className="w-4 h-4 text-pink-400" /> Gift Options
+                </h2>
+                <label
+                  className={"flex items-start gap-3 glass-card rounded-xl px-4 py-4 border-2 cursor-pointer transition-all " + (giftWrapping ? "border-pink-300 bg-pink-50/20" : "border-white/30 hover:border-pink-200")}
+                >
+                  <input
+                    type="checkbox"
+                    checked={giftWrapping}
+                    onChange={(e) => { setGiftWrapping(e.target.checked); if (!e.target.checked) setGiftNote(""); }}
+                    className="accent-pink-500 mt-0.5 w-4 h-4 rounded flex-shrink-0"
+                  />
+                  <div className="flex-1">
+                    <div className="flex items-center justify-between">
+                      <p className="text-sm font-medium text-blue-950">Add gift wrapping</p>
+                      <span className="text-xs font-semibold text-pink-600 bg-pink-50 px-2 py-0.5 rounded-full border border-pink-200">FREE</span>
+                    </div>
+                    <p className="text-xs text-blue-800/60 mt-0.5">
+                      Your order will be beautifully wrapped and presented as a gift
+                    </p>
+                    {giftWrapping && (
+                      <div className="mt-3">
+                        <label className="block text-xs font-medium text-blue-900/70 mb-1">
+                          Personal message{" "}
+                          <span className="text-blue-800/40 font-normal">(optional — written on a gift card)</span>
+                        </label>
+                        <textarea
+                          rows={3}
+                          maxLength={300}
+                          placeholder="e.g. Happy Birthday! Wishing you a wonderful day 🎉"
+                          value={giftNote}
+                          onChange={(e) => setGiftNote(e.target.value)}
+                          onClick={(e) => e.stopPropagation()}
+                          className="w-full glass-card rounded-xl px-3 py-2.5 text-blue-950 text-sm focus:outline-none focus:ring-2 focus:ring-pink-300 border-white/40 resize-none"
+                        />
+                        <p className="text-[10px] text-blue-800/40 text-right mt-0.5">{giftNote.length}/300</p>
+                      </div>
+                    )}
+                  </div>
+                </label>
               </div>
 
               {/* Payment method */}
