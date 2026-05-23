@@ -8,8 +8,6 @@ import { createContext, useContext, type ReactNode } from "react";
   } from "firebase/auth";
   import {
     useGetCurrentUser,
-    useLogin,
-    useSignup,
     useLogout,
     useAdminLogout,
     getGetCurrentUserQueryKey,
@@ -46,8 +44,18 @@ import { createContext, useContext, type ReactNode } from "react";
 
   export class EmailNotVerifiedError extends Error {
     constructor() {
-      super("Please check your inbox and verify your email link to activate your account and log in.");
+      super("Please verify your email before logging in. Check your inbox for the verification link.");
       this.name = "EmailNotVerifiedError";
+    }
+  }
+
+  function requireFirebase(): void {
+    if (!isFirebaseConfigured || !auth) {
+      throw new Error(
+        "Firebase is not configured on this build. " +
+        "Set VITE_FIREBASE_API_KEY, VITE_FIREBASE_AUTH_DOMAIN, VITE_FIREBASE_PROJECT_ID " +
+        "and VITE_FIREBASE_APP_ID as environment variables on your hosting service, then redeploy."
+      );
     }
   }
 
@@ -60,8 +68,6 @@ import { createContext, useContext, type ReactNode } from "react";
 
     const refresh = async () => { await qc.invalidateQueries({ queryKey: meKey }); };
 
-    const loginMut       = useLogin();
-    const signupMut      = useSignup();
     const logoutMut      = useLogout();
     const adminLogoutMut = useAdminLogout();
 
@@ -72,140 +78,134 @@ import { createContext, useContext, type ReactNode } from "react";
       refresh,
 
       // ── Signup ──────────────────────────────────────────────────────────────
-      // 1. Create the Firebase Auth account (server-side email + password validation)
-      // 2. Capture the uid IMMEDIATELY from the credential (before any sign-out)
-      // 3. Trigger the verification email
-      // 4. Sign the user out of Firebase on the client — they cannot use the app
-      //    until they click the verification link
-      // 5. Write the Firestore profile using the Firebase UID as the document ID
-      // 6. Throw EmailVerificationSentError so the UI shows the "check your inbox" screen
+      // Flow:
+      //   1. Firebase Auth creates the user (validates email + password strength)
+      //   2. Verification email sent immediately
+      //   3. Firebase client session ended (cannot use the app until verified)
+      //   4. Backend writes Firestore profile using Firebase UID as document ID
+      //   5. EmailVerificationSentError thrown → UI shows "check your inbox"
+      // No alternative path exists. Firebase is mandatory.
       signup: async (name, email, password) => {
-        if (isFirebaseConfigured && auth) {
-          let firebaseUid: string;
-          try {
-            const credential = await createUserWithEmailAndPassword(auth, email, password);
-            firebaseUid = credential.user.uid;            // capture before any further ops
-            await sendEmailVerification(credential.user); // send while still signed in
-            await firebaseSignOut(auth);                  // sign out — unverified session
-          } catch (fbErr: unknown) {
-            const code = (fbErr as { code?: string }).code ?? "";
-            if (code === "auth/email-already-in-use") {
-              throw Object.assign(new Error("An account with that email already exists"), {
-                data: { error: "An account with that email already exists" },
-              });
-            }
-            throw fbErr;
+        requireFirebase();
+        const a = auth!;
+
+        let firebaseUid: string;
+        try {
+          const credential = await createUserWithEmailAndPassword(a, email, password);
+          firebaseUid = credential.user.uid;            // capture immediately
+          await sendEmailVerification(credential.user); // while still signed in
+          await firebaseSignOut(a);                     // sign out — unverified
+        } catch (fbErr: unknown) {
+          const code = (fbErr as { code?: string }).code ?? "";
+          if (code === "auth/email-already-in-use") {
+            throw Object.assign(new Error("An account with that email already exists"), {
+              data: { error: "An account with that email already exists" },
+            });
           }
-          // Write Firestore profile with Firebase UID as document ID
-          await apiFetch("/api/auth/signup", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ name, email, password, firebaseUid }),
-          });
-          throw new EmailVerificationSentError();
-        } else {
-          // Firebase not configured — legacy flow (bcrypt login, no email verification)
-          await signupMut.mutateAsync({ data: { name, email, password } });
-          await refresh();
+          throw fbErr;
         }
+
+        const res = await apiFetch("/api/auth/signup", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name, email, password, firebaseUid }),
+        });
+        if (!res.ok) {
+          const body = (await res.json().catch(() => ({}))) as Record<string, unknown>;
+          throw Object.assign(
+            new Error((body["error"] as string | undefined) ?? "Could not create account"),
+            { data: body }
+          );
+        }
+        // Always show the verification screen — account is locked until email confirmed
+        throw new EmailVerificationSentError();
       },
 
       resendVerificationEmail: async () => {
-        if (!auth || !auth.currentUser) {
-          throw new Error("No pending verification session found. Please sign up again.");
+        requireFirebase();
+        if (!auth!.currentUser) {
+          throw new Error("No active session found. Please sign up again.");
         }
-        await sendEmailVerification(auth.currentUser);
+        await sendEmailVerification(auth!.currentUser);
       },
 
       // ── Customer login ───────────────────────────────────────────────────────
+      // Flow:
+      //   1. Firebase SDK signs in with email + password
+      //   2. If email is not verified → reject immediately (no session started)
+      //   3. Get short-lived ID token, sign out of Firebase client
+      //   4. Send token to backend → backend verifies cryptographically, starts session
+      // No password-based fallback. Firebase is mandatory.
       login: async (email, password) => {
-        if (isFirebaseConfigured && auth) {
-          let idToken: string;
-          try {
-            const credential = await signInWithEmailAndPassword(auth, email, password);
-            if (!credential.user.emailVerified) {
-              await firebaseSignOut(auth);
-              throw new EmailNotVerifiedError();
-            }
-            idToken = await credential.user.getIdToken();
-            await firebaseSignOut(auth);
-          } catch (fbErr: unknown) {
-            if (fbErr instanceof EmailNotVerifiedError) throw fbErr;
-            const code = (fbErr as { code?: string }).code ?? "";
-            if (["auth/user-not-found","auth/wrong-password","auth/invalid-credential","auth/invalid-email"].includes(code)) {
-              throw Object.assign(new Error("Invalid email or password"), { data: { error: "Invalid email or password" } });
-            }
-            throw fbErr;
+        requireFirebase();
+        const a = auth!;
+
+        let idToken: string;
+        try {
+          const credential = await signInWithEmailAndPassword(a, email, password);
+          if (!credential.user.emailVerified) {
+            await firebaseSignOut(a);
+            throw new EmailNotVerifiedError();
           }
-          const res = await apiFetch("/api/auth/login-firebase", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ firebaseIdToken: idToken }),
-          });
-          if (!res.ok) {
-            const body = (await res.json().catch(() => ({}))) as Record<string, unknown>;
-            const msg  = (body["error"] as string | undefined) ?? "Login failed";
-            throw Object.assign(new Error(msg), { data: { error: msg } });
+          idToken = await credential.user.getIdToken();
+          await firebaseSignOut(a);
+        } catch (fbErr: unknown) {
+          if (fbErr instanceof EmailNotVerifiedError) throw fbErr;
+          const code = (fbErr as { code?: string }).code ?? "";
+          if (["auth/user-not-found","auth/wrong-password","auth/invalid-credential","auth/invalid-email"].includes(code)) {
+            throw Object.assign(new Error("Invalid email or password"), { data: { error: "Invalid email or password" } });
           }
-          await refresh();
-        } else {
-          await loginMut.mutateAsync({ data: { email, password } });
-          await refresh();
+          throw fbErr;
         }
+
+        const res = await apiFetch("/api/auth/login-firebase", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ firebaseIdToken: idToken }),
+        });
+        if (!res.ok) {
+          const body = (await res.json().catch(() => ({}))) as Record<string, unknown>;
+          const msg  = (body["error"] as string | undefined) ?? "Login failed";
+          throw Object.assign(new Error(msg), { data: { error: msg } });
+        }
+        await refresh();
       },
 
       logout: async () => { await logoutMut.mutateAsync(); await refresh(); },
 
-      // ── Admin login ──────────────────────────────────────────────────────────
-      // Strategy: try Firebase first (most secure — cryptographic token verified
-      // server-side). If the admin account does not exist in Firebase Auth yet
-      // (auth/user-not-found) OR Firebase is not configured on this build, fall
-      // back to sending the credentials directly to the backend which compares
-      // them against ADMIN_EMAIL + ADMIN_PASSWORD environment variables.
+      // ── Admin login — Firebase only ──────────────────────────────────────────
+      // Flow:
+      //   1. Firebase SDK signs in with admin email + password
+      //   2. Get ID token, immediately sign out of Firebase client
+      //   3. Backend verifies token and confirms email === ADMIN_EMAIL
+      //   4. Session cookie set with isAdmin = true
+      // There is NO fallback to environment variable password checks.
+      // The admin account MUST exist in Firebase Authentication.
       adminLogin: async (email: string, password: string) => {
-        if (isFirebaseConfigured && auth) {
-          try {
-            const credential = await signInWithEmailAndPassword(auth, email, password);
-            const idToken = await credential.user.getIdToken();
-            await firebaseSignOut(auth); // client session not needed; backend holds the session
+        requireFirebase();
+        const a = auth!;
 
-            const res = await apiFetch("/api/admin/auth/login", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ firebaseIdToken: idToken }),
-            });
-            if (!res.ok) {
-              const b = (await res.json().catch(() => ({}))) as Record<string, unknown>;
-              throw new Error((b["error"] as string | undefined) ?? "Invalid admin credentials");
-            }
-            await refresh();
-            return; // success — exit here
-          } catch (fbErr: unknown) {
-            const code = (fbErr as { code?: string }).code ?? "";
-            // Wrong password or invalid email → definitive rejection, no fallback
-            if (["auth/wrong-password", "auth/invalid-email"].includes(code)) {
-              throw new Error("Invalid admin credentials");
-            }
-            // User not found in Firebase → fall through to env-var mode below
-            if (code && !["auth/user-not-found", "auth/invalid-credential"].includes(code)) {
-              // Any other Firebase or backend error — re-throw as a clean message
-              throw fbErr instanceof Error && fbErr.message.startsWith("Invalid")
-                ? fbErr
-                : new Error("Invalid admin credentials");
-            }
-            // fall through to Mode B
+        let idToken: string;
+        try {
+          const credential = await signInWithEmailAndPassword(a, email, password);
+          idToken = await credential.user.getIdToken();
+          await firebaseSignOut(a); // client session not needed — backend holds the session
+        } catch (fbErr: unknown) {
+          const code = (fbErr as { code?: string }).code ?? "";
+          if (["auth/user-not-found","auth/wrong-password","auth/invalid-credential","auth/invalid-email"].includes(code)) {
+            throw new Error("Invalid admin credentials. Check your email and password.");
           }
+          throw fbErr;
         }
 
-        // Mode B: send credentials to backend — compared against ADMIN_EMAIL / ADMIN_PASSWORD
         const res = await apiFetch("/api/admin/auth/login", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email, password }),
+          body: JSON.stringify({ firebaseIdToken: idToken }),
         });
         if (!res.ok) {
-          const b = (await res.json().catch(() => ({}))) as Record<string, unknown>;
-          throw new Error((b["error"] as string | undefined) ?? "Invalid admin credentials");
+          const body = (await res.json().catch(() => ({}))) as Record<string, unknown>;
+          throw new Error((body["error"] as string | undefined) ?? "Admin login failed");
         }
         await refresh();
       },
