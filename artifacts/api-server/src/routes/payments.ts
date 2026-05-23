@@ -107,6 +107,10 @@ import express, { Router, type IRouter } from "express";
       res.status(503).json({ error: "Online payment gateway not configured. Please contact the store." }); return;
     }
 
+    if (isOnline && !BACKEND_URL && !STORED_IPN_ID) {
+      res.status(503).json({ error: "Payment gateway misconfigured: PESAPAL_IPN_ID or BACKEND_URL must be set on the server. Contact the store." }); return;
+    }
+
     if (userId && paymentNumber) {
       const phoneQ = await firestore.collection(COLLECTIONS.users).where("phoneNumber", "==", paymentNumber).limit(1).get();
       if (!phoneQ.empty && phoneQ.docs[0]!.id !== userId) {
@@ -272,7 +276,12 @@ import express, { Router, type IRouter } from "express";
     } catch (err) {
       req.log.error({ err }, "Pesapal submission error");
       await rollbackOrder(orderId, body.items);
-      res.status(500).json({ error: "Could not reach payment gateway. Please try again." });
+      // Surface the underlying Pesapal error so the merchant can act on it
+      const rawMsg = err instanceof Error ? err.message : String(err);
+      const safeMsg = /Pesapal|IPN|auth failed|token/i.test(rawMsg)
+        ? rawMsg
+        : "Could not reach payment gateway. Please try again.";
+      res.status(500).json({ error: safeMsg });
     }
   });
 
