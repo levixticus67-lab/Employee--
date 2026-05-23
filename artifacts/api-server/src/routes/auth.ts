@@ -6,11 +6,6 @@ import { Router, type IRouter } from "express";
 
   const router: IRouter = Router();
 
-  // ── Customer signup ───────────────────────────────────────────────────────────
-  // Firebase Auth creates the account on the client and passes the UID here.
-  // We write the Firestore profile using that UID as the document ID so Firebase
-  // Auth and Firestore are permanently linked by the same identifier.
-  // Rejects with 400 if no firebaseUid — this endpoint requires Firebase Auth.
   router.post("/auth/signup", async (req, res) => {
     const parsed = SignupBody.safeParse(req.body);
     if (!parsed.success) { res.status(400).json({ error: "Invalid signup data" }); return; }
@@ -26,7 +21,6 @@ import { Router, type IRouter } from "express";
       return;
     }
 
-    // Guard: reject duplicate emails
     const existing = await firestore
       .collection(COLLECTIONS.users)
       .where("email", "==", normalizedEmail)
@@ -36,7 +30,6 @@ import { Router, type IRouter } from "express";
       res.status(400).json({ error: "An account with that email already exists" }); return;
     }
 
-    // Also guard: reject if UID already has a document (double-tap prevention)
     const byUid = await firestore.collection(COLLECTIONS.users).doc(firebaseUid).get();
     if (byUid.exists) {
       res.status(400).json({ error: "An account with that email already exists" }); return;
@@ -46,29 +39,20 @@ import { Router, type IRouter } from "express";
     const data: UserDoc = {
       name, email: normalizedEmail, passwordHash,
       createdAt: Timestamp.now(),
-      emailVerified: false,        // stays false until first verified Firebase login
+      emailVerified: false,
       firebaseUid,
       phoneNumber: null,
     };
-    // Document ID = Firebase UID — single source of truth
     await firestore.collection(COLLECTIONS.users).doc(firebaseUid).set(data);
-    // No session yet — the account is unverified; the client throws EmailVerificationSentError
     res.status(201).json({ id: firebaseUid, email: normalizedEmail, name });
   });
 
-  // ── Password-based login — DISABLED ─────────────────────────────────────────
-  // Removed in favour of Firebase Auth token login (/auth/login-firebase).
-  // Returning 410 Gone so old clients get a clear, permanent signal.
   router.post("/auth/login", (_req, res) => {
     res.status(410).json({
       error: "Password login is disabled. Please use Firebase Authentication.",
     });
   });
 
-  // ── Customer login via Firebase ID token ──────────────────────────────────────
-  // Client signs in with Firebase (email verified check happens there), obtains
-  // a short-lived ID token, and sends it here. We verify it server-side via the
-  // Firebase Admin SDK — no passwords ever touch this server.
   router.post("/auth/login-firebase", async (req, res) => {
     const { firebaseIdToken } = req.body as { firebaseIdToken?: string };
     if (!firebaseIdToken) { res.status(400).json({ error: "firebaseIdToken is required" }); return; }
@@ -82,7 +66,7 @@ import { Router, type IRouter } from "express";
 
     if (!decodedToken.email_verified) {
       res.status(403).json({
-        error: "Please check your inbox and verify your email link to activate your account and log in.",
+        error: "Please check your inbox and verify your email link to activate your account and log in. If you don't see it, check your spam or junk folder.",
       });
       return;
     }
@@ -90,7 +74,6 @@ import { Router, type IRouter } from "express";
     const email = (decodedToken.email ?? "").toLowerCase().trim();
     if (!email) { res.status(400).json({ error: "Token does not contain an email address" }); return; }
 
-    // Look up the Firestore profile — may be keyed by Firebase UID or legacy email query
     let userDocId: string;
     let user: UserDoc;
 
@@ -99,7 +82,6 @@ import { Router, type IRouter } from "express";
       userDocId = byUid.id;
       user      = byUid.data() as UserDoc;
     } else {
-      // Fallback: legacy docs created before UID-keyed migration
       const snap = await firestore
         .collection(COLLECTIONS.users)
         .where("email", "==", email)
@@ -112,7 +94,6 @@ import { Router, type IRouter } from "express";
       user      = snap.docs[0]!.data() as UserDoc;
     }
 
-    // Stamp emailVerified and sync firebaseUid on every login (self-healing)
     await firestore.collection(COLLECTIONS.users).doc(userDocId).update({
       emailVerified: true,
       firebaseUid: decodedToken.uid,
@@ -126,7 +107,6 @@ import { Router, type IRouter } from "express";
     });
   });
 
-  // ── Customer logout ───────────────────────────────────────────────────────────
   router.post("/auth/logout", (req, res) => {
     if (!req.session) { res.status(204).end(); return; }
     req.session.userId      = undefined;
@@ -134,7 +114,6 @@ import { Router, type IRouter } from "express";
     req.session.save(() => res.status(204).end());
   });
 
-  // ── Current user ──────────────────────────────────────────────────────────────
   router.get("/auth/me", async (req, res) => {
     const isAdmin = Boolean(req.session?.isAdmin);
     const userId  = req.session?.userId;
@@ -152,11 +131,6 @@ import { Router, type IRouter } from "express";
     });
   });
 
-  // ── Admin login — Firebase only ───────────────────────────────────────────────
-  // The admin signs in with their Firebase account on the client, gets an ID
-  // token, and sends it here. We cryptographically verify the token with the
-  // Firebase Admin SDK and then confirm the email matches ADMIN_EMAIL.
-  // There is NO password fallback — the only path in is through Firebase Auth.
   router.post("/admin/auth/login", async (req, res) => {
     const { firebaseIdToken } = req.body as { firebaseIdToken?: string };
     if (!firebaseIdToken) {
@@ -193,7 +167,6 @@ import { Router, type IRouter } from "express";
     });
   });
 
-  // ── Admin logout ──────────────────────────────────────────────────────────────
   router.post("/admin/auth/logout", (req, res) => {
     if (!req.session) { res.status(204).end(); return; }
     req.session.isAdmin = false;
@@ -201,4 +174,3 @@ import { Router, type IRouter } from "express";
   });
 
   export default router;
-  
