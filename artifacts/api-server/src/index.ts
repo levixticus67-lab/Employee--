@@ -22,4 +22,22 @@ app.listen(port, (err) => {
   }
 
   logger.info({ port }, "Server listening");
+
+  // Keep-alive: ping own health endpoint every 5 minutes to prevent
+  // Render free tier from sleeping after inactivity.
+  const backendUrl = (
+    process.env["RENDER_EXTERNAL_URL"] ??
+    process.env["BACKEND_URL"] ??
+    ""
+  ).replace(/\/$/, "");
+  if (backendUrl) {
+    setInterval(() => {
+      fetch(`${backendUrl}/api/healthz`)
+        .then(() => logger.debug("Keep-alive ping sent"))
+        .catch((pingErr) => logger.warn({ err: pingErr }, "Keep-alive ping failed"));
+    }, 5 * 60 * 1000); // every 5 minutes
+    logger.info({ backendUrl }, "Keep-alive pinger started (5 min interval)");
+  } else {
+    logger.warn("RENDER_EXTERNAL_URL / BACKEND_URL not set — keep-alive pinger disabled");
+  }
 });
