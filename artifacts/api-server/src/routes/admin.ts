@@ -231,7 +231,12 @@ router.put("/admin/orders/:id/status", async (req, res) => {
           archivedAt: Timestamp.now(),
         } satisfies StorageItemDoc);
       }
+      // Move entirely to storage: delete from the orders collection
+      await ref.delete();
     } catch { /* non-critical */ }
+    // Order is now in storage only — return archived status without reloading doc
+    res.json({ id: req.params.id, status, archived: true });
+    return;
   }
 
   const all = await loadAllOrders(undefined, true);
@@ -270,7 +275,12 @@ router.put("/admin/orders/:id/status", async (req, res) => {
             archivedAt: Timestamp.now(),
           } satisfies StorageItemDoc);
         }
+        // Move entirely to storage: delete from the orders collection
+        await ref.delete();
       } catch { /* non-critical */ }
+      // Order is now in storage only — return without reloading doc
+      res.json({ id: req.params.id, archived: true, paymentStatus: 'paid', amountPaid: order.total, total: order.total, status: order.status });
+      return;
     }
     const all = await loadAllOrders(undefined, true);
     res.json(all.find((o) => o.id === req.params.id));
@@ -402,10 +412,20 @@ router.post("/admin/storage/items/:id/restore", async (req, res) => {
   if (!snap.exists) { res.status(404).json({ error: "Item not found" }); return; }
   const item = snap.data() as StorageItemDoc;
   if (item.type !== "blog_post") { res.status(400).json({ error: "Only blog posts can be restored" }); return; }
-  // Blog posts live in the "blog" collection (managed by blog.ts routes)
-  await firestore.collection("blog").doc(item.referenceId).update({ storedInFolder: null, published: false });
+  // Recreate the blog post document from the stored snapshot (original was deleted on archive)
+  const snapshot = item.snapshot as Record<string, unknown>;
+  await firestore.collection('blog').doc(item.referenceId).set({
+    title: snapshot['title'] ?? '',
+    summary: snapshot['summary'] ?? '',
+    content: snapshot['content'] ?? '',
+    imageUrl: snapshot['imageUrl'] ?? null,
+    author: snapshot['author'] ?? 'Jojo Collections',
+    published: false, // restore as draft — admin can re-publish manually
+    createdAt: Timestamp.now(),
+  });
+  // Remove from storage now that it is restored
   await ref.delete();
-  res.json({ message: "Restored" });
+  res.json({ message: 'Restored' });
 });
 
 // Archive blog post to a storage folder
@@ -417,16 +437,24 @@ router.post("/admin/storage/blog/:blogId/archive", async (req, res) => {
   const blogSnap = await blogRef.get();
   if (!blogSnap.exists) { res.status(404).json({ error: "Blog post not found" }); return; }
   const post = blogSnap.data() as BlogPostDoc;
-  await blogRef.update({ storedInFolder: folderId, published: false });
+  // Store full blog content in snapshot so it can be fully restored later
   await firestore.collection(COLLECTIONS.storageItems).add({
     folderId,
-    type: "blog_post",
+    type: 'blog_post',
     referenceId: req.params.blogId,
     title: post.title,
-    snapshot: { title: post.title, summary: post.summary, author: post.author } as Record<string, unknown>,
+    snapshot: {
+      title: post.title,
+      summary: post.summary ?? '',
+      content: post.content ?? '',
+      imageUrl: post.imageUrl ?? null,
+      author: post.author ?? 'Jojo Collections',
+    } as Record<string, unknown>,
     archivedAt: Timestamp.now(),
   } satisfies StorageItemDoc);
-  res.json({ message: "Archived" });
+  // Move entirely: delete the original blog post from the collection
+  await blogRef.delete();
+  res.json({ message: 'Archived' });
 });
 
 // ─── Reviews ──────────────────────────────────────────────────────────────────
