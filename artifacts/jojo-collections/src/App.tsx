@@ -122,7 +122,6 @@ function Router() {
 
       {/* ── Admin ── */}
       <Route path="/admin/login" component={AdminLoginPage} />
-      <Route path="/admin">           <AdminRoute><Dashboard /></AdminRoute></Route>
       <Route path="/admin/analytics">      <AdminRoute><AdminAnalytics /></AdminRoute></Route>
       <Route path="/admin/exchange-rates"><AdminRoute><AdminExchangeRates /></AdminRoute></Route>
       <Route path="/admin/products">  <AdminRoute><AdminProducts /></AdminRoute></Route>
@@ -135,7 +134,9 @@ function Router() {
       <Route path="/admin/bulk-import"><AdminRoute><BulkImport /></AdminRoute></Route>
       <Route path="/admin/settings">  <AdminRoute><AdminSettings /></AdminRoute></Route>
 
-      <Route component={NotFound} />
+      <Route path="/admin">           <AdminRoute><Dashboard /></AdminRoute></Route>
+
+            <Route component={NotFound} />
     </Switch>
   );
 }
