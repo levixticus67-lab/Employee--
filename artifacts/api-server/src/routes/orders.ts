@@ -90,9 +90,9 @@ router.get("/orders/by-email/:email", async (req, res) => {
     const email = decodeURIComponent(req.params.email).toLowerCase().trim();
     const snap = await firestore.collection(COLLECTIONS.orders).where("customerEmail", "==", email).get();
     const orders = snap.docs
+      // Filter on raw Firestore data before DTO conversion (hiddenByCustomer is not in the DTO)
+      .filter((d) => !d.data()["hiddenByCustomer"])
       .map((d) => docToDto(d.id, d.data() as OrderDoc))
-      // Only show orders the customer hasn't hidden
-      .filter((o) => !(o as unknown as Record<string, unknown>)["hiddenByCustomer"])
       .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
     res.json(orders);
   } catch { res.json([]); }

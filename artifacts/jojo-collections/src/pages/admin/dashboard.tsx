@@ -1,34 +1,109 @@
 import { useEffect, useRef, useState } from "react";
 import { useGetAdminDashboard } from "@workspace/api-client-react";
 import { AdminLayout } from "@/components/admin-layout";
-import { DollarSign, ShoppingCart, Package, AlertCircle, MessageSquare, Star, Bell, BellOff } from "lucide-react";
+import { DollarSign, ShoppingCart, Package, AlertCircle, MessageSquare, Star, Bell, BellOff, TrendingUp } from "lucide-react";
 import { Link } from "wouter";
 import { toast } from "sonner";
 import { apiFetch } from "@/lib/api";
+import {
+  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip,
+  ResponsiveContainer, Legend,
+} from "recharts";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 
 const STORAGE_KEY = "jojo_seen_order_ids";
+const STORAGE_KEY_RECEIVED = "jojo_seen_received_ids";
 
-function getSeenIds(): Set<string> {
+function getSeenIds(key: string): Set<string> {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw = localStorage.getItem(key);
     return new Set(raw ? JSON.parse(raw) : []);
   } catch {
     return new Set();
   }
 }
 
-function saveSeenIds(ids: Set<string>) {
+function saveSeenIds(key: string, ids: Set<string>) {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify([...ids]));
+    localStorage.setItem(key, JSON.stringify([...ids]));
   } catch {}
+}
+
+type ChartPoint = { date: string; revenue: number; orders: number };
+type HistoryPt = { date: string; UGX: number; EUR: number; GBP: number };
+type CurrencyChartPt = { label: string; UGX: number; EUR: number; GBP: number };
+
+const CURRENCIES = [
+  { key: "UGX" as const, label: "UGX", color: "#3b82f6", grad: "dash_ugxGrad" },
+  { key: "EUR" as const, label: "EUR", color: "#818cf8", grad: "dash_eurGrad" },
+  { key: "GBP" as const, label: "GBP", color: "#34d399", grad: "dash_gbpGrad" },
+];
+
+function RevenueTooltip({ active, payload, label }: { active?: boolean; payload?: { value: number }[]; label?: string }) {
+  if (!active || !payload?.length) return null;
+  return (
+    <div className="bg-blue-950/90 backdrop-blur-md border border-blue-400/30 rounded-xl px-4 py-3 shadow-xl text-white text-sm">
+      <p className="font-medium text-blue-200 mb-1">{label}</p>
+      <p className="text-white font-bold">${(payload[0]?.value ?? 0).toFixed(2)}</p>
+      {payload[1] && <p className="text-blue-300 text-xs">{payload[1].value} orders</p>}
+    </div>
+  );
+}
+
+function CurrencyTooltip({ active, payload, label }: { active?: boolean; payload?: { name: string; value: number; color: string }[]; label?: string }) {
+  if (!active || !payload?.length) return null;
+  return (
+    <div className="bg-blue-950/90 backdrop-blur-md border border-blue-400/30 rounded-xl px-4 py-3 shadow-xl text-white text-sm min-w-[160px]">
+      <p className="font-medium text-blue-200 mb-2 text-xs">{label}</p>
+      {payload.map((p) => (
+        <div key={p.name} className="flex items-center justify-between gap-3 mb-1">
+          <span className="flex items-center gap-1.5 text-xs" style={{ color: p.color }}>
+            <span className="w-2 h-2 rounded-full inline-block" style={{ background: p.color }} />
+            {p.name}
+          </span>
+          <span className="font-bold text-white text-xs">{p.value > 0 ? "+" : ""}{(p.value as number).toFixed(2)}%</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function FlowerCelebration({ customerName, onClose }: { customerName: string; onClose: () => void }) {
+  return (
+    <Dialog open onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="max-w-sm text-center border-white/50 shadow-2xl" style={{ background: "linear-gradient(135deg, #fff9f0 0%, #fef3ff 50%, #f0f9ff 100%)" }}>
+        <div className="py-6 px-3 space-y-4">
+          <div className="text-6xl flex justify-center gap-1 flex-wrap">
+            {"🌺🌸🌼🌻🌹🌷".split("").map((f, i) => (
+              <span key={i} className="animate-bounce inline-block" style={{ animationDelay: `${i * 0.1}s` }}>{f}</span>
+            ))}
+          </div>
+          <h2 className="text-2xl font-serif text-blue-950">Order Received! 🎉</h2>
+          <p className="text-blue-900/80 leading-relaxed text-sm">
+            <span className="font-semibold">{customerName}</span> has confirmed they received their order! 🌸<br /><br />
+            Another happy customer for Jojo Collections. Keep up the amazing work! 💛
+          </p>
+          <p className="text-sm text-purple-700/80 italic">Your hard work is paying off. ✨</p>
+          <button
+            onClick={onClose}
+            className="mt-2 px-7 py-2.5 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white rounded-full text-sm font-medium transition-all shadow-md"
+          >
+            Amazing! 🌺
+          </button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
 }
 
 function useOrderNotifications() {
   const [permission, setPermission] = useState<NotificationPermission>(
     typeof Notification !== "undefined" ? Notification.permission : "default"
   );
-  const seenIds = useRef<Set<string>>(getSeenIds());
+  const seenIds = useRef<Set<string>>(getSeenIds(STORAGE_KEY));
+  const seenReceivedIds = useRef<Set<string>>(getSeenIds(STORAGE_KEY_RECEIVED));
   const initialized = useRef(false);
+  const [celebrationOrder, setCelebrationOrder] = useState<{ id: string; customerName: string } | null>(null);
 
   const requestPermission = async () => {
     if (typeof Notification === "undefined") return;
@@ -43,40 +118,52 @@ function useOrderNotifications() {
       if (!res.ok) return;
       const orders: { id: string; customerName: string; total: number; status: string }[] = await res.json();
 
-      const pendingOrNew = orders.filter((o) => o.status === "pending");
+      const pendingOrders = orders.filter((o) => o.status === "pending");
+      const receivedOrders = orders.filter((o) => o.status === "received");
 
       if (!initialized.current) {
-        // First load — mark all current orders as seen, don't notify
-        pendingOrNew.forEach((o) => seenIds.current.add(o.id));
-        saveSeenIds(seenIds.current);
+        pendingOrders.forEach((o) => seenIds.current.add(o.id));
+        saveSeenIds(STORAGE_KEY, seenIds.current);
+        receivedOrders.forEach((o) => seenReceivedIds.current.add(o.id));
+        saveSeenIds(STORAGE_KEY_RECEIVED, seenReceivedIds.current);
         initialized.current = true;
         return;
       }
 
-      const newOrders = pendingOrNew.filter((o) => !seenIds.current.has(o.id));
-      if (newOrders.length === 0) return;
+      // Check for new pending orders
+      const newOrders = pendingOrders.filter((o) => !seenIds.current.has(o.id));
+      if (newOrders.length > 0) {
+        newOrders.forEach((o) => seenIds.current.add(o.id));
+        saveSeenIds(STORAGE_KEY, seenIds.current);
 
-      newOrders.forEach((o) => seenIds.current.add(o.id));
-      saveSeenIds(seenIds.current);
+        if (permission === "granted" && typeof Notification !== "undefined") {
+          newOrders.forEach((o) => {
+            new Notification("New Order — Jojo Collections", {
+              body: `${o.customerName} placed an order for $${o.total.toFixed(2)}`,
+              icon: "/favicon.ico",
+              tag: `order-${o.id}`,
+            });
+          });
+        }
 
-      if (permission === "granted" && typeof Notification !== "undefined") {
         newOrders.forEach((o) => {
-          new Notification("New Order — Jojo Collections", {
-            body: `${o.customerName} placed an order for $${o.total.toFixed(2)}`,
-            icon: "/favicon.ico",
-            tag: `order-${o.id}`,
+          toast.success(`New order from ${o.customerName}!`, {
+            description: `Total: $${o.total.toFixed(2)}`,
+            duration: 8000,
+            action: { label: "View", onClick: () => { window.location.href = "/admin/orders"; } },
           });
         });
       }
 
-      // Always show in-app toast too
-      newOrders.forEach((o) => {
-        toast.success(`New order from ${o.customerName}!`, {
-          description: `Total: $${o.total.toFixed(2)}`,
-          duration: 8000,
-          action: { label: "View", onClick: () => { window.location.href = "/admin/orders"; } },
-        });
-      });
+      // Check for newly received orders — trigger flower celebration
+      const newReceived = receivedOrders.filter((o) => !seenReceivedIds.current.has(o.id));
+      if (newReceived.length > 0) {
+        newReceived.forEach((o) => seenReceivedIds.current.add(o.id));
+        saveSeenIds(STORAGE_KEY_RECEIVED, seenReceivedIds.current);
+        // Show flower celebration for the first new received order
+        setCelebrationOrder({ id: newReceived[0]!.id, customerName: newReceived[0]!.customerName });
+      }
+
     } catch {}
   };
 
@@ -86,12 +173,38 @@ function useOrderNotifications() {
     return () => clearInterval(interval);
   }, [permission]);
 
-  return { permission, requestPermission };
+  return { permission, requestPermission, celebrationOrder, clearCelebration: () => setCelebrationOrder(null) };
 }
 
 export default function Dashboard() {
   const { data: summary, isLoading } = useGetAdminDashboard();
-  const { permission, requestPermission } = useOrderNotifications();
+  const { permission, requestPermission, celebrationOrder, clearCelebration } = useOrderNotifications();
+
+  // Analytics chart data
+  const [analyticsData, setAnalyticsData] = useState<{ revenueChart: ChartPoint[] } | null>(null);
+  const [currencyHistory, setCurrencyHistory] = useState<HistoryPt[]>([]);
+
+  useEffect(() => {
+    apiFetch("/api/admin/analytics").then((r) => r.json()).then(setAnalyticsData).catch(() => {});
+    apiFetch("/api/admin/exchange-rates/history?days=7").then((r) => r.json()).then(setCurrencyHistory).catch(() => {});
+  }, []);
+
+  const revenueChartData = (analyticsData?.revenueChart ?? []).map((d) => ({
+    date: d.date.slice(5),
+    revenue: d.revenue,
+    orders: d.orders,
+  }));
+
+  const currencyChartData: CurrencyChartPt[] = (() => {
+    if (currencyHistory.length < 2) return [];
+    const base = currencyHistory[0]!;
+    return currencyHistory.map((pt) => ({
+      label: new Date(pt.date).toLocaleString(undefined, { month: "short", day: "numeric" }),
+      UGX: parseFloat((((pt.UGX - base.UGX) / base.UGX) * 100).toFixed(3)),
+      EUR: parseFloat((((pt.EUR - base.EUR) / base.EUR) * 100).toFixed(3)),
+      GBP: parseFloat((((pt.GBP - base.GBP) / base.GBP) * 100).toFixed(3)),
+    }));
+  })();
 
   if (isLoading) {
     return (
@@ -116,13 +229,17 @@ export default function Dashboard() {
 
   return (
     <AdminLayout>
+      {/* Flower celebration when customer marks order received */}
+      {celebrationOrder && (
+        <FlowerCelebration customerName={celebrationOrder.customerName} onClose={clearCelebration} />
+      )}
+
       <div className="mb-8 flex items-start justify-between gap-4 flex-wrap">
         <div>
           <h1 className="text-3xl font-serif text-blue-950 mb-2">Dashboard Overview</h1>
           <p className="text-blue-900/70">Welcome back. Here's what's happening with your store today.</p>
         </div>
 
-        {/* Notification toggle */}
         <button
           onClick={permission === "granted" ? undefined : requestPermission}
           title={permission === "granted" ? "Order notifications are on" : "Enable order notifications"}
@@ -174,7 +291,7 @@ export default function Dashboard() {
         ))}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
         {/* Recent Orders */}
         <div className="glass-panel-heavy rounded-3xl p-6 border-white/50">
           <div className="flex justify-between items-center mb-6">
@@ -243,6 +360,80 @@ export default function Dashboard() {
             )}
           </div>
         </div>
+      </div>
+
+      {/* Daily Revenue Chart */}
+      <div className="glass-panel-heavy rounded-3xl p-6 border-white/50 mb-8">
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-xl font-serif text-blue-950 flex items-center gap-2">
+            <TrendingUp className="w-5 h-5 text-blue-600" /> Daily Revenue
+          </h2>
+          <Link href="/admin/analytics" className="text-sm text-blue-600 hover:text-blue-800 font-medium">Full Analytics</Link>
+        </div>
+        {revenueChartData.length === 0 ? (
+          <p className="text-blue-800/60 italic text-center py-8">No revenue data yet.</p>
+        ) : (
+          <ResponsiveContainer width="100%" height={240}>
+            <AreaChart data={revenueChartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+              <defs>
+                <linearGradient id="dash_revenueGrad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.35} />
+                  <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
+                </linearGradient>
+                <linearGradient id="dash_ordersGrad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#818cf8" stopOpacity={0.25} />
+                  <stop offset="95%" stopColor="#818cf8" stopOpacity={0} />
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(147,197,253,0.2)" vertical={false} />
+              <XAxis dataKey="date" tick={{ fill: "rgba(30,58,138,0.5)", fontSize: 11 }} axisLine={false} tickLine={false} interval="preserveStartEnd" />
+              <YAxis tick={{ fill: "rgba(30,58,138,0.5)", fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={(v) => `$${v}`} width={55} />
+              <Tooltip content={<RevenueTooltip />} />
+              <Area type="monotone" dataKey="revenue" stroke="#3b82f6" strokeWidth={2.5} fill="url(#dash_revenueGrad)" dot={false} activeDot={{ r: 5, fill: "#3b82f6", stroke: "#fff", strokeWidth: 2 }} />
+              <Area type="monotone" dataKey="orders" stroke="#818cf8" strokeWidth={1.5} fill="url(#dash_ordersGrad)" dot={false} activeDot={{ r: 4, fill: "#818cf8", stroke: "#fff", strokeWidth: 2 }} />
+            </AreaChart>
+          </ResponsiveContainer>
+        )}
+      </div>
+
+      {/* Currency Trends Chart */}
+      <div className="glass-panel-heavy rounded-3xl p-6 border-white/50">
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-xl font-serif text-blue-950 flex items-center gap-2">
+            <TrendingUp className="w-5 h-5 text-indigo-600" /> Currency Trends
+          </h2>
+          <Link href="/admin/exchange-rates" className="text-sm text-blue-600 hover:text-blue-800 font-medium">Full Rates</Link>
+        </div>
+        {currencyChartData.length < 2 ? (
+          <div className="flex flex-col items-center justify-center py-12 text-blue-800/40">
+            <TrendingUp className="w-8 h-8 mb-2 opacity-30" />
+            <p className="text-sm">Rate history builds up over time — check back later.</p>
+          </div>
+        ) : (
+          <>
+            <p className="text-xs text-blue-800/40 mb-4">% change over last 7 days relative to start of period</p>
+            <ResponsiveContainer width="100%" height={240}>
+              <AreaChart data={currencyChartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                <defs>
+                  {CURRENCIES.map(({ key, color, grad }) => (
+                    <linearGradient key={key} id={grad} x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor={color} stopOpacity={0.3} />
+                      <stop offset="95%" stopColor={color} stopOpacity={0} />
+                    </linearGradient>
+                  ))}
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(147,197,253,0.2)" vertical={false} />
+                <XAxis dataKey="label" tick={{ fill: "rgba(30,58,138,0.5)", fontSize: 10 }} axisLine={false} tickLine={false} interval="preserveStartEnd" />
+                <YAxis tick={{ fill: "rgba(30,58,138,0.5)", fontSize: 10 }} axisLine={false} tickLine={false} tickFormatter={(v) => `${v > 0 ? "+" : ""}${(v as number).toFixed(1)}%`} width={52} />
+                <Tooltip content={<CurrencyTooltip />} />
+                <Legend wrapperStyle={{ fontSize: "12px", color: "rgba(30,58,138,0.7)", paddingTop: "12px" }} />
+                {CURRENCIES.map(({ key, color, grad, label }) => (
+                  <Area key={key} type="monotone" dataKey={key} name={label} stroke={color} strokeWidth={2} fill={`url(#${grad})`} dot={false} activeDot={{ r: 4, fill: color, stroke: "#fff", strokeWidth: 2 }} />
+                ))}
+              </AreaChart>
+            </ResponsiveContainer>
+          </>
+        )}
       </div>
     </AdminLayout>
   );
