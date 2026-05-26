@@ -168,7 +168,12 @@ router.post("/orders", async (req, res) => {
         if (!snap.exists) throw new Error(`Product ${reqItem.productId} not found`);
         const p = snap.data() as ProductDoc;
         if (p.stock < reqItem.quantity) throw new Error(`Insufficient stock for ${p.name}`);
-        const itemPrice = Number(p.salePrice ?? p.price ?? 0);
+        const rawItems = (rawBody["items"] as Record<string, unknown>[] | undefined) ?? [];
+        const rawItem = rawItems[i] ?? {};
+        const priceOverride = typeof rawItem["priceOverride"] === "number" && rawItem["priceOverride"] >= 0
+          ? rawItem["priceOverride"]
+          : null;
+        const itemPrice = priceOverride !== null ? priceOverride : Number(p.salePrice ?? p.price ?? 0);
         items.push({ productId: snap.id, name: p.name ?? "", brand: p.brand ?? "", price: itemPrice, quantity: reqItem.quantity, imageUrl: p.imageUrl ?? null });
         subtotal += itemPrice * reqItem.quantity;
       }

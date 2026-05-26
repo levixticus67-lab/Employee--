@@ -6,11 +6,23 @@ export interface CartItem {
   quantity: number;
 }
 
+export interface BundleCartItem {
+  bundleId: string;
+  bundleName: string;
+  price: number;
+  imageUrl: string | null;
+  productIds: string[];
+  products: Product[];
+}
+
 interface CartContextType {
   items: CartItem[];
+  bundles: BundleCartItem[];
   addToCart: (product: Product, quantity: number) => void;
   updateQuantity: (productId: string, quantity: number) => void;
   removeFromCart: (productId: string) => void;
+  addBundleToCart: (bundle: BundleCartItem) => void;
+  removeBundleFromCart: (bundleId: string) => void;
   clearCart: () => void;
   totalItems: number;
   subtotal: number;
@@ -28,9 +40,22 @@ export function CartProvider({ children }: { children: ReactNode }) {
     }
   });
 
+  const [bundles, setBundles] = useState<BundleCartItem[]>(() => {
+    try {
+      const saved = localStorage.getItem("jojo-cart-bundles");
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+
   useEffect(() => {
     localStorage.setItem("jojo-cart", JSON.stringify(items));
   }, [items]);
+
+  useEffect(() => {
+    localStorage.setItem("jojo-cart-bundles", JSON.stringify(bundles));
+  }, [bundles]);
 
   const addToCart = (product: Product, quantity: number) => {
     setItems((prev) => {
@@ -62,14 +87,43 @@ export function CartProvider({ children }: { children: ReactNode }) {
     setItems((prev) => prev.filter((item) => item.product.id !== productId));
   };
 
-  const clearCart = () => setItems([]);
+  const addBundleToCart = (bundle: BundleCartItem) => {
+    setBundles((prev) => {
+      if (prev.find((b) => b.bundleId === bundle.bundleId)) return prev;
+      return [...prev, bundle];
+    });
+  };
 
-  const totalItems = items.reduce((sum, item) => sum + item.quantity, 0);
-  const subtotal = items.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
+  const removeBundleFromCart = (bundleId: string) => {
+    setBundles((prev) => prev.filter((b) => b.bundleId !== bundleId));
+  };
+
+  const clearCart = () => {
+    setItems([]);
+    setBundles([]);
+  };
+
+  const totalItems =
+    items.reduce((sum, item) => sum + item.quantity, 0) + bundles.length;
+
+  const subtotal =
+    items.reduce((sum, item) => sum + item.product.price * item.quantity, 0) +
+    bundles.reduce((sum, b) => sum + b.price, 0);
 
   return (
     <CartContext.Provider
-      value={{ items, addToCart, updateQuantity, removeFromCart, clearCart, totalItems, subtotal }}
+      value={{
+        items,
+        bundles,
+        addToCart,
+        updateQuantity,
+        removeFromCart,
+        addBundleToCart,
+        removeBundleFromCart,
+        clearCart,
+        totalItems,
+        subtotal,
+      }}
     >
       {children}
     </CartContext.Provider>

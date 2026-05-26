@@ -138,11 +138,19 @@ function useOrderNotifications() {
 
         if (permission === "granted" && typeof Notification !== "undefined") {
           newOrders.forEach((o) => {
-            new Notification("New Order — Jojo Collections", {
-              body: `${o.customerName} placed an order for $${o.total.toFixed(2)}`,
+            const notifOpts: NotificationOptions = {
+              body: `${o.customerName} placed an order for ${o.total.toFixed(2)}`,
               icon: "/favicon.ico",
               tag: `order-${o.id}`,
-            });
+              requireInteraction: true,
+            };
+            if ("serviceWorker" in navigator) {
+              navigator.serviceWorker.ready.then((reg) => {
+                reg.showNotification("New Order — Jojo Collections", notifOpts);
+              }).catch(() => new Notification("New Order — Jojo Collections", notifOpts));
+            } else {
+              new Notification("New Order — Jojo Collections", notifOpts);
+            }
           });
         }
 

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { AdminLayout } from "@/components/admin-layout";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -90,6 +90,14 @@ export default function AdminOrders() {
     status: queryStatus,
     ...(includeArchived ? { includeArchived: "true" } : {}),
   } as any);
+
+  // Sync selectedOrder with fresh list data — prevents stale-cache showing wrong shippingConfirmed
+  useEffect(() => {
+    if (selectedOrder && rawOrders) {
+      const fresh = (rawOrders as any[]).find((o: any) => o.id === selectedOrder.id);
+      if (fresh) setSelectedOrder(fresh);
+    }
+  }, [rawOrders]);
 
   const orders = filterMode === ACTIVE_FILTER ? rawOrders?.filter((o: any) => !o.archived) : rawOrders;
 

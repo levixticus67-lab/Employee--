@@ -159,7 +159,12 @@ import { getUsdToUgxRate } from "../lib/exchangeRate";
           if (!snap.exists) throw new Error(`Product ${ri.productId} not found`);
           const p     = snap.data() as ProductDoc;
           if (p.stock < ri.quantity) throw new Error(`Insufficient stock for "${p.name}"`);
-          const price = Number(p.salePrice ?? p.price ?? 0);
+          const rawItemsArr = (rawBody["items"] as Record<string, unknown>[] | undefined) ?? [];
+          const rawItemEntry = rawItemsArr[i] ?? {};
+          const priceOverrideVal = typeof rawItemEntry["priceOverride"] === "number" && rawItemEntry["priceOverride"] >= 0
+            ? rawItemEntry["priceOverride"]
+            : null;
+          const price = priceOverrideVal !== null ? priceOverrideVal : Number(p.salePrice ?? p.price ?? 0);
           items.push({ productId: snap.id, name: p.name ?? "", brand: p.brand ?? "", price, quantity: ri.quantity, imageUrl: p.imageUrl ?? null });
           subtotal += price * ri.quantity;
         }

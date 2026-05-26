@@ -8,7 +8,7 @@ import { useState, useEffect } from "react";
   import { toast } from "sonner";
   import {
     Tag, CheckCircle, Truck, Info, Loader2, ShieldCheck, Smartphone, CreditCard,
-    MessageCircle, Gift,
+    MessageCircle, Gift, Package,
   } from "lucide-react";
   import { apiFetch } from "@/lib/api";
 
@@ -20,7 +20,7 @@ import { useState, useEffect } from "react";
 
   export default function Checkout() {
     const [, setLocation] = useLocation();
-    const { items, subtotal, clearCart } = useCart();
+    const { items, bundles, subtotal, clearCart } = useCart();
     const { data: session } = useGetCurrentUser();
     const { format } = useCurrency();
 
@@ -108,7 +108,18 @@ import { useState, useEffect } from "react";
             customerEmail:   form.customerEmail,
             shippingAddress: form.shippingAddress,
             buyerPhone:      form.buyerPhone || undefined,
-            items: items.map((i) => ({ productId: i.product.id, quantity: i.quantity })),
+            items: [
+              ...items.map((i) => ({ productId: i.product.id, quantity: i.quantity })),
+              ...bundles.flatMap((b) => {
+                const sumPrices = b.products.reduce((s, p) => s + ((p as any).salePrice ?? (p as any).price ?? 0), 0);
+                const ratio = sumPrices > 0 ? b.price / sumPrices : 1;
+                return b.products.map((p) => ({
+                  productId: (p as any).id,
+                  quantity: 1,
+                  priceOverride: ((p as any).salePrice ?? (p as any).price ?? 0) * ratio,
+                }));
+              }),
+            ],
             couponCode:    couponResult?.code,
             giftWrapping:  giftWrapping || undefined,
             giftNote:      giftWrapping && giftNote.trim() ? giftNote.trim() : undefined,
@@ -456,6 +467,26 @@ import { useState, useEffect } from "react";
 
                 {/* Items */}
                 <div className="space-y-4">
+                  {bundles.map((bundle) => (
+                    <div key={bundle.bundleId} className="flex items-center gap-3">
+                      {bundle.imageUrl ? (
+                        <img src={bundle.imageUrl} alt={bundle.bundleName}
+                          className="w-14 h-14 rounded-xl object-cover bg-white/40 flex-shrink-0" />
+                      ) : (
+                        <div className="w-14 h-14 rounded-xl bg-blue-100/40 flex items-center justify-center flex-shrink-0">
+                          <Package className="w-6 h-6 text-blue-300" />
+                        </div>
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-1.5 mb-0.5">
+                          <span className="text-[10px] font-bold text-blue-600 bg-blue-100/70 rounded-full px-1.5 py-0.5">Bundle</span>
+                          <p className="text-sm font-medium text-blue-950 truncate">{bundle.bundleName}</p>
+                        </div>
+                        <p className="text-xs text-blue-800/60">{bundle.products.length} items included</p>
+                      </div>
+                      <p className="text-sm font-semibold text-blue-950 flex-shrink-0">{format(bundle.price)}</p>
+                    </div>
+                  ))}
                   {items.map((item) => (
                     <div key={item.product.id} className="flex items-center gap-3">
                       {item.product.imageUrl ? (
