@@ -93,7 +93,7 @@ import { useState, useEffect } from "react";
 
     const handleSubmit = async (e: React.FormEvent) => {
       e.preventDefault();
-      if (items.length === 0) return;
+      if (items.length === 0 && bundles.length === 0) return;
       setSubmitting(true);
       try {
         const amountToPay = isOnline && isPartialPayment && partialAmount < total && partialAmount > 0
@@ -171,7 +171,7 @@ import { useState, useEffect } from "react";
       }
     };
 
-    if (items.length === 0) { setLocation("/cart"); return null; }
+    if (items.length === 0 && bundles.length === 0) { setLocation("/cart"); return null; }
 
     const payingNow    = isOnline && isPartialPayment && partialAmount < total ? partialAmount : total;
     const balanceDue   = total - payingNow;

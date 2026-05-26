@@ -114,7 +114,7 @@ function useOrderNotifications() {
 
   const checkNewOrders = async () => {
     try {
-      const res = await apiFetch("/api/admin/orders");
+      const res = await apiFetch("/api/admin/orders?includeArchived=true");
       if (!res.ok) return;
       const orders: { id: string; customerName: string; total: number; status: string }[] = await res.json();
 
@@ -138,18 +138,20 @@ function useOrderNotifications() {
 
         if (permission === "granted" && typeof Notification !== "undefined") {
           newOrders.forEach((o) => {
-            const notifOpts: NotificationOptions = {
+            const title = "New Order — Jojo Collections";
+            const opts: NotificationOptions = {
               body: `${o.customerName} placed an order for ${o.total.toFixed(2)}`,
               icon: "/favicon.ico",
               tag: `order-${o.id}`,
-              requireInteraction: true,
             };
-            if ("serviceWorker" in navigator) {
-              navigator.serviceWorker.ready.then((reg) => {
-                reg.showNotification("New Order — Jojo Collections", notifOpts);
-              }).catch(() => new Notification("New Order — Jojo Collections", notifOpts));
-            } else {
-              new Notification("New Order — Jojo Collections", notifOpts);
+            try {
+              new Notification(title, opts);
+            } catch {
+              if ("serviceWorker" in navigator) {
+                navigator.serviceWorker.ready
+                  .then((reg) => reg.showNotification(title, opts))
+                  .catch(() => {});
+              }
             }
           });
         }
