@@ -1,4 +1,6 @@
 User-agent: *
 Allow: /
+Disallow: /admin/
+Disallow: /admin
 
 Sitemap: https://jojo-collection.web.app/sitemap.xml
