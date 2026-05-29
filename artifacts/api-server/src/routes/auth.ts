@@ -1,4 +1,5 @@
 import { Router, type IRouter } from "express";
+  import rateLimit from "express-rate-limit";
   import bcrypt from "bcryptjs";
   import { getAuth } from "firebase-admin/auth";
   import { firestore, COLLECTIONS, Timestamp, type UserDoc } from "@workspace/db";
@@ -6,18 +7,53 @@ import { Router, type IRouter } from "express";
 
   const router: IRouter = Router();
 
-  router.post("/auth/signup", async (req, res) => {
+  // ── Rate limiters ──────────────────────────────────────────────────────────
+  // Applied per-IP. Covers signup, customer login, and admin login.
+  // "trust proxy" is set in app.ts so req.ip is the real client IP on Render.
+  const authLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 10,                   // max 10 attempts per window
+    standardHeaders: "draft-7",
+    legacyHeaders: false,
+    message: { error: "Too many attempts. Please try again in 15 minutes." },
+    skipSuccessfulRequests: false,
+  });
+
+  // /auth/me is polled frequently by the client — allow more headroom.
+  const meLimiter = rateLimit({
+    windowMs: 60 * 1000, // 1 minute
+    max: 60,
+    standardHeaders: "draft-7",
+    legacyHeaders: false,
+    message: { error: "Too many requests. Please slow down." },
+  });
+
+  // ── Signup ──────────────────────────────────────────────────────────────────
+  router.post("/auth/signup", authLimiter, async (req, res) => {
     const parsed = SignupBody.safeParse(req.body);
     if (!parsed.success) { res.status(400).json({ error: "Invalid signup data" }); return; }
     const { name, email, password } = parsed.data;
     const normalizedEmail = email.toLowerCase().trim();
-    const rawBody    = req.body as Record<string, unknown>;
-    const firebaseUid = (rawBody["firebaseUid"] as string | undefined) ?? null;
+    const rawBody = req.body as Record<string, unknown>;
 
-    if (!firebaseUid) {
+    // Require a Firebase ID token instead of a bare UID — the token is
+    // cryptographically verified server-side so the UID cannot be spoofed.
+    const firebaseIdToken = (rawBody["firebaseIdToken"] as string | undefined) ?? null;
+    if (!firebaseIdToken) {
       res.status(400).json({
         error: "Firebase authentication is required. Please sign up through the app — direct API access is not permitted.",
       });
+      return;
+    }
+
+    // Verify the token and extract the UID. We never trust the UID from the client.
+    let firebaseUid: string;
+    try {
+      const decoded = await getAuth().verifyIdToken(firebaseIdToken);
+      firebaseUid = decoded.uid;
+    } catch (err) {
+      req.log.warn({ err }, "Signup: Firebase token verification failed");
+      res.status(401).json({ error: "Invalid or expired authentication token" });
       return;
     }
 
@@ -47,13 +83,15 @@ import { Router, type IRouter } from "express";
     res.status(201).json({ id: firebaseUid, email: normalizedEmail, name });
   });
 
+  // ── Password login (disabled) ───────────────────────────────────────────────
   router.post("/auth/login", (_req, res) => {
     res.status(410).json({
       error: "Password login is disabled. Please use Firebase Authentication.",
     });
   });
 
-  router.post("/auth/login-firebase", async (req, res) => {
+  // ── Firebase token login ────────────────────────────────────────────────────
+  router.post("/auth/login-firebase", authLimiter, async (req, res) => {
     const { firebaseIdToken } = req.body as { firebaseIdToken?: string };
     if (!firebaseIdToken) { res.status(400).json({ error: "firebaseIdToken is required" }); return; }
 
@@ -107,14 +145,18 @@ import { Router, type IRouter } from "express";
     });
   });
 
+  // ── Customer logout ─────────────────────────────────────────────────────────
+  // Fully destroys the session so the cookie cannot be reused even if stolen.
   router.post("/auth/logout", (req, res) => {
     if (!req.session) { res.status(204).end(); return; }
-    req.session.userId      = undefined;
-    req.session.firebaseUid = undefined;
-    req.session.save(() => res.status(204).end());
+    req.session.destroy((err) => {
+      if (err) req.log.warn({ err }, "Session destroy error on logout");
+      res.status(204).end();
+    });
   });
 
-  router.get("/auth/me", async (req, res) => {
+  // ── Current user ────────────────────────────────────────────────────────────
+  router.get("/auth/me", meLimiter, async (req, res) => {
     const isAdmin = Boolean(req.session?.isAdmin);
     const userId  = req.session?.userId;
     if (!userId) { res.json({ user: null, isAdmin }); return; }
@@ -131,7 +173,8 @@ import { Router, type IRouter } from "express";
     });
   });
 
-  router.post("/admin/auth/login", async (req, res) => {
+  // ── Admin login ─────────────────────────────────────────────────────────────
+  router.post("/admin/auth/login", authLimiter, async (req, res) => {
     const { firebaseIdToken } = req.body as { firebaseIdToken?: string };
     if (!firebaseIdToken) {
       res.status(400).json({
@@ -167,10 +210,16 @@ import { Router, type IRouter } from "express";
     });
   });
 
+  // ── Admin logout ────────────────────────────────────────────────────────────
+  // Only revokes admin privileges — the user's regular customer session is kept.
   router.post("/admin/auth/logout", (req, res) => {
     if (!req.session) { res.status(204).end(); return; }
     req.session.isAdmin = false;
-    req.session.save(() => res.status(204).end());
+    req.session.save((err) => {
+      if (err) req.log.warn({ err }, "Session save error on admin logout");
+      res.status(204).end();
+    });
   });
 
   export default router;
+  
