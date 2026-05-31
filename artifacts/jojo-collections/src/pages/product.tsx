@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRoute, Link } from "wouter";
 import { useGetProduct, useListProductReviews, useCreateProductReview } from "@workspace/api-client-react";
 import { Layout } from "@/components/layout";
@@ -6,7 +6,7 @@ import { useCart } from "@/components/cart-context";
 import { useWishlist } from "@/components/wishlist-context";
 import { useCurrency } from "@/components/currency-context";
 import { Button } from "@/components/ui/button";
-import { Star, Minus, Plus, ShoppingBag, Heart, Share2, Bell, ChevronRight, Flame } from "lucide-react";
+import { Star, Minus, Plus, ShoppingBag, Heart, Share2, Bell, ChevronRight, ChevronLeft, Flame } from "lucide-react";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
 import { getListProductReviewsQueryKey } from "@workspace/api-client-react";
@@ -29,7 +29,101 @@ function CountdownTimer({ endsAt }: { endsAt: string }) {
     const id = setInterval(update, 1000);
     return () => clearInterval(id);
   }, [endsAt]);
-  return <span className="font-mono text-sm text-orange-700 font-bold">{timeLeft}</span>;
+  return <span className="font-mono text-sm text-orange-400 font-bold">{timeLeft}</span>;
+}
+
+function ImageSlider({ images, name }: { images: string[]; name: string }) {
+  const [current, setCurrent] = useState(0);
+  const startX = useRef<number | null>(null);
+
+  const prev = () => setCurrent((c) => (c - 1 + images.length) % images.length);
+  const next = () => setCurrent((c) => (c + 1) % images.length);
+
+  const handleTouchStart = (e: React.TouchEvent) => { startX.current = e.touches[0].clientX; };
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (startX.current === null) return;
+    const dx = e.changedTouches[0].clientX - startX.current;
+    if (Math.abs(dx) > 40) dx < 0 ? next() : prev();
+    startX.current = null;
+  };
+
+  return (
+    <div
+      className="relative aspect-square overflow-hidden rounded-2xl select-none"
+      style={{ background: "rgba(12, 28, 55, 0.75)" }}
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
+    >
+      {/* Sliding strip */}
+      <div
+        className="flex h-full transition-transform duration-500 ease-[cubic-bezier(0.25,0.46,0.45,0.94)]"
+        style={{
+          transform: `translateX(-${current * 100}%)`,
+          width: `${images.length * 100}%`,
+        }}
+      >
+        {images.map((img, i) => (
+          <div
+            key={i}
+            style={{ width: `${100 / images.length}%` }}
+            className="flex-shrink-0 h-full flex items-center justify-center"
+          >
+            <img
+              src={img}
+              alt={`${name} — view ${i + 1}`}
+              className="w-full h-full object-contain p-5 drop-shadow-2xl"
+              draggable={false}
+            />
+          </div>
+        ))}
+      </div>
+
+      {/* Image counter */}
+      {images.length > 1 && (
+        <div className="absolute top-3 right-3 bg-black/45 backdrop-blur-sm rounded-full px-2.5 py-1 text-xs text-white/75 font-medium tabular-nums">
+          {current + 1} / {images.length}
+        </div>
+      )}
+
+      {/* Arrow buttons — desktop only */}
+      {images.length > 1 && (
+        <>
+          <button
+            onClick={prev}
+            className="absolute left-2 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-black/35 backdrop-blur-sm border border-white/12 text-white hover:bg-black/55 transition-all items-center justify-center hidden sm:flex"
+          >
+            <ChevronLeft className="w-4 h-4" />
+          </button>
+          <button
+            onClick={next}
+            className="absolute right-2 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-black/35 backdrop-blur-sm border border-white/12 text-white hover:bg-black/55 transition-all items-center justify-center hidden sm:flex"
+          >
+            <ChevronRight className="w-4 h-4" />
+          </button>
+        </>
+      )}
+
+      {/* Pill / dot indicators */}
+      {images.length > 1 && (
+        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-1.5 items-center">
+          {images.map((_, i) => (
+            <button
+              key={i}
+              onClick={() => setCurrent(i)}
+              className={`rounded-full transition-all duration-300 ${
+                i === current
+                  ? "w-6 h-1.5 bg-sky-400 shadow-lg shadow-sky-400/60"
+                  : "w-1.5 h-1.5 bg-white/22 hover:bg-white/50"
+              }`}
+            />
+          ))}
+        </div>
+      )}
+
+      {/* Subtle ring glow */}
+      <div className="absolute inset-0 rounded-2xl ring-1 ring-sky-400/10 pointer-events-none" />
+    </div>
+  );
 }
 
 export default function ProductDetail() {
@@ -50,13 +144,11 @@ export default function ProductDetail() {
 
   const [quantity, setQuantity] = useState(1);
   const [selectedSize, setSelectedSize] = useState<number | null>(null);
-  const [activeImage, setActiveImage] = useState(0);
   const [reviewForm, setReviewForm] = useState({ customerName: "", rating: 5, comment: "" });
   const [relatedProducts, setRelatedProducts] = useState<RelatedProduct[]>([]);
   const [alertEmail, setAlertEmail] = useState("");
   const [alertSent, setAlertSent] = useState(false);
 
-  // Recently viewed
   useEffect(() => {
     if (!productId) return;
     try {
@@ -66,7 +158,6 @@ export default function ProductDetail() {
     } catch {}
   }, [productId]);
 
-  // Load related products
   useEffect(() => {
     if (!productId) return;
     apiFetch(`/api/products/${productId}/related`)
@@ -135,7 +226,7 @@ export default function ProductDetail() {
     return (
       <Layout>
         <div className="flex justify-center items-center min-h-[60vh]">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-600" />
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-400" />
         </div>
       </Layout>
     );
@@ -145,8 +236,8 @@ export default function ProductDetail() {
     return (
       <Layout>
         <div className="text-center py-20">
-          <h2 className="text-2xl font-serif text-blue-950">Product not found</h2>
-          <Link href="/shop" className="text-blue-600 hover:underline mt-4 inline-block">← Back to Shop</Link>
+          <h2 className="text-2xl font-serif text-sky-100">Product not found</h2>
+          <Link href="/shop" className="text-blue-400 hover:underline mt-4 inline-block">← Back to Shop</Link>
         </div>
       </Layout>
     );
@@ -154,29 +245,17 @@ export default function ProductDetail() {
 
   return (
     <Layout>
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
         {/* Product Overview */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-12 mb-20">
-          {/* Image Gallery */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-12 mb-20">
+
+          {/* ── Futuristic image slider ── */}
           <div>
-            <div className="glass-panel rounded-3xl p-8 flex items-center justify-center relative overflow-hidden aspect-square mb-4">
-              <div className="absolute inset-0 bg-gradient-to-tr from-blue-200/40 to-white/30 z-0" />
-              {allImages.length > 0 ? (
-                <img src={allImages[activeImage]} alt={product.name} className="object-contain w-full h-full max-h-[80%] drop-shadow-2xl z-10 transition-all duration-300" />
-              ) : (
-                <div className="w-64 h-64 glass-panel rounded-lg z-10 flex items-center justify-center">
-                  <span className="text-blue-300 font-serif italic text-xl">No image</span>
-                </div>
-              )}
-            </div>
-            {allImages.length > 1 && (
-              <div className="flex gap-3 justify-center overflow-x-auto">
-                {allImages.map((img, i) => (
-                  <button key={i} onClick={() => setActiveImage(i)}
-                    className={`w-16 h-16 rounded-xl overflow-hidden border-2 transition-all flex-shrink-0 ${i === activeImage ? "border-blue-500 shadow-md" : "border-white/30 opacity-60 hover:opacity-100"}`}>
-                    <img src={img} alt={`View ${i + 1}`} className="w-full h-full object-contain bg-white/40" />
-                  </button>
-                ))}
+            {allImages.length > 0 ? (
+              <ImageSlider images={allImages} name={product.name} />
+            ) : (
+              <div className="aspect-square rounded-2xl flex items-center justify-center" style={{ background: "rgba(12, 28, 55, 0.75)" }}>
+                <span className="text-sky-400/30 font-serif italic text-xl">No image</span>
               </div>
             )}
           </div>
@@ -184,58 +263,55 @@ export default function ProductDetail() {
           {/* Product Info */}
           <div className="flex flex-col justify-center">
             <div className="flex items-center justify-between mb-2">
-              <p className="text-sm font-semibold text-blue-600 uppercase tracking-widest">{product.brand}</p>
+              <p className="text-sm font-semibold text-blue-400 uppercase tracking-widest">{product.brand}</p>
               <div className="flex items-center gap-2">
                 <button onClick={() => toggle(productId)}
-                  className={`p-2 rounded-full transition-all ${isWishlisted(productId) ? "text-red-500 bg-red-50" : "text-blue-300 hover:text-red-400 bg-white/30"}`}>
+                  className={`p-2 rounded-full transition-all ${isWishlisted(productId) ? "text-red-400 bg-red-900/30" : "text-sky-300/60 hover:text-red-400 bg-white/10"}`}>
                   <Heart className={`w-5 h-5 ${isWishlisted(productId) ? "fill-current" : ""}`} />
                 </button>
-                <button onClick={handleShare} className="p-2 rounded-full text-blue-400 hover:text-blue-700 bg-white/30 hover:bg-white/50 transition-all" title="Share">
+                <button onClick={handleShare} className="p-2 rounded-full text-sky-300/60 hover:text-sky-200 bg-white/10 hover:bg-white/15 transition-all" title="Share">
                   <Share2 className="w-5 h-5" />
                 </button>
               </div>
             </div>
 
-            <h1 className="text-4xl md:text-5xl font-serif text-blue-950 mb-2">{product.name}</h1>
+            <h1 className="text-3xl md:text-4xl font-serif text-sky-50 mb-2 leading-tight">{product.name}</h1>
 
             {p?.collection && (
-              <p className="text-sm text-blue-500 mb-4">{p.collection}</p>
+              <p className="text-sm text-blue-400 mb-4">{p.collection}</p>
             )}
 
-            {/* Flash Sale Badge */}
             {isOnSale && (
-              <div className="flex items-center gap-3 mb-4 glass-panel rounded-xl p-3 border-orange-200/50 bg-orange-50/20">
-                <Flame className="w-5 h-5 text-orange-500 flex-shrink-0" />
+              <div className="flex items-center gap-3 mb-4 glass-card rounded-xl p-3 border border-orange-400/20">
+                <Flame className="w-5 h-5 text-orange-400 flex-shrink-0" />
                 <div>
-                  <span className="text-sm font-semibold text-orange-900">Flash Sale</span>
-                  {p.saleEndsAt && <div className="text-xs text-orange-800/70">Ends in <CountdownTimer endsAt={p.saleEndsAt} /></div>}
+                  <span className="text-sm font-semibold text-orange-300">Flash Sale</span>
+                  {p.saleEndsAt && <div className="text-xs text-orange-300/70">Ends in <CountdownTimer endsAt={p.saleEndsAt} /></div>}
                 </div>
               </div>
             )}
 
-            {/* Price */}
             <div className="flex items-center gap-4 mb-6">
-              <span className="text-3xl text-blue-950 font-serif">{format(displayPrice)}</span>
+              <span className="text-3xl text-sky-50 font-serif">{format(displayPrice)}</span>
               {isOnSale && (
-                <span className="text-lg text-blue-400 line-through">{format(product.price)}</span>
+                <span className="text-lg text-sky-400/50 line-through">{format(product.price)}</span>
               )}
               {product.sizeMl && sizes.length === 0 && (
-                <span className="text-sm text-blue-800/60 px-3 py-1 glass-card rounded-full">{product.sizeMl}ml</span>
+                <span className="text-sm text-sky-300/60 px-3 py-1 glass-card rounded-full">{product.sizeMl}ml</span>
               )}
             </div>
 
-            {/* Size Variants */}
             {sizes.length > 0 && (
               <div className="mb-6">
-                <p className="text-sm font-medium text-blue-900/80 mb-2 uppercase tracking-wider">Size</p>
+                <p className="text-sm font-medium text-sky-200/80 mb-2 uppercase tracking-wider">Size</p>
                 <div className="flex flex-wrap gap-2">
                   {sizes.map((size, i) => (
                     <button key={i} onClick={() => setSelectedSize(i === selectedSize ? null : i)}
                       disabled={size.stock === 0}
                       className={`px-4 py-2 rounded-full text-sm font-medium transition-all border ${
-                        i === selectedSize ? "bg-blue-600 text-white border-blue-600" :
-                        size.stock === 0 ? "opacity-40 cursor-not-allowed glass-card border-white/30 text-blue-800" :
-                        "glass-card border-white/40 text-blue-900 hover:border-blue-400"
+                        i === selectedSize ? "bg-blue-500 text-white border-blue-500" :
+                        size.stock === 0 ? "opacity-40 cursor-not-allowed glass-card border-white/20 text-sky-300" :
+                        "glass-card border-white/20 text-sky-200 hover:border-blue-400"
                       }`}>
                       {size.label} — {format(size.price)}
                       {size.stock === 0 && " (OOS)"}
@@ -245,61 +321,59 @@ export default function ProductDetail() {
               </div>
             )}
 
-            <p className="text-blue-900/70 mb-8 leading-relaxed">{product.description}</p>
+            <p className="text-sky-200/65 mb-8 leading-relaxed">{product.description}</p>
 
-            {/* Add to Cart / Out of Stock */}
             {displayStock > 0 ? (
               <div className="flex flex-col sm:flex-row gap-4 mb-6">
-                <div className="glass-panel flex items-center justify-between rounded-full px-2 w-32 border-white/40">
-                  <button onClick={() => setQuantity(Math.max(1, quantity - 1))} className="p-2 text-blue-800 hover:text-blue-950">
+                <div className="glass-panel flex items-center justify-between rounded-full px-2 w-32 border-white/15">
+                  <button onClick={() => setQuantity(Math.max(1, quantity - 1))} className="p-2 text-sky-300 hover:text-sky-50 transition-colors">
                     <Minus className="w-4 h-4" />
                   </button>
-                  <span className="font-medium text-blue-950">{quantity}</span>
-                  <button onClick={() => setQuantity(Math.min(displayStock, quantity + 1))} className="p-2 text-blue-800 hover:text-blue-950">
+                  <span className="font-medium text-sky-100">{quantity}</span>
+                  <button onClick={() => setQuantity(Math.min(displayStock, quantity + 1))} className="p-2 text-sky-300 hover:text-sky-50 transition-colors">
                     <Plus className="w-4 h-4" />
                   </button>
                 </div>
-                <Button onClick={handleAddToCart} size="lg" className="rounded-full flex-1 bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-600/20">
+                <Button onClick={handleAddToCart} size="lg" className="rounded-full flex-1 bg-blue-500 hover:bg-blue-400 text-white shadow-lg shadow-blue-500/25">
                   <ShoppingBag className="w-4 h-4 mr-2" /> Add to Cart
                 </Button>
               </div>
             ) : (
               <div className="mb-6">
-                <div className="mb-4 p-4 glass-panel rounded-xl text-center border-red-200/50 bg-red-50/30 text-red-800">
+                <div className="mb-4 p-4 glass-panel rounded-xl text-center border border-red-400/20 text-red-300">
                   Out of Stock
                 </div>
                 {!alertSent ? (
                   <form onSubmit={handleStockAlert} className="flex gap-2">
                     <input type="email" required value={alertEmail} onChange={(e) => setAlertEmail(e.target.value)}
                       placeholder="Email for restock notification"
-                      className="flex-1 glass-card rounded-full px-4 py-2 text-sm text-blue-950 border-white/40 focus:ring-2 focus:ring-blue-400 focus:outline-none" />
-                    <Button type="submit" className="rounded-full bg-blue-600 hover:bg-blue-700 text-white px-4 text-sm flex-shrink-0">
+                      className="flex-1 glass-card rounded-full px-4 py-2 text-sm border-white/15 focus:ring-2 focus:ring-blue-400 focus:outline-none" />
+                    <Button type="submit" className="rounded-full bg-blue-500 hover:bg-blue-400 text-white px-4 text-sm flex-shrink-0">
                       <Bell className="w-4 h-4" />
                     </Button>
                   </form>
                 ) : (
-                  <p className="text-center text-sm text-green-700 glass-panel rounded-xl p-3">
+                  <p className="text-center text-sm text-green-400 glass-panel rounded-xl p-3">
                     ✓ We'll email you when it's back in stock!
                   </p>
                 )}
               </div>
             )}
 
-            {/* Fragrance Notes */}
-            <div className="space-y-3 pt-6 border-t border-white/20">
+            <div className="space-y-3 pt-6 border-t border-white/10">
               {product.topNotes && (
-                <div><span className="font-medium text-blue-950 text-xs tracking-wider uppercase">Top Notes: </span><span className="text-blue-900/70 text-sm">{product.topNotes}</span></div>
+                <div><span className="font-medium text-sky-200 text-xs tracking-wider uppercase">Top Notes: </span><span className="text-sky-300/65 text-sm">{product.topNotes}</span></div>
               )}
               {product.heartNotes && (
-                <div><span className="font-medium text-blue-950 text-xs tracking-wider uppercase">Heart Notes: </span><span className="text-blue-900/70 text-sm">{product.heartNotes}</span></div>
+                <div><span className="font-medium text-sky-200 text-xs tracking-wider uppercase">Heart Notes: </span><span className="text-sky-300/65 text-sm">{product.heartNotes}</span></div>
               )}
               {product.baseNotes && (
-                <div><span className="font-medium text-blue-950 text-xs tracking-wider uppercase">Base Notes: </span><span className="text-blue-900/70 text-sm">{product.baseNotes}</span></div>
+                <div><span className="font-medium text-sky-200 text-xs tracking-wider uppercase">Base Notes: </span><span className="text-sky-300/65 text-sm">{product.baseNotes}</span></div>
               )}
               {product.notes?.length > 0 && (
                 <div className="flex flex-wrap gap-2 pt-2">
                   {product.notes.map((note: string) => (
-                    <span key={note} className="text-xs glass-card px-2.5 py-1 rounded-full text-blue-800/80">{note}</span>
+                    <span key={note} className="text-xs glass-card px-2.5 py-1 rounded-full text-sky-300/80">{note}</span>
                   ))}
                 </div>
               )}
@@ -309,29 +383,29 @@ export default function ProductDetail() {
 
         {/* Related Products */}
         {relatedProducts.length > 0 && (
-          <div className="mb-16 border-t border-white/20 pt-14">
-            <h2 className="text-2xl font-serif text-blue-950 mb-8">You May Also Like</h2>
+          <div className="mb-16 border-t border-white/10 pt-14">
+            <h2 className="text-2xl font-serif text-sky-50 mb-8">You May Also Like</h2>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-5">
               {relatedProducts.map((rp) => (
                 <Link key={rp.id} href={`/product/${rp.id}`}>
-                  <div className="glass-panel rounded-2xl p-4 group cursor-pointer hover:bg-white/30 transition-colors">
-                    <div className="aspect-square rounded-xl bg-white/30 mb-3 overflow-hidden flex items-center justify-center p-3">
+                  <div className="glass-panel rounded-2xl p-4 group cursor-pointer hover:bg-white/8 transition-colors">
+                    <div className="aspect-square rounded-xl bg-white/5 mb-3 overflow-hidden relative">
                       {rp.imageUrl ? (
-                        <img src={rp.imageUrl} alt={rp.name} className="object-contain w-full h-full drop-shadow-md transition-transform duration-500 group-hover:scale-105" />
+                        <img src={rp.imageUrl} alt={rp.name} className="absolute inset-0 w-full h-full object-contain p-2 drop-shadow-md transition-transform duration-500 group-hover:scale-105" />
                       ) : (
                         <div className="w-full h-full glass-panel rounded-lg" />
                       )}
                     </div>
-                    <p className="text-xs text-blue-500 font-semibold uppercase tracking-widest mb-1">{rp.brand}</p>
-                    <p className="text-sm font-serif text-blue-950 truncate">{rp.name}</p>
+                    <p className="text-xs text-blue-400 font-semibold uppercase tracking-widest mb-1">{rp.brand}</p>
+                    <p className="text-sm font-serif text-sky-100 truncate">{rp.name}</p>
                     <div className="flex items-center gap-1.5 mt-1">
                       {rp.salePrice ? (
                         <>
-                          <span className="text-xs font-medium text-orange-600">{format(rp.salePrice)}</span>
-                          <span className="text-xs text-blue-400 line-through">{format(rp.price)}</span>
+                          <span className="text-xs font-medium text-orange-400">{format(rp.salePrice)}</span>
+                          <span className="text-xs text-sky-400/50 line-through">{format(rp.price)}</span>
                         </>
                       ) : (
-                        <span className="text-sm text-blue-900/70">{format(rp.price)}</span>
+                        <span className="text-sm text-sky-200/70">{format(rp.price)}</span>
                       )}
                     </div>
                   </div>
@@ -341,28 +415,28 @@ export default function ProductDetail() {
           </div>
         )}
 
-        {/* Reviews Section */}
-        <div className="border-t border-white/30 pt-16 grid grid-cols-1 lg:grid-cols-3 gap-12">
+        {/* Reviews */}
+        <div className="border-t border-white/10 pt-16 grid grid-cols-1 lg:grid-cols-3 gap-12">
           <div className="lg:col-span-2">
-            <h3 className="text-2xl font-serif text-blue-950 mb-8">Customer Reviews</h3>
+            <h3 className="text-2xl font-serif text-sky-50 mb-8">Customer Reviews</h3>
             {reviews?.length === 0 ? (
-              <p className="text-blue-800/60 italic">No reviews yet. Be the first to share your thoughts.</p>
+              <p className="text-sky-300/50 italic">No reviews yet. Be the first to share your thoughts.</p>
             ) : (
               <div className="space-y-6">
                 {reviews?.map((review) => (
-                  <div key={review.id} className="glass-panel rounded-2xl p-6 border-white/30">
+                  <div key={review.id} className="glass-panel rounded-2xl p-6 border-white/10">
                     <div className="flex justify-between items-start mb-4">
                       <div>
-                        <p className="font-medium text-blue-950">{review.customerName}</p>
-                        <p className="text-xs text-blue-800/50">{new Date(review.createdAt).toLocaleDateString()}</p>
+                        <p className="font-medium text-sky-100">{review.customerName}</p>
+                        <p className="text-xs text-sky-300/45">{new Date(review.createdAt).toLocaleDateString()}</p>
                       </div>
                       <div className="flex text-yellow-400">
                         {Array.from({ length: 5 }).map((_, i) => (
-                          <Star key={i} className={`w-4 h-4 ${i < review.rating ? "fill-current" : "text-blue-200"}`} />
+                          <Star key={i} className={`w-4 h-4 ${i < review.rating ? "fill-current" : "text-sky-400/20"}`} />
                         ))}
                       </div>
                     </div>
-                    <p className="text-blue-900/80">{review.comment}</p>
+                    <p className="text-sky-200/70">{review.comment}</p>
                   </div>
                 ))}
               </div>
@@ -370,30 +444,30 @@ export default function ProductDetail() {
           </div>
 
           <div>
-            <div className="glass-panel-heavy rounded-2xl p-6 border-white/40 sticky top-28">
-              <h4 className="text-xl font-serif text-blue-950 mb-6">Write a Review</h4>
+            <div className="glass-panel-heavy rounded-2xl p-6 border-white/10 sticky top-28">
+              <h4 className="text-xl font-serif text-sky-50 mb-6">Write a Review</h4>
               <form onSubmit={handleReviewSubmit} className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-blue-900/80 mb-1">Name</label>
+                  <label className="block text-sm font-medium text-sky-200/80 mb-1">Name</label>
                   <input required type="text" value={reviewForm.customerName}
                     onChange={(e) => setReviewForm((prev) => ({ ...prev, customerName: e.target.value }))}
-                    className="w-full glass-card rounded-lg px-4 py-2 text-blue-950 focus:outline-none focus:ring-2 focus:ring-blue-400 border-white/40" />
+                    className="w-full glass-card rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400 border-white/10" />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-blue-900/80 mb-1">Rating</label>
+                  <label className="block text-sm font-medium text-sky-200/80 mb-1">Rating</label>
                   <select value={reviewForm.rating}
                     onChange={(e) => setReviewForm((prev) => ({ ...prev, rating: Number(e.target.value) }))}
-                    className="w-full glass-card rounded-lg px-4 py-2 text-blue-950 focus:outline-none focus:ring-2 focus:ring-blue-400 border-white/40 appearance-none bg-transparent">
-                    {[5, 4, 3, 2, 1].map((num) => <option key={num} value={num}>{num} Stars</option>)}
+                    className="w-full glass-card rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400 border-white/10 appearance-none bg-transparent">
+                    {[5, 4, 3, 2, 1].map((num) => <option key={num} value={num} className="bg-slate-900">{num} Stars</option>)}
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-blue-900/80 mb-1">Comment</label>
+                  <label className="block text-sm font-medium text-sky-200/80 mb-1">Comment</label>
                   <textarea required rows={4} value={reviewForm.comment}
                     onChange={(e) => setReviewForm((prev) => ({ ...prev, comment: e.target.value }))}
-                    className="w-full glass-card rounded-lg px-4 py-2 text-blue-950 focus:outline-none focus:ring-2 focus:ring-blue-400 border-white/40 resize-none" />
+                    className="w-full glass-card rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400 border-white/10 resize-none" />
                 </div>
-                <Button type="submit" className="w-full rounded-lg bg-blue-600 hover:bg-blue-700 text-white" disabled={createReview.isPending}>
+                <Button type="submit" className="w-full rounded-lg bg-blue-500 hover:bg-blue-400 text-white" disabled={createReview.isPending}>
                   {createReview.isPending ? "Submitting..." : "Submit Review"}
                 </Button>
               </form>

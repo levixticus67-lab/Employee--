@@ -28,6 +28,12 @@ function CountdownTimer({ endsAt }: { endsAt: string }) {
   return <span className="font-mono text-orange-400 font-bold text-sm">{timeLeft}</span>;
 }
 
+const FALLBACK_HERO = [
+  "/perfumes/jasmine-veil.png",
+  "/perfumes/midnight-oud.png",
+  "/perfumes/rose-eclipse.png",
+];
+
 export default function Home() {
   const { data: featuredProducts } = useListFeaturedProducts();
   const { data: newArrivals } = useListNewArrivals();
@@ -35,6 +41,7 @@ export default function Home() {
   const { format } = useCurrency();
   const { toggle, isWishlisted } = useWishlist();
   const [bundles, setBundles] = useState<Bundle[]>([]);
+  const [heroImages, setHeroImages] = useState<string[]>(FALLBACK_HERO);
 
   useEffect(() => {
     apiFetch("/api/bundles")
@@ -43,45 +50,75 @@ export default function Home() {
       .catch(() => {});
   }, []);
 
+  useEffect(() => {
+    apiFetch("/api/settings/public")
+      .then((r) => r.json())
+      .then((d) => {
+        const imgs = [d.heroImage1, d.heroImage2, d.heroImage3].filter(Boolean);
+        if (imgs.length > 0) setHeroImages(imgs);
+      })
+      .catch(() => {});
+  }, []);
+
   const now = new Date().toISOString();
   const flashSales = allProducts?.filter((p: any) => p.salePrice && (p.saleEndsAt === null || p.saleEndsAt > now)) ?? [];
 
   return (
     <Layout>
-      {/* ── Hero Section — Improved Current ── */}
-      <section className="relative pt-16 pb-10 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto flex flex-col items-center">
-        {/* Frosted glass hero card */}
-        <div className="w-full max-w-2xl glass-card rounded-3xl p-8 md:p-14 border border-sky-400/15 shadow-2xl shadow-black/40 text-center mb-6">
-          <p className="text-sky-400 text-xs font-sans tracking-[0.3em] uppercase mb-5">Premium Fragrances</p>
-          <h1 className="text-4xl md:text-6xl font-serif font-light text-sky-50 mb-2 leading-tight">
-            The Essence
-          </h1>
-          <h1 className="text-4xl md:text-6xl font-serif font-light text-sky-50 mb-2 leading-tight">of</h1>
-          <h1 className="text-4xl md:text-6xl font-serif font-light text-blue-400 italic mb-8 leading-tight">Elegance</h1>
-          <p className="text-sky-200/70 text-base md:text-lg mb-10 max-w-xl mx-auto font-light leading-relaxed">
-            Discover our hand-curated collection of premium fragrances.
-            Crafted for the modern connoisseur, each bottle tells a story of luminous beauty and subtle power.
-          </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link href="/shop">
-              <Button size="lg" className="rounded-full px-8 bg-blue-500 hover:bg-blue-400 text-white shadow-lg shadow-blue-500/30">
-                Explore Collection
-              </Button>
-            </Link>
-            <Link href="/bundles">
-              <Button size="lg" variant="outline" className="rounded-full px-8 border-sky-400/30 text-sky-200 hover:bg-white/8 hover:text-sky-50">
-                Gift Sets
-              </Button>
-            </Link>
-          </div>
+      {/* ── Hero — words breathe on the animated background ── */}
+      <section className="relative pt-16 pb-4 px-4 sm:px-6 lg:px-8 max-w-4xl mx-auto flex flex-col items-center text-center">
+        <p className="text-sky-400 text-xs tracking-[0.35em] uppercase mb-7">Premium Fragrances</p>
+
+        <h1 className="text-5xl sm:text-6xl md:text-7xl font-serif font-light text-sky-50 leading-[1.1] mb-1">
+          The Essence
+        </h1>
+        <h1 className="text-5xl sm:text-6xl md:text-7xl font-serif font-light text-sky-50 leading-[1.1] mb-1">
+          of
+        </h1>
+        <h1 className="text-5xl sm:text-6xl md:text-7xl font-serif font-extralight text-blue-400 italic leading-[1.15] mb-9">
+          Elegance
+        </h1>
+
+        <p className="text-sky-200/55 text-base md:text-lg mb-10 max-w-lg mx-auto font-light leading-relaxed">
+          Discover our hand-curated collection of premium fragrances,
+          crafted for the modern connoisseur.
+        </p>
+
+        <div className="flex flex-col sm:flex-row gap-4 justify-center mb-14">
+          <Link href="/shop">
+            <Button size="lg" className="rounded-full px-9 bg-blue-500 hover:bg-blue-400 text-white shadow-lg shadow-blue-500/30 font-medium">
+              Explore Collection
+            </Button>
+          </Link>
+          <Link href="/bundles">
+            <Button size="lg" variant="outline" className="rounded-full px-9 border-sky-400/25 text-sky-200 hover:bg-white/8 hover:text-sky-50">
+              Gift Sets
+            </Button>
+          </Link>
         </div>
 
-        {/* Perfume bottle display beneath hero */}
-        <div className="flex items-end justify-center gap-3 sm:gap-5">
-          <img src="/perfumes/jasmine-veil.png" alt="Jasmine Veil" className="w-20 sm:w-24 h-28 sm:h-32 object-contain opacity-75 drop-shadow-xl" />
-          <img src="/perfumes/midnight-oud.png" alt="Midnight Oud" className="w-24 sm:w-32 h-36 sm:h-44 object-contain opacity-100 drop-shadow-2xl" style={{ filter: "drop-shadow(0 0 18px rgba(59,130,246,0.3))" }} />
-          <img src="/perfumes/rose-eclipse.png" alt="Rose Eclipse" className="w-20 sm:w-24 h-28 sm:h-32 object-contain opacity-75 drop-shadow-xl" />
-        </div>
+        {/* Admin-controlled hero images — up to 3 perfume bottles */}
+        {heroImages.length > 0 && (
+          <div className="flex items-end justify-center gap-4 sm:gap-6">
+            {heroImages.map((url, i) => {
+              const isCenter = heroImages.length === 1 || i === Math.floor(heroImages.length / 2);
+              return (
+                <img
+                  key={i}
+                  src={url}
+                  alt={`Featured fragrance ${i + 1}`}
+                  className="object-contain drop-shadow-2xl select-none"
+                  style={{
+                    width: isCenter ? (heroImages.length === 1 ? 140 : 120) : 88,
+                    height: isCenter ? (heroImages.length === 1 ? 200 : 180) : 130,
+                    opacity: isCenter ? 1 : 0.72,
+                    filter: isCenter ? "drop-shadow(0 0 22px rgba(59,130,246,0.4))" : undefined,
+                  }}
+                />
+              );
+            })}
+          </div>
+        )}
       </section>
 
       {/* ── Flash Sales ── */}
@@ -108,14 +145,11 @@ export default function Home() {
                     className={`absolute top-2 right-2 z-10 p-1.5 rounded-full ${isWishlisted(product.id) ? "text-red-400 bg-red-900/30" : "text-sky-400/60 hover:text-red-400 bg-white/10"}`}>
                     <Heart className={`w-4 h-4 ${isWishlisted(product.id) ? "fill-current" : ""}`} />
                   </button>
-                  {/* Square image container */}
                   <div className="aspect-square rounded-xl bg-white/5 mb-3 overflow-hidden relative">
                     {product.imageUrl ? (
                       <img src={product.imageUrl} alt={product.name} className="absolute inset-0 w-full h-full object-contain p-2 drop-shadow-lg transition-transform duration-500 group-hover:scale-105" />
                     ) : (
-                      <div className="w-full h-full flex items-center justify-center">
-                        <span className="text-sky-400/40 font-serif italic">No image</span>
-                      </div>
+                      <div className="w-full h-full flex items-center justify-center"><span className="text-sky-400/40 font-serif italic">No image</span></div>
                     )}
                   </div>
                   <p className="text-xs font-semibold text-blue-400 uppercase tracking-widest mb-1">{product.brand}</p>
@@ -150,14 +184,11 @@ export default function Home() {
                     className={`absolute top-2 right-2 z-10 p-1.5 rounded-full ${isWishlisted(product.id) ? "text-red-400 bg-red-900/30" : "text-sky-400/50 hover:text-red-400 bg-white/10"}`}>
                     <Heart className={`w-4 h-4 ${isWishlisted(product.id) ? "fill-current" : ""}`} />
                   </button>
-                  {/* Square image container */}
                   <div className="aspect-square rounded-xl bg-white/5 mb-3 sm:mb-5 overflow-hidden relative">
                     {product.imageUrl ? (
                       <img src={product.imageUrl} alt={product.name} className="absolute inset-0 w-full h-full object-contain p-2 sm:p-4 drop-shadow-xl transition-transform duration-700 group-hover:scale-105" />
                     ) : (
-                      <div className="w-full h-full flex items-center justify-center">
-                        <span className="text-sky-400/40 font-serif italic text-lg">No image</span>
-                      </div>
+                      <div className="w-full h-full flex items-center justify-center"><span className="text-sky-400/40 font-serif italic text-lg">No image</span></div>
                     )}
                   </div>
                   <div className="text-center mt-auto">
@@ -222,14 +253,11 @@ export default function Home() {
           {newArrivals?.map((product: any) => (
             <Link key={product.id} href={`/product/${product.id}`}>
               <div className="glass-card rounded-2xl p-3 sm:p-4 group cursor-pointer hover:bg-white/10 transition-colors h-full flex flex-col">
-                {/* Square image container */}
                 <div className="aspect-square rounded-xl bg-white/5 mb-3 overflow-hidden relative">
                   {product.imageUrl ? (
                     <img src={product.imageUrl} alt={product.name} className="absolute inset-0 w-full h-full object-contain p-2 drop-shadow-lg transition-transform duration-500 group-hover:scale-105" />
                   ) : (
-                    <div className="w-full h-full flex items-center justify-center">
-                      <span className="text-sky-400/40 font-serif italic">Glass</span>
-                    </div>
+                    <div className="w-full h-full flex items-center justify-center"><span className="text-sky-400/40 font-serif italic">Glass</span></div>
                   )}
                 </div>
                 <div className="text-center mt-auto">

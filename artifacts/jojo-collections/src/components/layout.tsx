@@ -126,7 +126,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
   const hasMedia = settings.bannerMediaUrl && settings.bannerMediaType !== "none";
   const showBanner = settings.bannerEnabled && !bannerDismissed;
-  const bannerMinHeight = hasMedia ? 200 : 44;
+  const bannerMinHeight = hasMedia ? 240 : 100;
 
   return (
     <div className="min-h-screen flex flex-col relative">

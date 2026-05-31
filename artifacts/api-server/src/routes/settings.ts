@@ -23,6 +23,9 @@ type StoreSettings = {
   bannerMediaType: "none" | "image" | "video";
   bannerCountdownEnabled: boolean;
   bannerCountdownEnd: string;
+  heroImage1: string;
+  heroImage2: string;
+  heroImage3: string;
 };
 
 const defaultSettings: StoreSettings = {
@@ -42,6 +45,9 @@ const defaultSettings: StoreSettings = {
   bannerMediaType: "none",
   bannerCountdownEnabled: false,
   bannerCountdownEnd: "",
+  heroImage1: "",
+  heroImage2: "",
+  heroImage3: "",
 };
 
 router.get("/settings/public", async (_req, res) => {
@@ -64,9 +70,12 @@ router.get("/settings/public", async (_req, res) => {
       bannerMediaType: data?.["bannerMediaType"] ?? "none",
       bannerCountdownEnabled: data?.["bannerCountdownEnabled"] === true,
       bannerCountdownEnd: data?.["bannerCountdownEnd"] ?? "",
+      heroImage1: data?.["heroImage1"] ?? "",
+      heroImage2: data?.["heroImage2"] ?? "",
+      heroImage3: data?.["heroImage3"] ?? "",
     });
   } catch {
-    res.json({ whatsappNumber: "", whatsappMessage: "Hi! I need help.", currencyDefault: "USD", mtnNumber: "", airtelNumber: "", logoUrl: "", bannerEnabled: false });
+    res.json({ whatsappNumber: "", whatsappMessage: "Hi! I need help.", currencyDefault: "USD", mtnNumber: "", airtelNumber: "", logoUrl: "", bannerEnabled: false, heroImage1: "", heroImage2: "", heroImage3: "" });
   }
 });
 
@@ -85,6 +94,7 @@ router.put("/admin/settings", requireAdmin, async (req, res) => {
   const strKeys: (keyof StoreSettings)[] = [
     "whatsappNumber", "whatsappMessage", "currencyDefault", "mtnNumber", "airtelNumber",
     "logoUrl", "bannerText", "bannerBgColor", "bannerMediaUrl", "bannerMediaType", "bannerCountdownEnd",
+    "heroImage1", "heroImage2", "heroImage3",
   ];
   for (const k of strKeys) {
     if (body[k] !== undefined) (updates as Record<string, unknown>)[k] = body[k];
@@ -123,7 +133,6 @@ router.get("/exchange-rates", async (_req, res) => {
   });
 });
 
-// ── Exchange-rate admin endpoints ─────────────────────────────────────────────
 router.get("/admin/exchange-rates/history", requireAdmin, async (req, res) => {
   const days = Math.min(30, Math.max(1, Number(req.query["days"]) || 7));
   const history = await getRateHistory(days);

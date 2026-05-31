@@ -24,6 +24,9 @@ type SettingsData = {
   bannerMediaType: BannerMediaType;
   bannerCountdownEnabled: boolean;
   bannerCountdownEnd: string;
+  heroImage1: string;
+  heroImage2: string;
+  heroImage3: string;
 };
 
 const defaults: SettingsData = {
@@ -43,6 +46,9 @@ const defaults: SettingsData = {
   bannerMediaType: "none",
   bannerCountdownEnabled: false,
   bannerCountdownEnd: "",
+  heroImage1: "",
+  heroImage2: "",
+  heroImage3: "",
 };
 
 const COLOR_PRESETS = [
@@ -103,8 +109,14 @@ export default function AdminSettings() {
   const [saving, setSaving] = useState(false);
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [uploadingBannerMedia, setUploadingBannerMedia] = useState(false);
+  const [uploadingHero, setUploadingHero] = useState([false, false, false]);
   const logoInputRef = useRef<HTMLInputElement>(null);
   const bannerMediaInputRef = useRef<HTMLInputElement>(null);
+  const heroInputRefs = [
+    useRef<HTMLInputElement>(null),
+    useRef<HTMLInputElement>(null),
+    useRef<HTMLInputElement>(null),
+  ];
   const [lowStockProducts, setLowStockProducts] = useState<{ id: string; name: string; brand: string; stock: number; imageUrl: string | null }[]>([]);
 
   useEffect(() => {
@@ -146,6 +158,23 @@ export default function AdminSettings() {
     } catch { toast.error("Upload failed"); } finally {
       setUploadingBannerMedia(false);
       if (bannerMediaInputRef.current) bannerMediaInputRef.current.value = "";
+    }
+  };
+
+  const handleHeroUpload = async (e: React.ChangeEvent<HTMLInputElement>, idx: number) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith("image/")) { toast.error("Please select an image file"); return; }
+    setUploadingHero((prev) => prev.map((v, i) => i === idx ? true : v));
+    try {
+      const url = await uploadToCloudinary(file, "image");
+      if (!url) throw new Error("Upload failed");
+      const key = `heroImage${idx + 1}` as keyof SettingsData;
+      setForm((prev) => ({ ...prev, [key]: url }));
+      toast.success(`Hero image ${idx + 1} uploaded — save settings to apply`);
+    } catch { toast.error("Upload failed"); } finally {
+      setUploadingHero((prev) => prev.map((v, i) => i === idx ? false : v));
+      if (heroInputRefs[idx].current) heroInputRefs[idx].current!.value = "";
     }
   };
 
@@ -241,10 +270,61 @@ export default function AdminSettings() {
             </div>
           </div>
 
+          {/* Hero Section Images */}
+          <div className="glass-panel-heavy rounded-2xl p-6 border-white/50">
+            <h2 className="text-lg font-serif text-sky-100 mb-1 flex items-center gap-2">
+              <ImageIcon className="w-5 h-5 text-blue-400" /> Hero Section Images
+            </h2>
+            <p className="text-sm text-sky-300/50 mb-5">
+              These 3 perfume bottle images appear at the bottom of the homepage hero. Upload your featured bottles.
+            </p>
+            <div className="grid grid-cols-3 gap-3">
+              {([form.heroImage1, form.heroImage2, form.heroImage3] as string[]).map((url, idx) => (
+                <div key={idx} className="flex flex-col items-center gap-2">
+                  <div className="relative w-full aspect-[3/4] rounded-xl overflow-hidden border-2 border-dashed border-white/15 bg-white/3 flex items-center justify-center">
+                    {url ? (
+                      <>
+                        <img src={url} alt={`Hero ${idx + 1}`} className="w-full h-full object-contain p-2" />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const key = `heroImage${idx + 1}` as keyof SettingsData;
+                            setForm((p) => ({ ...p, [key]: "" }));
+                          }}
+                          className="absolute top-1 right-1 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </>
+                    ) : (
+                      <ImageIcon className="w-8 h-8 text-sky-400/25" />
+                    )}
+                  </div>
+                  <input
+                    ref={heroInputRefs[idx]}
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => handleHeroUpload(e, idx)}
+                    className="hidden"
+                    id={`hero-upload-${idx}`}
+                  />
+                  <label
+                    htmlFor={`hero-upload-${idx}`}
+                    className={`w-full flex items-center justify-center gap-1.5 px-3 py-1.5 glass-card rounded-lg text-xs text-sky-200 hover:bg-white/20 transition-colors cursor-pointer border border-white/15 ${uploadingHero[idx] ? "opacity-50 pointer-events-none" : ""}`}
+                  >
+                    <Upload className="w-3 h-3" />
+                    {uploadingHero[idx] ? "Uploading…" : url ? "Change" : `Image ${idx + 1}`}
+                  </label>
+                </div>
+              ))}
+            </div>
+            <p className="text-xs text-sky-300/40 mt-3">Middle image appears largest. Save settings after uploading.</p>
+          </div>
+
           {/* Announcement Banner */}
           <div className="glass-panel-heavy rounded-2xl p-6 border-white/50">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-serif text-blue-950 flex items-center gap-2">
+              <h2 className="text-lg font-serif text-sky-100 flex items-center gap-2">
                 <Megaphone className="w-5 h-5 text-orange-500" /> Announcement Banner
               </h2>
               <button
