@@ -16,7 +16,6 @@ const router: IRouter = Router();
 
 router.use(healthRouter);
 router.use(authRouter);
-router.use(storageRouter);
 router.use(productsRouter);
 router.use(reviewsRouter);
 router.use(ordersRouter);
@@ -25,6 +24,8 @@ router.use(settingsRouter);
 router.use(bundlesRouter);
 router.use(blogRouter);
 
+// Auth gate — must run before storageRouter and adminRouter so that
+// /storage/uploads/* and /admin/* are protected before any route handler fires.
 router.use((req, res, next) => {
   if (req.path.startsWith("/admin/") && !req.path.startsWith("/admin/auth/")) {
     requireAdmin(req, res, next);
@@ -37,6 +38,9 @@ router.use((req, res, next) => {
   next();
 });
 
+// storageRouter registered AFTER the auth gate so upload endpoints are protected.
+// Public read endpoints (/storage/objects/*) pass through the gate via next().
+router.use(storageRouter);
 router.use(adminRouter);
 
 export default router;
