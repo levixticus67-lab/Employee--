@@ -50,35 +50,35 @@
 }
 
 :root {
-  --background: 210 50% 98%;
-  --foreground: 220 50% 15%;
+  --background: 218 60% 10%;
+  --foreground: 210 70% 90%;
 
-  --card: 210 50% 100% / 0.4;
-  --card-foreground: 220 50% 15%;
-  --card-border: 210 50% 100% / 0.5;
+  --card: 216 55% 14% / 0.6;
+  --card-foreground: 210 70% 90%;
+  --card-border: 210 50% 100% / 0.08;
 
-  --popover: 210 50% 100% / 0.7;
-  --popover-foreground: 220 50% 15%;
-  --popover-border: 210 50% 100% / 0.5;
+  --popover: 216 55% 12% / 0.9;
+  --popover-foreground: 210 70% 90%;
+  --popover-border: 210 50% 100% / 0.12;
 
-  --primary: 210 80% 40%;
+  --primary: 210 80% 58%;
   --primary-foreground: 210 20% 98%;
 
-  --secondary: 210 30% 90% / 0.6;
-  --secondary-foreground: 220 50% 20%;
+  --secondary: 215 45% 20% / 0.6;
+  --secondary-foreground: 210 60% 80%;
 
-  --muted: 210 30% 90% / 0.5;
-  --muted-foreground: 220 30% 40%;
+  --muted: 215 40% 18% / 0.5;
+  --muted-foreground: 210 40% 62%;
 
-  --accent: 210 40% 85% / 0.6;
-  --accent-foreground: 220 50% 20%;
+  --accent: 215 40% 22% / 0.6;
+  --accent-foreground: 210 60% 85%;
 
   --destructive: 0 80% 60%;
   --destructive-foreground: 0 20% 98%;
 
-  --border: 210 30% 80% / 0.4;
-  --input: 210 30% 80% / 0.4;
-  --ring: 210 80% 40% / 0.3;
+  --border: 210 30% 100% / 0.1;
+  --input: 210 30% 100% / 0.1;
+  --ring: 210 80% 60% / 0.3;
 
   --radius: 0.75rem;
 
@@ -88,21 +88,47 @@
 }
 
 body {
-  @apply font-sans text-foreground antialiased min-h-screen bg-fixed;
-  background-image: radial-gradient(circle at 15% 50%, rgba(220, 240, 255, 0.8), transparent 25%),
-                    radial-gradient(circle at 85% 30%, rgba(200, 230, 255, 0.7), transparent 25%),
-                    linear-gradient(135deg, hsl(210, 50%, 95%) 0%, hsl(215, 60%, 98%) 100%);
+  @apply font-sans text-foreground antialiased min-h-screen;
+  background: linear-gradient(170deg, #0f2340 0%, #1b3a5c 35%, #1e4976 65%, #14305a 100%);
+  background-attachment: fixed;
+  color: rgb(186 230 253);
 }
 
-/* Glassmorphism utility class */
+/* Glassmorphism utility classes — dark theme */
 .glass-panel {
-  @apply bg-white/30 backdrop-blur-md border border-white/40 shadow-sm shadow-blue-900/5;
+  @apply bg-white/5 backdrop-blur-md border border-white/10 shadow-sm shadow-black/30;
 }
 .glass-panel-heavy {
-  @apply bg-white/50 backdrop-blur-xl border border-white/50 shadow-md shadow-blue-900/5;
+  @apply bg-black/35 backdrop-blur-xl border border-white/10 shadow-md shadow-black/40;
 }
 .glass-card {
-  @apply bg-white/20 backdrop-blur-sm border border-white/30 shadow-sm shadow-blue-900/5 hover:bg-white/30 hover:border-white/40 transition-all duration-300;
+  @apply bg-white/6 backdrop-blur-sm border border-white/8 shadow-sm shadow-black/20 hover:bg-white/10 hover:border-white/15 transition-all duration-300;
+}
+
+/* Global text colour adaptations for hardcoded Tailwind dark colours */
+.text-blue-950 { color: rgb(224 242 254) !important; }
+.text-blue-900 { color: rgb(186 230 253) !important; }
+
+/* Floating blue particle animation */
+@keyframes floatUp {
+  0%   { transform: translateY(0) scale(1);   opacity: 0;   }
+  8%   { opacity: 1; }
+  88%  { opacity: 0.55; }
+  100% { transform: translateY(-105vh) scale(0.75); opacity: 0; }
+}
+@keyframes sway {
+  0%, 100% { margin-left: 0px; }
+  50%       { margin-left: 14px; }
+}
+
+.particle {
+  position: absolute;
+  border-radius: 50%;
+  background: radial-gradient(circle, #7ec8e3, #3b82f6);
+  box-shadow: 0 0 8px rgba(59, 130, 246, 0.55);
+  animation: floatUp linear infinite, sway ease-in-out infinite;
+  animation-duration: var(--dur, 9s), calc(var(--dur, 9s) * 0.65);
+  animation-delay: var(--delay, 0s), var(--delay, 0s);
 }
 
 @layer base {

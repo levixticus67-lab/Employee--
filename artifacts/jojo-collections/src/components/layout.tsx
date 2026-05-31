@@ -47,6 +47,35 @@ function useCountdown(targetIso: string, enabled: boolean) {
   return timeLeft;
 }
 
+const PARTICLES = [
+  { id: 0,  size: 4, left: 5,  dur: 9,    delay: 0    },
+  { id: 1,  size: 3, left: 12, dur: 7,    delay: 2.5  },
+  { id: 2,  size: 5, left: 20, dur: 11,   delay: 0.8  },
+  { id: 3,  size: 3, left: 28, dur: 8,    delay: 4    },
+  { id: 4,  size: 6, left: 35, dur: 10,   delay: 1.2  },
+  { id: 5,  size: 3, left: 42, dur: 7.5,  delay: 3    },
+  { id: 6,  size: 4, left: 50, dur: 9,    delay: 5.5  },
+  { id: 7,  size: 5, left: 58, dur: 12,   delay: 0.3  },
+  { id: 8,  size: 3, left: 65, dur: 8,    delay: 2    },
+  { id: 9,  size: 4, left: 72, dur: 10,   delay: 4.5  },
+  { id: 10, size: 6, left: 80, dur: 8.5,  delay: 1.8  },
+  { id: 11, size: 3, left: 88, dur: 11,   delay: 3.5  },
+  { id: 12, size: 4, left: 93, dur: 9,    delay: 0.5  },
+  { id: 13, size: 5, left: 18, dur: 7,    delay: 6    },
+  { id: 14, size: 3, left: 45, dur: 13,   delay: 1.5  },
+  { id: 15, size: 4, left: 62, dur: 8,    delay: 7    },
+  { id: 16, size: 5, left: 75, dur: 10,   delay: 2.2  },
+  { id: 17, size: 3, left: 32, dur: 9,    delay: 8    },
+  { id: 18, size: 6, left: 55, dur: 11,   delay: 0.7  },
+  { id: 19, size: 4, left: 10, dur: 8,    delay: 5    },
+  { id: 20, size: 3, left: 82, dur: 12,   delay: 3.8  },
+  { id: 21, size: 5, left: 48, dur: 9.5,  delay: 1    },
+  { id: 22, size: 4, left: 25, dur: 7,    delay: 6.5  },
+  { id: 23, size: 3, left: 70, dur: 10,   delay: 4    },
+  { id: 24, size: 5, left: 38, dur: 8,    delay: 9    },
+  { id: 25, size: 3, left: 90, dur: 11,   delay: 2.8  },
+];
+
 export function Layout({ children }: { children: React.ReactNode }) {
   const { totalItems } = useCart();
   const { user, logout } = useAuth();
@@ -97,46 +126,45 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
   const hasMedia = settings.bannerMediaUrl && settings.bannerMediaType !== "none";
   const showBanner = settings.bannerEnabled && !bannerDismissed;
-
   const bannerMinHeight = hasMedia ? 200 : 44;
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen flex flex-col relative">
+
+      {/* Floating blue particle background */}
+      <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
+        {PARTICLES.map(p => (
+          <div
+            key={p.id}
+            className="particle"
+            style={{
+              width: p.size,
+              height: p.size,
+              left: `${p.left}%`,
+              bottom: "-20px",
+              "--dur": `${p.dur}s`,
+              "--delay": `${p.delay}s`,
+            } as React.CSSProperties}
+          />
+        ))}
+      </div>
 
       {/* Announcement Banner */}
       {showBanner && (
         <div
-          className="relative w-full overflow-hidden flex-shrink-0 flex items-center justify-center"
+          className="relative w-full overflow-hidden flex-shrink-0 flex items-center justify-center z-10"
           style={{ minHeight: bannerMinHeight, background: hasMedia ? undefined : settings.bannerBgColor }}
         >
-          {/* Background media */}
           {settings.bannerMediaType === "video" && settings.bannerMediaUrl && (
-            <video
-              src={settings.bannerMediaUrl}
-              className="absolute inset-0 w-full h-full object-cover"
-              autoPlay loop muted playsInline
-            />
+            <video src={settings.bannerMediaUrl} className="absolute inset-0 w-full h-full object-cover" autoPlay loop muted playsInline />
           )}
           {settings.bannerMediaType === "image" && settings.bannerMediaUrl && (
-            <img
-              src={settings.bannerMediaUrl}
-              alt=""
-              className="absolute inset-0 w-full h-full object-cover"
-            />
+            <img src={settings.bannerMediaUrl} alt="" className="absolute inset-0 w-full h-full object-cover" />
           )}
-
-          {/* Color overlay — always applied; opaque when no media, semi-transparent when media present */}
-          <div
-            className="absolute inset-0"
-            style={{ background: hasMedia ? `${settings.bannerBgColor}99` : settings.bannerBgColor }}
-          />
-
-          {/* Content */}
+          <div className="absolute inset-0" style={{ background: hasMedia ? `${settings.bannerBgColor}99` : settings.bannerBgColor }} />
           <div className="relative z-10 flex flex-col items-center justify-center gap-2 px-10 py-4 text-center w-full">
             {settings.bannerText && (
-              <p className="text-white font-semibold text-sm sm:text-base leading-snug drop-shadow-md">
-                {settings.bannerText}
-              </p>
+              <p className="text-white font-semibold text-sm sm:text-base leading-snug drop-shadow-md">{settings.bannerText}</p>
             )}
             {settings.bannerCountdownEnabled && countdown && (
               <div className="flex items-center gap-2 mt-1">
@@ -148,9 +176,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
                 ].map(({ v, label }, i) => (
                   <div key={label} className="flex items-center gap-2">
                     <div className="flex flex-col items-center bg-black/30 backdrop-blur-sm rounded-lg px-3 py-1 min-w-[42px]">
-                      <span className="text-white font-bold text-lg leading-none tabular-nums">
-                        {String(v).padStart(2, "0")}
-                      </span>
+                      <span className="text-white font-bold text-lg leading-none tabular-nums">{String(v).padStart(2, "0")}</span>
                       <span className="text-white/70 text-[9px] uppercase tracking-wider">{label}</span>
                     </div>
                     {i < 3 && <span className="text-white/80 font-bold text-lg">:</span>}
@@ -159,86 +185,76 @@ export function Layout({ children }: { children: React.ReactNode }) {
               </div>
             )}
           </div>
-
-          {/* Dismiss */}
-          <button
-            onClick={() => setBannerDismissed(true)}
-            className="absolute right-3 top-3 z-20 text-white/70 hover:text-white transition-colors p-1.5 rounded-full hover:bg-white/20"
-            aria-label="Dismiss banner"
-          >
+          <button onClick={() => setBannerDismissed(true)} className="absolute right-3 top-3 z-20 text-white/70 hover:text-white transition-colors p-1.5 rounded-full hover:bg-white/20" aria-label="Dismiss banner">
             <X className="w-4 h-4" />
           </button>
         </div>
       )}
 
-      <header className="sticky top-0 z-50 glass-panel-heavy border-b border-white/20">
+      <header className="sticky top-0 z-50 glass-panel-heavy border-b border-white/10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center h-20 gap-6">
             <Link href="/" className="flex-shrink-0 flex items-center gap-2.5">
               {settings.logoUrl && (
-                <img
-                  src={settings.logoUrl}
-                  alt="Logo"
-                  className="w-9 h-9 rounded-full object-cover border-2 border-blue-200/60 shadow-sm flex-shrink-0"
-                />
+                <img src={settings.logoUrl} alt="Logo" className="w-9 h-9 rounded-full object-cover border-2 border-sky-400/30 shadow-sm flex-shrink-0" />
               )}
-              <span className="text-2xl font-serif text-blue-950 font-bold tracking-widest">JOJO</span>
+              <span className="text-2xl font-serif text-sky-50 font-bold tracking-widest">JOJO</span>
             </Link>
 
             <nav className="hidden md:flex items-center gap-5 flex-1">
               {navLinks.map((link) => (
                 <Link key={link.href} href={link.href}
-                  className={`text-sm font-medium uppercase tracking-wider transition-colors ${location === link.href ? "text-blue-900 font-semibold" : "text-blue-800/60 hover:text-blue-950"}`}>
+                  className={`text-sm font-medium uppercase tracking-wider transition-colors ${location === link.href ? "text-sky-50 font-semibold" : "text-sky-300/60 hover:text-sky-100"}`}>
                   {link.label}
                 </Link>
               ))}
             </nav>
 
             <div className="hidden md:flex items-center gap-2 ml-auto">
-              <select value={currency} onChange={(e) => setCurrency(e.target.value as Currency)} className="text-xs font-medium text-blue-800/60 bg-transparent border-0 focus:outline-none cursor-pointer hover:text-blue-950 pr-1">
-                {currencies.map((c) => <option key={c} value={c}>{c}</option>)}
+              <select value={currency} onChange={(e) => setCurrency(e.target.value as Currency)} className="text-xs font-medium text-sky-300/70 bg-transparent border-0 focus:outline-none cursor-pointer hover:text-sky-100 pr-1">
+                {currencies.map((c) => <option key={c} value={c} className="bg-slate-900">{c}</option>)}
               </select>
 
               {user ? (
-                <div className="flex items-center gap-1 border-l border-blue-900/10 pl-2">
-                  <Link href="/my-orders" className="flex items-center gap-1.5 text-xs text-blue-900 font-medium px-2 hover:text-blue-700 transition-colors">
+                <div className="flex items-center gap-1 border-l border-sky-400/10 pl-2">
+                  <Link href="/my-orders" className="flex items-center gap-1.5 text-xs text-sky-200 font-medium px-2 hover:text-sky-50 transition-colors">
                     <User className="w-3.5 h-3.5" />{user.name.split(" ")[0]}
                   </Link>
-                  <Link href="/my-orders" title="My Orders" className="p-1.5 text-blue-800/50 hover:text-blue-700 transition-colors rounded-lg">
+                  <Link href="/my-orders" title="My Orders" className="p-1.5 text-sky-300/60 hover:text-sky-200 transition-colors rounded-lg">
                     <Package className="w-3.5 h-3.5" />
                   </Link>
-                  <button type="button" onClick={handleLogout} title="Sign out" className="p-1.5 text-blue-800/50 hover:text-red-600 transition-colors rounded-lg">
+                  <button type="button" onClick={handleLogout} title="Sign out" className="p-1.5 text-sky-300/60 hover:text-red-400 transition-colors rounded-lg">
                     <LogOut className="w-3.5 h-3.5" />
                   </button>
                 </div>
               ) : (
-                <div className="flex items-center gap-2 border-l border-blue-900/10 pl-2">
-                  <Link href="/login" className="text-xs font-medium text-blue-800/60 hover:text-blue-950 px-2 py-1.5">Sign In</Link>
-                  <Link href="/signup" className="text-xs font-medium px-3 py-1.5 rounded-full bg-blue-600 text-white hover:bg-blue-700 transition-colors">Sign Up</Link>
+                <div className="flex items-center gap-2 border-l border-sky-400/10 pl-2">
+                  <Link href="/login" className="text-xs font-medium text-sky-300/70 hover:text-sky-50 px-2 py-1.5">Sign In</Link>
+                  <Link href="/signup" className="text-xs font-medium px-3 py-1.5 rounded-full bg-blue-500 text-white hover:bg-blue-400 transition-colors">Sign Up</Link>
                 </div>
               )}
 
-              <Link href="/wishlist" className="relative p-1.5 text-blue-900/70 hover:text-blue-950 transition-colors">
+              <Link href="/wishlist" className="relative p-1.5 text-sky-300/80 hover:text-sky-100 transition-colors">
                 <Heart style={{ width: 18, height: 18 }} />
                 {wishlistCount > 0 && <span className="absolute -top-0.5 -right-0.5 flex items-center justify-center w-4 h-4 text-[10px] font-bold text-white bg-red-500 rounded-full">{wishlistCount}</span>}
               </Link>
-              <Link href="/cart" className="relative p-1.5 text-blue-900/70 hover:text-blue-950 transition-colors">
+              <Link href="/cart" className="relative p-1.5 text-sky-300/80 hover:text-sky-100 transition-colors">
                 <ShoppingBag className="w-6 h-6" />
-                {totalItems > 0 && <span className="absolute -top-0.5 -right-0.5 flex items-center justify-center w-4 h-4 text-[10px] font-bold text-white bg-blue-600 rounded-full">{totalItems}</span>}
+                {totalItems > 0 && <span className="absolute -top-0.5 -right-0.5 flex items-center justify-center w-4 h-4 text-[10px] font-bold text-white bg-blue-500 rounded-full">{totalItems}</span>}
               </Link>
             </div>
 
             <div className="md:hidden flex items-center gap-1 ml-auto">
-              {user && <Link href="/my-orders" className="p-2 text-blue-900"><Package className="w-5 h-5" /></Link>}
-              <Link href="/wishlist" className="relative p-2 text-blue-900">
+              {user && <Link href="/my-orders" className="p-2 text-sky-200"><Package className="w-5 h-5" /></Link>}
+              <Link href="/wishlist" className="relative p-2 text-sky-200">
                 <Heart className="w-5 h-5" />
                 {wishlistCount > 0 && <span className="absolute top-0.5 right-0.5 flex items-center justify-center w-3.5 h-3.5 text-[9px] font-bold text-white bg-red-500 rounded-full">{wishlistCount}</span>}
               </Link>
-              <Link href="/cart" className="relative p-2 text-blue-900">
+              <Link href="/cart" className="relative p-2 text-sky-200">
                 <ShoppingBag className="w-5 h-5" />
-                {totalItems > 0 && <span className="absolute top-0.5 right-0.5 flex items-center justify-center w-3.5 h-3.5 text-[9px] font-bold text-white bg-blue-600 rounded-full">{totalItems}</span>}
+                {totalItems > 0 && <span className="absolute top-0.5 right-0.5 flex items-center justify-center w-3.5 h-3.5 text-[9px] font-bold text-white bg-blue-500 rounded-full">{totalItems}</span>}
               </Link>
-              <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} className="p-2 text-blue-900">
+              <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} className="p-2 text-sky-200">
                 {isMobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
               </button>
             </div>
@@ -246,28 +262,28 @@ export function Layout({ children }: { children: React.ReactNode }) {
         </div>
 
         {isMobileMenuOpen && (
-          <div className="md:hidden absolute w-full z-50 border-t border-blue-200/40 bg-white/95 backdrop-blur-xl shadow-xl">
+          <div className="md:hidden absolute w-full z-50 border-t border-white/10 bg-slate-900/95 backdrop-blur-xl shadow-xl">
             <div className="px-4 pt-2 pb-4 space-y-1">
               {navLinks.map((link) => (
                 <Link key={link.href} href={link.href} onClick={() => setIsMobileMenuOpen(false)}
-                  className={`block px-3 py-2.5 text-sm font-medium rounded-xl uppercase tracking-wider transition-colors ${location === link.href ? "bg-blue-50 text-blue-900 font-semibold" : "text-blue-900 hover:bg-blue-50"}`}>{link.label}</Link>
+                  className={`block px-3 py-2.5 text-sm font-medium rounded-xl uppercase tracking-wider transition-colors ${location === link.href ? "bg-white/10 text-sky-50 font-semibold" : "text-sky-200 hover:bg-white/8"}`}>{link.label}</Link>
               ))}
-              <div className="px-3 py-2 flex items-center gap-2 border-t border-blue-100 mt-2 pt-3">
-                <span className="text-xs text-blue-800/50 uppercase tracking-wide">Currency:</span>
-                <select value={currency} onChange={(e) => setCurrency(e.target.value as Currency)} className="text-sm text-blue-900 bg-transparent border-0 focus:outline-none">
-                  {currencies.map((c) => <option key={c} value={c}>{c}</option>)}
+              <div className="px-3 py-2 flex items-center gap-2 border-t border-white/10 mt-2 pt-3">
+                <span className="text-xs text-sky-300/60 uppercase tracking-wide">Currency:</span>
+                <select value={currency} onChange={(e) => setCurrency(e.target.value as Currency)} className="text-sm text-sky-100 bg-transparent border-0 focus:outline-none">
+                  {currencies.map((c) => <option key={c} value={c} className="bg-slate-900">{c}</option>)}
                 </select>
               </div>
               {user ? (
                 <>
-                  <div className="px-3 py-2 text-sm text-blue-900 font-medium flex items-center gap-2 border-t border-blue-100 mt-1 pt-3"><User className="w-4 h-4" /> {user.name}</div>
-                  <Link href="/my-orders" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center gap-2 px-3 py-2.5 text-sm font-medium text-blue-900 hover:bg-blue-50 rounded-xl"><Package className="w-4 h-4" /> My Orders</Link>
-                  <button type="button" onClick={() => { setIsMobileMenuOpen(false); handleLogout(); }} className="flex items-center gap-2 w-full text-left px-3 py-2.5 text-sm font-medium text-red-600 hover:bg-red-50 rounded-xl"><LogOut className="w-4 h-4" /> Sign out</button>
+                  <div className="px-3 py-2 text-sm text-sky-100 font-medium flex items-center gap-2 border-t border-white/10 mt-1 pt-3"><User className="w-4 h-4" /> {user.name}</div>
+                  <Link href="/my-orders" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center gap-2 px-3 py-2.5 text-sm font-medium text-sky-200 hover:bg-white/8 rounded-xl"><Package className="w-4 h-4" /> My Orders</Link>
+                  <button type="button" onClick={() => { setIsMobileMenuOpen(false); handleLogout(); }} className="flex items-center gap-2 w-full text-left px-3 py-2.5 text-sm font-medium text-red-400 hover:bg-red-500/10 rounded-xl"><LogOut className="w-4 h-4" /> Sign out</button>
                 </>
               ) : (
-                <div className="flex flex-col gap-2 border-t border-blue-100 mt-1 pt-3">
-                  <Link href="/login" onClick={() => setIsMobileMenuOpen(false)} className="block px-3 py-2.5 text-sm font-medium text-blue-900 hover:bg-blue-50 rounded-xl">Sign In</Link>
-                  <Link href="/signup" onClick={() => setIsMobileMenuOpen(false)} className="block px-3 py-2.5 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-xl text-center">Sign Up</Link>
+                <div className="flex flex-col gap-2 border-t border-white/10 mt-1 pt-3">
+                  <Link href="/login" onClick={() => setIsMobileMenuOpen(false)} className="block px-3 py-2.5 text-sm font-medium text-sky-200 hover:bg-white/8 rounded-xl">Sign In</Link>
+                  <Link href="/signup" onClick={() => setIsMobileMenuOpen(false)} className="block px-3 py-2.5 text-sm font-medium text-white bg-blue-500 hover:bg-blue-400 rounded-xl text-center">Sign Up</Link>
                 </div>
               )}
             </div>
@@ -275,47 +291,47 @@ export function Layout({ children }: { children: React.ReactNode }) {
         )}
       </header>
 
-      <main className="flex-1 w-full">{children}</main>
+      <main className="flex-1 w-full relative z-10">{children}</main>
 
-      <footer className="glass-panel mt-auto border-t border-white/20 py-10">
+      <footer className="glass-panel mt-auto border-t border-white/10 py-10 relative z-10">
         <div className="max-w-7xl mx-auto px-4">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-8 text-sm">
             <div>
-              <p className="font-serif text-blue-950 font-bold mb-3 tracking-widest">JOJO COLLECTIONS</p>
-              <p className="text-blue-800/60 text-xs leading-relaxed">Premium fragrances for the modern connoisseur.</p>
+              <p className="font-serif text-sky-50 font-bold mb-3 tracking-widest">JOJO COLLECTIONS</p>
+              <p className="text-sky-300/60 text-xs leading-relaxed">Premium fragrances for the modern connoisseur.</p>
             </div>
             <div>
-              <p className="font-medium text-blue-950 mb-3 uppercase tracking-wider text-xs">Shop</p>
+              <p className="font-medium text-sky-100 mb-3 uppercase tracking-wider text-xs">Shop</p>
               <div className="space-y-2">
-                <Link href="/shop" className="block text-blue-800/60 hover:text-blue-900 text-sm">All Products</Link>
-                <Link href="/bundles" className="block text-blue-800/60 hover:text-blue-900 text-sm">Gift Sets</Link>
+                <Link href="/shop" className="block text-sky-300/60 hover:text-sky-100 text-sm">All Products</Link>
+                <Link href="/bundles" className="block text-sky-300/60 hover:text-sky-100 text-sm">Gift Sets</Link>
               </div>
             </div>
             <div>
-              <p className="font-medium text-blue-950 mb-3 uppercase tracking-wider text-xs">Explore</p>
+              <p className="font-medium text-sky-100 mb-3 uppercase tracking-wider text-xs">Explore</p>
               <div className="space-y-2">
-                <Link href="/blog" className="block text-blue-800/60 hover:text-blue-900 text-sm">Fragrance Journal</Link>
-                <Link href="/wishlist" className="block text-blue-800/60 hover:text-blue-900 text-sm">My Wishlist</Link>
+                <Link href="/blog" className="block text-sky-300/60 hover:text-sky-100 text-sm">Fragrance Journal</Link>
+                <Link href="/wishlist" className="block text-sky-300/60 hover:text-sky-100 text-sm">My Wishlist</Link>
               </div>
             </div>
             <div>
-              <p className="font-medium text-blue-950 mb-3 uppercase tracking-wider text-xs">Account</p>
+              <p className="font-medium text-sky-100 mb-3 uppercase tracking-wider text-xs">Account</p>
               <div className="space-y-2">
-                <Link href="/my-orders" className="block text-blue-800/60 hover:text-blue-900 text-sm">My Orders</Link>
-                <Link href="/login" className="block text-blue-800/60 hover:text-blue-900 text-sm">Sign In</Link>
-                <Link href="/signup" className="block text-blue-800/60 hover:text-blue-900 text-sm">Create Account</Link>
+                <Link href="/my-orders" className="block text-sky-300/60 hover:text-sky-100 text-sm">My Orders</Link>
+                <Link href="/login" className="block text-sky-300/60 hover:text-sky-100 text-sm">Sign In</Link>
+                <Link href="/signup" className="block text-sky-300/60 hover:text-sky-100 text-sm">Create Account</Link>
               </div>
             </div>
           </div>
-          <div className="border-t border-white/20 pt-6 text-center">
-            <p className="text-xs text-blue-800/50 uppercase tracking-widest">&copy; {new Date().getFullYear()} Jojo Collections. All rights reserved.</p>
+          <div className="border-t border-white/10 pt-6 text-center">
+            <p className="text-xs text-sky-300/40 uppercase tracking-widest">&copy; {new Date().getFullYear()} Jojo Collections. All rights reserved.</p>
           </div>
         </div>
       </footer>
 
       {whatsappUrl && (
         <a href={whatsappUrl} target="_blank" rel="noopener noreferrer"
-          className="fixed bottom-6 right-6 z-50 bg-green-500 hover:bg-green-600 rounded-full shadow-lg shadow-green-500/30 flex items-center justify-center transition-all hover:scale-110"
+          className="fixed bottom-6 right-6 z-50 bg-green-500 hover:bg-green-400 rounded-full shadow-lg shadow-green-500/30 flex items-center justify-center transition-all hover:scale-110"
           style={{ width: 52, height: 52 }} title="Chat on WhatsApp">
           <MessageCircle className="w-6 h-6 text-white fill-white" />
         </a>
