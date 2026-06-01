@@ -32,32 +32,39 @@ function CountdownTimer({ endsAt }: { endsAt: string }) {
   return <span className="font-mono text-sm text-orange-400 font-bold">{timeLeft}</span>;
 }
 
+const THUMB_SIZE = 44;
+const THUMB_GAP = 6;
+const THUMB_STEP = THUMB_SIZE + THUMB_GAP; // pixels per slide in track
+
 function ImageSlider({ images, name }: { images: string[]; name: string }) {
+  const n = images.length;
   const [current, setCurrent] = useState(0);
-  const [locked, setLocked] = useState(false);
-  const touchStartX = useRef<number | null>(null);
+  const [dir, setDir] = useState<"next" | "prev" | null>(null);
+  const [animKey, setAnimKey] = useState(0);
+  const lockRef = useRef(false);
+  const touchX = useRef<number | null>(null);
 
-  const goTo = (idx: number) => {
-    if (locked) return;
-    setLocked(true);
-    setCurrent(idx);
-    setTimeout(() => setLocked(false), 520);
+  const go = (direction: "next" | "prev") => {
+    if (lockRef.current || n <= 1) return;
+    lockRef.current = true;
+    setDir(direction);
+    setAnimKey((k) => k + 1);
+    setTimeout(() => {
+      setCurrent((c) => direction === "next" ? (c + 1) % n : (c - 1 + n) % n);
+      setDir(null);
+      lockRef.current = false;
+    }, 640);
   };
 
-  const prev = () => goTo((current - 1 + images.length) % images.length);
-  const next = () => goTo((current + 1) % images.length);
-
-  const onTouchStart = (e: React.TouchEvent) => {
-    touchStartX.current = e.touches[0].clientX;
-  };
+  const onTouchStart = (e: React.TouchEvent) => { touchX.current = e.touches[0].clientX; };
   const onTouchEnd = (e: React.TouchEvent) => {
-    if (touchStartX.current === null || locked) return;
-    const dx = e.changedTouches[0].clientX - touchStartX.current;
-    touchStartX.current = null;
-    if (Math.abs(dx) > 48) dx < 0 ? next() : prev();
+    if (touchX.current === null || lockRef.current) return;
+    const dx = e.changedTouches[0].clientX - touchX.current;
+    touchX.current = null;
+    if (Math.abs(dx) > 50) go(dx < 0 ? "next" : "prev");
   };
 
-  if (images.length <= 1) {
+  if (n <= 1) {
     return (
       <div className="relative aspect-square rounded-2xl overflow-hidden" style={{ background: "#06101e" }}>
         {images[0] && (
@@ -68,97 +75,128 @@ function ImageSlider({ images, name }: { images: string[]; name: string }) {
     );
   }
 
+  const nextIdx = (current + 1) % n;
+  const prevIdx = (current - 1 + n) % n;
+  const incomingIdx = dir === "next" ? nextIdx : dir === "prev" ? prevIdx : null;
+
+  // Thumbnail queue: next N images after current.
+  // During "next": render 4 so the 4th slides in from the right edge.
+  const maxThumbs = Math.min(n - 1, dir === "next" ? 4 : 3);
+  const thumbIndices = Array.from({ length: maxThumbs }, (_, i) => (nextIdx + i) % n);
+
   return (
     <div
-      className="relative aspect-square rounded-2xl overflow-hidden select-none"
+      className="relative w-full aspect-square rounded-2xl overflow-hidden select-none"
       style={{ background: "#06101e" }}
       onTouchStart={onTouchStart}
       onTouchEnd={onTouchEnd}
     >
-      {/* 3-D coverflow cards */}
-      <div className="absolute inset-0 flex items-center justify-center">
-        {images.map((img, i) => {
-          const offset = (i - current + images.length) % images.length;
-          const isCenter = offset === 0;
-          const isRight  = offset === 1;
-          const isLeft   = offset === images.length - 1;
-          const visible  = isCenter || isLeft || isRight;
+      {/* ── Layer 0: current background image — fades / scales out on next ── */}
+      <div
+        className="absolute inset-0 z-0 flex items-center justify-center p-6"
+        style={{
+          opacity: dir ? 0 : 1,
+          transform: dir === "next" ? "scale(0.9)" : "scale(1)",
+          transition: "opacity 0.5s ease, transform 0.5s ease",
+        }}
+      >
+        <img
+          src={images[current]}
+          alt={name}
+          className="w-full h-full object-contain drop-shadow-2xl"
+          draggable={false}
+        />
+      </div>
 
-          const translateX = isCenter ? "0%" : isRight ? "70%" : "-70%";
-          const scale      = isCenter ? 1 : 0.68;
-          const opacity    = isCenter ? 1 : visible ? 0.5 : 0;
-          const zIndex     = isCenter ? 20 : visible ? 10 : 0;
+      {/* ── Layer 1: incoming image ── */}
+      {incomingIdx !== null && (
+        <div
+          key={`in-${animKey}`}
+          className="absolute inset-0 z-10 flex items-center justify-center p-6"
+          style={{
+            animation: dir === "next"
+              ? "sliderThumbExpand 0.64s cubic-bezier(0.22,0.68,0,1.1) forwards"
+              : "sliderFadeIn 0.55s ease forwards",
+          }}
+        >
+          <img
+            src={images[incomingIdx]}
+            alt={name}
+            className="w-full h-full object-contain drop-shadow-2xl"
+            draggable={false}
+          />
+        </div>
+      )}
 
-          return (
+      {/* ── Counter ── */}
+      <div className="absolute top-3 right-3 bg-black/50 backdrop-blur-sm rounded-full px-2.5 py-1 text-xs text-white/70 z-30 tabular-nums">
+        {current + 1} / {n}
+      </div>
+
+      {/* ── Bottom: gradient + thumbnail track + arrows ── */}
+      <div className="absolute bottom-0 inset-x-0 z-20 px-3 pb-3 pt-12 bg-gradient-to-t from-black/70 to-transparent">
+        <div className="flex items-center gap-2">
+
+          {/* Left arrow */}
+          <button
+            onClick={() => go("prev")}
+            className="w-8 h-8 flex-shrink-0 rounded-full bg-white/10 backdrop-blur border border-white/15 flex items-center justify-center text-white/80 hover:bg-white/22 transition-all"
+          >
+            <ChevronLeft className="w-4 h-4" />
+          </button>
+
+          {/* Thumbnail track — clips to 3 thumbnails wide, slides on "next" */}
+          <div className="flex-1 overflow-hidden">
             <div
-              key={i}
-              className="absolute"
+              className="flex"
               style={{
-                width: "70%",
-                aspectRatio: "1",
-                transform: `translateX(${translateX}) scale(${scale})`,
-                opacity,
-                zIndex,
-                transition: "transform 0.5s cubic-bezier(0.25,0.46,0.45,0.94), opacity 0.5s ease",
-                pointerEvents: isCenter ? "auto" : "none",
+                gap: THUMB_GAP,
+                transform: dir === "next" ? `translateX(-${THUMB_STEP}px)` : "translateX(0)",
+                transition: dir === "next"
+                  ? `transform 0.58s cubic-bezier(0.25,0.46,0.45,0.94)`
+                  : "none",
               }}
             >
-              <div
-                className="w-full h-full rounded-2xl overflow-hidden border border-white/8"
-                style={{
-                  background: "rgba(255,255,255,0.04)",
-                  boxShadow: isCenter ? "0 12px 48px rgba(0,0,0,0.65)" : "none",
-                }}
-              >
-                <img
-                  src={img}
-                  alt={`${name} — ${i + 1}`}
-                  className="w-full h-full object-contain p-4 drop-shadow-xl"
-                  draggable={false}
-                />
-              </div>
+              {thumbIndices.map((idx, ti) => {
+                const isLeaving = dir === "next" && ti === 0;
+                return (
+                  <div
+                    key={`th-${animKey}-${ti}`}
+                    style={{
+                      width: THUMB_SIZE,
+                      height: THUMB_SIZE,
+                      flexShrink: 0,
+                      opacity: isLeaving ? 0 : 1,
+                      transform: isLeaving ? "scale(1.5)" : "scale(1)",
+                      transition: "opacity 0.32s ease, transform 0.32s ease",
+                    }}
+                    className="rounded-xl overflow-hidden border border-white/15 cursor-pointer hover:border-sky-400/50 transition-colors"
+                    onClick={() => go("next")}
+                  >
+                    <img
+                      src={images[idx]}
+                      alt=""
+                      className="w-full h-full object-contain p-0.5"
+                      style={{ background: "rgba(255,255,255,0.04)" }}
+                      draggable={false}
+                    />
+                  </div>
+                );
+              })}
             </div>
-          );
-        })}
-      </div>
+          </div>
 
-      {/* Counter badge */}
-      <div className="absolute top-3 right-3 bg-black/45 backdrop-blur-sm rounded-full px-2.5 py-1 text-xs text-white/70 z-30 tabular-nums">
-        {current + 1} / {images.length}
-      </div>
-
-      {/* Bottom nav — arrows + pills */}
-      <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-3 z-30">
-        <button
-          onClick={prev}
-          className="w-8 h-8 rounded-full bg-white/10 backdrop-blur border border-white/15 flex items-center justify-center text-white/80 hover:bg-white/20 transition-all"
-        >
-          <ChevronLeft className="w-4 h-4" />
-        </button>
-
-        <div className="flex gap-1.5 items-center">
-          {images.map((_, i) => (
-            <button
-              key={i}
-              onClick={() => goTo(i)}
-              className={`rounded-full transition-all duration-300 ${
-                i === current
-                  ? "w-5 h-1.5 bg-sky-400 shadow-lg shadow-sky-400/50"
-                  : "w-1.5 h-1.5 bg-white/25 hover:bg-white/55"
-              }`}
-            />
-          ))}
+          {/* Right arrow */}
+          <button
+            onClick={() => go("next")}
+            className="w-8 h-8 flex-shrink-0 rounded-full bg-white/10 backdrop-blur border border-white/15 flex items-center justify-center text-white/80 hover:bg-white/22 transition-all"
+          >
+            <ChevronRight className="w-4 h-4" />
+          </button>
         </div>
-
-        <button
-          onClick={next}
-          className="w-8 h-8 rounded-full bg-white/10 backdrop-blur border border-white/15 flex items-center justify-center text-white/80 hover:bg-white/20 transition-all"
-        >
-          <ChevronRight className="w-4 h-4" />
-        </button>
       </div>
 
-      <div className="absolute inset-0 rounded-2xl ring-1 ring-sky-400/10 pointer-events-none" />
+      <div className="absolute inset-0 rounded-2xl ring-1 ring-sky-400/10 pointer-events-none z-40" />
     </div>
   );
 }

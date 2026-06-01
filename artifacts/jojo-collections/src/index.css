@@ -118,6 +118,22 @@ input, textarea, select { color: rgb(224 242 254); }
 input::placeholder, textarea::placeholder { color: rgb(125 211 252 / 0.45); }
 
 /* ─── Floating blue particle animation ───────────────────────────────────── */
+/* ─── Product image slider keyframes ──────────────────────────────────────── */
+
+/* Forward: first thumbnail "expands" from its position at bottom-left to fill the screen */
+@keyframes sliderThumbExpand {
+  0%   { clip-path: inset(82% 64% 4% 10% round 10px); opacity: 0.75; }
+  40%  { clip-path: inset(12% 6%  6%  6%  round  6px); opacity: 1;    }
+  100% { clip-path: inset(0%  0%  0%  0%  round  0px); opacity: 1;    }
+}
+
+/* Backward: simple fade-in for the previous image */
+@keyframes sliderFadeIn {
+  0%   { opacity: 0; }
+  100% { opacity: 1; }
+}
+
+/* ─── Floating blue particle animation ───────────────────────────────────── */
 @keyframes floatUp {
   0%   { transform: translateY(0) scale(1);        opacity: 0;    }
   8%   { opacity: 1; }
