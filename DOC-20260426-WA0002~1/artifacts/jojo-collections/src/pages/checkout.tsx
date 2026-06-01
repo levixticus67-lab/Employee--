@@ -155,6 +155,9 @@ export default function Checkout() {
                   <span>Shipping</span>
                   <span>{shipping === 0 ? "Free" : `$${shipping.toFixed(2)}`}</span>
                 </div>
+                <p className="text-xs text-sky-300/70 italic leading-relaxed">
+                  📦 Any delivery fee is agreed with you directly and paid to the delivery person on arrival — it is not charged here.
+                </p>
                 <div className="border-t border-white/20 pt-3 flex justify-between items-center">
                   <span className="font-medium text-blue-950">Total</span>
                   <span className="text-2xl font-serif text-blue-950">${total.toFixed(2)}</span>

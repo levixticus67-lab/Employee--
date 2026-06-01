@@ -67,7 +67,10 @@ export default function OrderConfirmation() {
               </div>
               <p className="text-sm text-blue-900/80 mb-1">Subtotal: ${order.subtotal.toFixed(2)}</p>
               <p className="text-sm text-blue-900/80 mb-1">Shipping: ${order.shipping.toFixed(2)}</p>
-              <p className="text-sm font-medium text-blue-950 border-t border-white/30 mt-1 pt-1">Total: ${order.total.toFixed(2)}</p>
+              <p className="text-xs text-sky-300/70 italic mt-1 leading-relaxed">
+                Any delivery fee is paid directly to the delivery person on arrival.
+              </p>
+              <p className="text-sm font-medium text-blue-950 border-t border-white/30 mt-2 pt-1">Total: ${order.total.toFixed(2)}</p>
             </div>
           </div>
         </div>
