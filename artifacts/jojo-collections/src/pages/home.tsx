@@ -28,12 +28,6 @@ function CountdownTimer({ endsAt }: { endsAt: string }) {
   return <span className="font-mono text-orange-400 font-bold text-sm">{timeLeft}</span>;
 }
 
-const FALLBACK_HERO = [
-  "/perfumes/jasmine-veil.png",
-  "/perfumes/midnight-oud.png",
-  "/perfumes/rose-eclipse.png",
-];
-
 export default function Home() {
   const { data: featuredProducts } = useListFeaturedProducts();
   const { data: newArrivals } = useListNewArrivals();
@@ -41,7 +35,7 @@ export default function Home() {
   const { format } = useCurrency();
   const { toggle, isWishlisted } = useWishlist();
   const [bundles, setBundles] = useState<Bundle[]>([]);
-  const [heroImages, setHeroImages] = useState<string[]>(FALLBACK_HERO);
+  const [heroImages, setHeroImages] = useState<string[]>([]);
 
   useEffect(() => {
     apiFetch("/api/bundles")

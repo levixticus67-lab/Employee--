@@ -34,93 +34,130 @@ function CountdownTimer({ endsAt }: { endsAt: string }) {
 
 function ImageSlider({ images, name }: { images: string[]; name: string }) {
   const [current, setCurrent] = useState(0);
-  const startX = useRef<number | null>(null);
+  const [locked, setLocked] = useState(false);
+  const touchStartX = useRef<number | null>(null);
 
-  const prev = () => setCurrent((c) => (c - 1 + images.length) % images.length);
-  const next = () => setCurrent((c) => (c + 1) % images.length);
-
-  const handleTouchStart = (e: React.TouchEvent) => { startX.current = e.touches[0].clientX; };
-  const handleTouchEnd = (e: React.TouchEvent) => {
-    if (startX.current === null) return;
-    const dx = e.changedTouches[0].clientX - startX.current;
-    if (Math.abs(dx) > 40) dx < 0 ? next() : prev();
-    startX.current = null;
+  const goTo = (idx: number) => {
+    if (locked) return;
+    setLocked(true);
+    setCurrent(idx);
+    setTimeout(() => setLocked(false), 520);
   };
+
+  const prev = () => goTo((current - 1 + images.length) % images.length);
+  const next = () => goTo((current + 1) % images.length);
+
+  const onTouchStart = (e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX;
+  };
+  const onTouchEnd = (e: React.TouchEvent) => {
+    if (touchStartX.current === null || locked) return;
+    const dx = e.changedTouches[0].clientX - touchStartX.current;
+    touchStartX.current = null;
+    if (Math.abs(dx) > 48) dx < 0 ? next() : prev();
+  };
+
+  if (images.length <= 1) {
+    return (
+      <div className="relative aspect-square rounded-2xl overflow-hidden" style={{ background: "#06101e" }}>
+        {images[0] && (
+          <img src={images[0]} alt={name} className="w-full h-full object-contain p-6 drop-shadow-2xl" draggable={false} />
+        )}
+        <div className="absolute inset-0 rounded-2xl ring-1 ring-sky-400/10 pointer-events-none" />
+      </div>
+    );
+  }
 
   return (
     <div
-      className="relative aspect-square overflow-hidden rounded-2xl select-none"
-      style={{ background: "rgba(12, 28, 55, 0.75)" }}
-      onTouchStart={handleTouchStart}
-      onTouchEnd={handleTouchEnd}
+      className="relative aspect-square rounded-2xl overflow-hidden select-none"
+      style={{ background: "#06101e" }}
+      onTouchStart={onTouchStart}
+      onTouchEnd={onTouchEnd}
     >
-      {/* Sliding strip */}
-      <div
-        className="flex h-full transition-transform duration-500 ease-[cubic-bezier(0.25,0.46,0.45,0.94)]"
-        style={{
-          transform: `translateX(-${current * 100}%)`,
-          width: `${images.length * 100}%`,
-        }}
-      >
-        {images.map((img, i) => (
-          <div
-            key={i}
-            style={{ width: `${100 / images.length}%` }}
-            className="flex-shrink-0 h-full flex items-center justify-center"
-          >
-            <img
-              src={img}
-              alt={`${name} — view ${i + 1}`}
-              className="w-full h-full object-contain p-5 drop-shadow-2xl"
-              draggable={false}
-            />
-          </div>
-        ))}
+      {/* 3-D coverflow cards */}
+      <div className="absolute inset-0 flex items-center justify-center">
+        {images.map((img, i) => {
+          const offset = (i - current + images.length) % images.length;
+          const isCenter = offset === 0;
+          const isRight  = offset === 1;
+          const isLeft   = offset === images.length - 1;
+          const visible  = isCenter || isLeft || isRight;
+
+          const translateX = isCenter ? "0%" : isRight ? "70%" : "-70%";
+          const scale      = isCenter ? 1 : 0.68;
+          const opacity    = isCenter ? 1 : visible ? 0.5 : 0;
+          const zIndex     = isCenter ? 20 : visible ? 10 : 0;
+
+          return (
+            <div
+              key={i}
+              className="absolute"
+              style={{
+                width: "70%",
+                aspectRatio: "1",
+                transform: `translateX(${translateX}) scale(${scale})`,
+                opacity,
+                zIndex,
+                transition: "transform 0.5s cubic-bezier(0.25,0.46,0.45,0.94), opacity 0.5s ease",
+                pointerEvents: isCenter ? "auto" : "none",
+              }}
+            >
+              <div
+                className="w-full h-full rounded-2xl overflow-hidden border border-white/8"
+                style={{
+                  background: "rgba(255,255,255,0.04)",
+                  boxShadow: isCenter ? "0 12px 48px rgba(0,0,0,0.65)" : "none",
+                }}
+              >
+                <img
+                  src={img}
+                  alt={`${name} — ${i + 1}`}
+                  className="w-full h-full object-contain p-4 drop-shadow-xl"
+                  draggable={false}
+                />
+              </div>
+            </div>
+          );
+        })}
       </div>
 
-      {/* Image counter */}
-      {images.length > 1 && (
-        <div className="absolute top-3 right-3 bg-black/45 backdrop-blur-sm rounded-full px-2.5 py-1 text-xs text-white/75 font-medium tabular-nums">
-          {current + 1} / {images.length}
-        </div>
-      )}
+      {/* Counter badge */}
+      <div className="absolute top-3 right-3 bg-black/45 backdrop-blur-sm rounded-full px-2.5 py-1 text-xs text-white/70 z-30 tabular-nums">
+        {current + 1} / {images.length}
+      </div>
 
-      {/* Arrow buttons — desktop only */}
-      {images.length > 1 && (
-        <>
-          <button
-            onClick={prev}
-            className="absolute left-2 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-black/35 backdrop-blur-sm border border-white/12 text-white hover:bg-black/55 transition-all items-center justify-center hidden sm:flex"
-          >
-            <ChevronLeft className="w-4 h-4" />
-          </button>
-          <button
-            onClick={next}
-            className="absolute right-2 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-black/35 backdrop-blur-sm border border-white/12 text-white hover:bg-black/55 transition-all items-center justify-center hidden sm:flex"
-          >
-            <ChevronRight className="w-4 h-4" />
-          </button>
-        </>
-      )}
+      {/* Bottom nav — arrows + pills */}
+      <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-3 z-30">
+        <button
+          onClick={prev}
+          className="w-8 h-8 rounded-full bg-white/10 backdrop-blur border border-white/15 flex items-center justify-center text-white/80 hover:bg-white/20 transition-all"
+        >
+          <ChevronLeft className="w-4 h-4" />
+        </button>
 
-      {/* Pill / dot indicators */}
-      {images.length > 1 && (
-        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-1.5 items-center">
+        <div className="flex gap-1.5 items-center">
           {images.map((_, i) => (
             <button
               key={i}
-              onClick={() => setCurrent(i)}
+              onClick={() => goTo(i)}
               className={`rounded-full transition-all duration-300 ${
                 i === current
-                  ? "w-6 h-1.5 bg-sky-400 shadow-lg shadow-sky-400/60"
-                  : "w-1.5 h-1.5 bg-white/22 hover:bg-white/50"
+                  ? "w-5 h-1.5 bg-sky-400 shadow-lg shadow-sky-400/50"
+                  : "w-1.5 h-1.5 bg-white/25 hover:bg-white/55"
               }`}
             />
           ))}
         </div>
-      )}
 
-      {/* Subtle ring glow */}
+        <button
+          onClick={next}
+          className="w-8 h-8 rounded-full bg-white/10 backdrop-blur border border-white/15 flex items-center justify-center text-white/80 hover:bg-white/20 transition-all"
+        >
+          <ChevronRight className="w-4 h-4" />
+        </button>
+      </div>
+
       <div className="absolute inset-0 rounded-2xl ring-1 ring-sky-400/10 pointer-events-none" />
     </div>
   );

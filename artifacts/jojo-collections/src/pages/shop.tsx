@@ -234,10 +234,6 @@ export default function Shop() {
                     </div>
                   </Link>
 
-                  {/* Add to cart strip */}
-                  <div className="bg-blue-500/80 hover:bg-blue-400/80 transition-colors px-3 py-2 text-center cursor-pointer">
-                    <span className="text-white text-xs font-semibold tracking-wide">Add to Cart</span>
-                  </div>
                 </div>
               );
             })}
