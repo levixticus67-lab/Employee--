@@ -12,16 +12,22 @@ const ThemeContext = createContext<ThemeContextType>({
   toggleTheme: () => {},
 });
 
-export function ThemeProvider({ children }: { children: React.ReactNode }) {
+export function ThemeProvider({
+  children,
+  storageKey = "jojo-theme",
+}: {
+  children: React.ReactNode;
+  storageKey?: string;
+}) {
   const [theme, setTheme] = useState<AppTheme>(() => {
-    try { return (localStorage.getItem("jojo-theme") as AppTheme) ?? "blue"; }
+    try { return (localStorage.getItem(storageKey) as AppTheme) ?? "blue"; }
     catch { return "blue"; }
   });
 
   useEffect(() => {
     document.documentElement.setAttribute("data-theme", theme);
-    try { localStorage.setItem("jojo-theme", theme); } catch {}
-  }, [theme]);
+    try { localStorage.setItem(storageKey, theme); } catch {}
+  }, [theme, storageKey]);
 
   const toggleTheme = () => setTheme(t => t === "blue" ? "gold" : "blue");
 

@@ -1,5 +1,6 @@
 import { Link, useLocation } from "wouter";
   import { useAuth } from "@/components/auth-context";
+  import { useTheme, ThemeProvider } from "@/components/theme-context";
   import { toast } from "sonner";
   import { useState, useEffect, useRef } from "react";
   import { apiFetch } from "@/lib/api";
@@ -74,9 +75,10 @@ import { Link, useLocation } from "wouter";
     );
   }
 
-  export function AdminLayout({ children }: { children: React.ReactNode }) {
+  function AdminLayoutContent({ children }: { children: React.ReactNode }) {
     const [location, setLocation] = useLocation();
     const { adminLogout } = useAuth();
+    const { theme, toggleTheme } = useTheme();
     const [showCelebration, setShowCelebration] = useState(false);
     const [receivedCount, setReceivedCount] = useState(0);
     const celebratedRef = useRef<Set<string>>(loadCelebrated());
@@ -174,6 +176,19 @@ import { Link, useLocation } from "wouter";
             })}
           </nav>
           <div className="p-4 border-t border-white/10 space-y-1">
+            {/* Theme toggle */}
+            <button
+              onClick={toggleTheme}
+              className="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all font-medium text-sm border"
+              style={theme === "gold"
+                ? { background: "rgba(251,191,36,0.1)", borderColor: "rgba(251,191,36,0.25)", color: "rgb(251,191,36)" }
+                : { background: "rgba(125,211,252,0.06)", borderColor: "rgba(125,211,252,0.15)", color: "rgb(125,211,252)" }
+              }
+            >
+              <span className="w-3.5 h-3.5 rounded-full flex-shrink-0"
+                style={{ background: theme === "gold" ? "rgb(251,191,36)" : "rgb(125,211,252)" }} />
+              {theme === "gold" ? "Gold Theme" : "Blue Theme"}
+            </button>
             <Link href="/" className="flex items-center gap-3 px-4 py-2.5 rounded-xl text-sky-300/60 hover:bg-white/8 hover:text-sky-100 transition-all font-medium text-sm">
               <Home className="w-4 h-4" />
               Storefront
@@ -189,6 +204,18 @@ import { Link, useLocation } from "wouter";
           <header className="md:hidden glass-panel h-16 flex items-center justify-between px-4 border-b border-white/10">
             <span className="font-serif font-bold text-sky-50">JOJO ADMIN</span>
             <div className="flex items-center gap-3">
+              <button
+                onClick={toggleTheme}
+                className="flex items-center gap-1.5 text-[11px] font-medium px-2 py-1 rounded-full border transition-all"
+                style={theme === "gold"
+                  ? { background: "rgba(251,191,36,0.1)", borderColor: "rgba(251,191,36,0.3)", color: "rgb(251,191,36)" }
+                  : { background: "rgba(125,211,252,0.08)", borderColor: "rgba(125,211,252,0.2)", color: "rgb(125,211,252)" }
+                }
+              >
+                <span className="w-2 h-2 rounded-full"
+                  style={{ background: theme === "gold" ? "rgb(251,191,36)" : "rgb(125,211,252)" }} />
+                {theme === "gold" ? "Gold" : "Blue"}
+              </button>
               <Link href="/" className="text-sm text-blue-400 underline">Exit</Link>
               <button type="button" onClick={handleLogout} className="text-sm text-red-400 underline">Sign out</button>
             </div>
@@ -200,5 +227,13 @@ import { Link, useLocation } from "wouter";
           </div>
         </main>
       </div>
+    );
+  }
+
+  export function AdminLayout({ children }: { children: React.ReactNode }) {
+    return (
+      <ThemeProvider storageKey="jojo-theme-admin">
+        <AdminLayoutContent>{children}</AdminLayoutContent>
+      </ThemeProvider>
     );
   }

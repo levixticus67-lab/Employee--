@@ -235,6 +235,11 @@ export default function OrderConfirmation() {
               ) : (
                 <p className="text-sm text-orange-600/90 mb-1 italic">Delivery fee: being confirmed by store</p>
               )}
+              {!o.freeDelivery && (
+                <p className="text-xs text-blue-900/50 italic leading-snug mb-1">
+                  Any delivery fee is paid directly to the delivery person on arrival.
+                </p>
+              )}
               <p className="text-sm font-medium text-blue-950 border-t border-white/30 mt-1 pt-1">
                 Total: {format(order.total)}
               </p>

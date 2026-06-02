@@ -525,6 +525,14 @@ import { useState, useEffect } from "react";
                         : "TBD at delivery"}
                     </span>
                   </div>
+                  {!(freeDeliveryThreshold > 0 && total >= freeDeliveryThreshold) && (
+                    <div className="flex items-start gap-1.5 -mt-0.5">
+                      <span className="text-sm leading-none mt-0.5 flex-shrink-0">📦</span>
+                      <p className="text-xs text-blue-800/55 italic leading-snug">
+                        Any delivery fee is agreed with you directly and paid to the delivery person on arrival — it is not charged here.
+                      </p>
+                    </div>
+                  )}
                   <div className="flex justify-between font-bold text-blue-950 text-base pt-2 border-t border-white/30">
                     <span>Order Total</span><span>{format(total)}</span>
                   </div>

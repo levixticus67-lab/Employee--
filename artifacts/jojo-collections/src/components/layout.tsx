@@ -3,7 +3,7 @@ import { useCart } from "./cart-context";
 import { useAuth } from "./auth-context";
 import { useWishlist } from "./wishlist-context";
 import { useCurrency, type Currency } from "./currency-context";
-import { useTheme } from "./theme-context";
+import { useTheme, ThemeProvider } from "./theme-context";
 import { ShoppingBag, Menu, X, User, LogOut, Heart, MessageCircle, Package } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import { toast } from "sonner";
@@ -77,7 +77,7 @@ const PARTICLES = [
   { id: 25, size: 3, left: 90, dur: 11,   delay: 2.8  },
 ];
 
-export function Layout({ children }: { children: React.ReactNode }) {
+function LayoutContent({ children }: { children: React.ReactNode }) {
   const { totalItems } = useCart();
   const { user, logout } = useAuth();
   const { count: wishlistCount } = useWishlist();
@@ -369,5 +369,13 @@ export function Layout({ children }: { children: React.ReactNode }) {
         </a>
       )}
     </div>
+  );
+}
+
+export function Layout({ children }: { children: React.ReactNode }) {
+  return (
+    <ThemeProvider storageKey="jojo-theme-store">
+      <LayoutContent>{children}</LayoutContent>
+    </ThemeProvider>
   );
 }

@@ -3,9 +3,12 @@ import App from "./App";
 import { setBaseUrl } from "@workspace/api-client-react";
 import "./index.css";
 
-// Apply saved theme before first paint to avoid flash
+// Apply saved theme before first paint — admin and storefront use separate keys
 try {
-  const saved = localStorage.getItem("jojo-theme") ?? "blue";
+  const key = window.location.pathname.startsWith("/admin")
+    ? "jojo-theme-admin"
+    : "jojo-theme-store";
+  const saved = localStorage.getItem(key) ?? "blue";
   document.documentElement.setAttribute("data-theme", saved);
 } catch {}
 
