@@ -3,6 +3,7 @@ import { useCart } from "./cart-context";
 import { useAuth } from "./auth-context";
 import { useWishlist } from "./wishlist-context";
 import { useCurrency, type Currency } from "./currency-context";
+import { useTheme } from "./theme-context";
 import { ShoppingBag, Menu, X, User, LogOut, Heart, MessageCircle, Package } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import { toast } from "sonner";
@@ -81,6 +82,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const { user, logout } = useAuth();
   const { count: wishlistCount } = useWishlist();
   const { currency, setCurrency } = useCurrency();
+  const { theme, toggleTheme } = useTheme();
   const [location, setLocation] = useLocation();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [bannerDismissed, setBannerDismissed] = useState(false);
@@ -215,6 +217,21 @@ export function Layout({ children }: { children: React.ReactNode }) {
                 {currencies.map((c) => <option key={c} value={c} className="bg-slate-900">{c}</option>)}
               </select>
 
+              {/* Theme toggle */}
+              <button
+                onClick={toggleTheme}
+                title={theme === "gold" ? "Switch to Blue theme" : "Switch to Gold theme"}
+                className="flex items-center gap-1.5 text-[11px] font-medium px-2.5 py-1 rounded-full transition-all duration-300 border"
+                style={theme === "gold"
+                  ? { background: "rgba(251,191,36,0.12)", borderColor: "rgba(251,191,36,0.3)", color: "rgb(251,191,36)" }
+                  : { background: "rgba(125,211,252,0.08)", borderColor: "rgba(125,211,252,0.2)", color: "rgb(125,211,252)" }
+                }
+              >
+                <span className="w-2 h-2 rounded-full inline-block transition-colors duration-300"
+                  style={{ background: theme === "gold" ? "rgb(251,191,36)" : "rgb(125,211,252)" }} />
+                {theme === "gold" ? "Gold" : "Blue"}
+              </button>
+
               {user ? (
                 <div className="flex items-center gap-1 border-l border-sky-400/10 pl-2">
                   <Link href="/my-orders" className="flex items-center gap-1.5 text-xs text-sky-200 font-medium px-2 hover:text-sky-50 transition-colors">
@@ -273,6 +290,21 @@ export function Layout({ children }: { children: React.ReactNode }) {
                 <select value={currency} onChange={(e) => setCurrency(e.target.value as Currency)} className="text-sm text-sky-100 bg-transparent border-0 focus:outline-none">
                   {currencies.map((c) => <option key={c} value={c} className="bg-slate-900">{c}</option>)}
                 </select>
+              </div>
+              <div className="px-3 py-2 flex items-center gap-2">
+                <span className="text-xs text-sky-300/60 uppercase tracking-wide">Theme:</span>
+                <button
+                  onClick={toggleTheme}
+                  className="flex items-center gap-1.5 text-xs font-medium px-3 py-1 rounded-full border transition-all duration-300"
+                  style={theme === "gold"
+                    ? { background: "rgba(251,191,36,0.12)", borderColor: "rgba(251,191,36,0.3)", color: "rgb(251,191,36)" }
+                    : { background: "rgba(125,211,252,0.08)", borderColor: "rgba(125,211,252,0.2)", color: "rgb(125,211,252)" }
+                  }
+                >
+                  <span className="w-2 h-2 rounded-full inline-block"
+                    style={{ background: theme === "gold" ? "rgb(251,191,36)" : "rgb(125,211,252)" }} />
+                  {theme === "gold" ? "Gold" : "Blue"}
+                </button>
               </div>
               {user ? (
                 <>

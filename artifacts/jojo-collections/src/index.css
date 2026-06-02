@@ -158,3 +158,132 @@ input::placeholder, textarea::placeholder { color: rgb(125 211 252 / 0.45); }
 @layer base {
   * { @apply border-border; }
 }
+
+/* ═══════════════════════════════════════════════════════════════════
+   GOLD THEME  —  html[data-theme="gold"]
+   Remaps the entire site from deep-ocean blue → liquid-gold dark
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* ── CSS token overrides ─────────────────────────────────────────── */
+html[data-theme="gold"] {
+  --background: 20 15% 5%;
+  --foreground: 38 70% 92%;
+  --card: 20 20% 8% / 0.65;
+  --card-foreground: 38 60% 88%;
+  --card-border: 38 60% 100% / 0.07;
+  --popover: 20 20% 7% / 0.92;
+  --popover-foreground: 38 60% 88%;
+  --popover-border: 38 50% 100% / 0.1;
+  --primary: 38 90% 52%;
+  --primary-foreground: 38 20% 8%;
+  --secondary: 25 30% 12% / 0.6;
+  --secondary-foreground: 38 50% 75%;
+  --muted: 25 25% 10% / 0.5;
+  --muted-foreground: 38 30% 55%;
+  --accent: 25 30% 14% / 0.6;
+  --accent-foreground: 38 50% 80%;
+  --border: 38 40% 100% / 0.1;
+  --input: 38 40% 100% / 0.08;
+  --ring: 38 80% 55% / 0.3;
+}
+
+/* ── Body background & base text ─────────────────────────────────── */
+html[data-theme="gold"] body {
+  background: linear-gradient(160deg, #0a0508 0%, #12070e 35%, #1a0a00 65%, #0d0500 100%);
+  background-attachment: fixed;
+  color: rgb(253 230 138 / 0.88);
+}
+
+/* ── Particles → gold/amber ──────────────────────────────────────── */
+html[data-theme="gold"] .particle {
+  background: radial-gradient(circle, #fde68a, #f59e0b) !important;
+  box-shadow: 0 0 8px rgba(245, 158, 11, 0.55) !important;
+}
+
+/* ── Glassmorphism panels ────────────────────────────────────────── */
+html[data-theme="gold"] .glass-panel {
+  background: rgba(251, 191, 36, 0.04) !important;
+  border-color: rgba(251, 191, 36, 0.1) !important;
+}
+html[data-theme="gold"] .glass-panel-heavy {
+  background: rgba(8, 4, 0, 0.65) !important;
+  border-color: rgba(251, 191, 36, 0.1) !important;
+}
+html[data-theme="gold"] .glass-card {
+  background: rgba(251, 191, 36, 0.04) !important;
+  border-color: rgba(251, 191, 36, 0.08) !important;
+}
+html[data-theme="gold"] .glass-card:hover {
+  background: rgba(251, 191, 36, 0.09) !important;
+  border-color: rgba(251, 191, 36, 0.16) !important;
+}
+
+/* ── Text: sky-* → warm cream/amber scale ───────────────────────── */
+/* sky-50 / sky-100  →  near-white cream */
+html[data-theme="gold"] [class*="text-sky-50"],
+html[data-theme="gold"] [class*="text-sky-10"] {
+  color: rgb(255 251 235) !important;
+}
+/* sky-200 / sky-300  →  soft amber */
+html[data-theme="gold"] [class*="text-sky-2"],
+html[data-theme="gold"] [class*="text-sky-3"] {
+  color: rgb(253 230 138 / 0.82) !important;
+}
+/* sky-400  →  amber */
+html[data-theme="gold"] [class*="text-sky-4"] {
+  color: rgb(251 191 36) !important;
+}
+
+/* ── Text: blue-* → amber / cream ───────────────────────────────── */
+html[data-theme="gold"] [class*="text-blue-4"],
+html[data-theme="gold"] [class*="text-blue-5"],
+html[data-theme="gold"] [class*="text-blue-6"],
+html[data-theme="gold"] [class*="text-blue-7"] {
+  color: rgb(251 191 36) !important;
+}
+html[data-theme="gold"] [class*="text-blue-8"],
+html[data-theme="gold"] [class*="text-blue-9"] {
+  color: rgb(255 251 235) !important;
+}
+
+/* ── Background: blue buttons → amber ───────────────────────────── */
+html[data-theme="gold"] .bg-blue-500 { background-color: rgb(217 119 6) !important; }
+html[data-theme="gold"] .bg-blue-600 { background-color: rgb(180 83 9) !important; }
+html[data-theme="gold"] .hover\:bg-blue-400:hover { background-color: rgb(245 158 11) !important; }
+html[data-theme="gold"] .hover\:bg-blue-700:hover { background-color: rgb(161 75 8) !important; }
+html[data-theme="gold"] .hover\:bg-blue-400:hover { background-color: rgb(245 158 11) !important; }
+
+/* Cart/wishlist badge */
+html[data-theme="gold"] span.bg-blue-500 { background-color: rgb(217 119 6) !important; }
+
+/* Mobile menu backdrop */
+html[data-theme="gold"] .bg-slate-900\/95 { background-color: rgba(10, 5, 0, 0.95) !important; }
+
+/* ── Border: sky-* / blue-* → gold ──────────────────────────────── */
+html[data-theme="gold"] [class*="border-sky-"] {
+  border-color: rgba(251, 191, 36, 0.22) !important;
+}
+html[data-theme="gold"] [class*="border-blue-"] {
+  border-color: rgba(251, 191, 36, 0.25) !important;
+}
+
+/* ── Box-shadow accent → amber ───────────────────────────────────── */
+html[data-theme="gold"] [class*="shadow-blue-"] {
+  --tw-shadow-color: rgba(217, 119, 6, 0.35) !important;
+}
+
+/* ── Form elements ───────────────────────────────────────────────── */
+html[data-theme="gold"] input,
+html[data-theme="gold"] textarea,
+html[data-theme="gold"] select {
+  color: rgb(253 230 138);
+}
+html[data-theme="gold"] input::placeholder,
+html[data-theme="gold"] textarea::placeholder {
+  color: rgb(251 191 36 / 0.4);
+}
+
+/* ── Existing global dark-theme text fixes — gold equivalents ────── */
+html[data-theme="gold"] [class*="text-blue-9"] { color: rgb(255 251 235) !important; }
+html[data-theme="gold"] [class*="text-blue-8"] { color: rgb(254 243 199) !important; }
+html[data-theme="gold"] [class*="text-blue-7"] { color: rgb(251 191 36) !important; }

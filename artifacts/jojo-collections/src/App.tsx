@@ -7,6 +7,7 @@ import { CartProvider } from "@/components/cart-context";
 import { AuthProvider, useAuth } from "@/components/auth-context";
 import { WishlistProvider } from "@/components/wishlist-context";
 import { CurrencyProvider } from "@/components/currency-context";
+import { ThemeProvider } from "@/components/theme-context";
 import { Layout } from "@/components/layout";
 import { Button } from "@/components/ui/button";
 import { Link } from "wouter";
@@ -154,20 +155,22 @@ function App() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <CurrencyProvider>
-          <AuthProvider>
-            <WishlistProvider>
-              <CartProvider>
-                <WouterRouter base="/">
-                  <Router />
-                </WouterRouter>
-                <Toaster position="bottom-right" className="glass-panel" />
-              </CartProvider>
-            </WishlistProvider>
-          </AuthProvider>
-        </CurrencyProvider>
-      </TooltipProvider>
+      <ThemeProvider>
+        <TooltipProvider>
+          <CurrencyProvider>
+            <AuthProvider>
+              <WishlistProvider>
+                <CartProvider>
+                  <WouterRouter base="/">
+                    <Router />
+                  </WouterRouter>
+                  <Toaster position="bottom-right" className="glass-panel" />
+                </CartProvider>
+              </WishlistProvider>
+            </AuthProvider>
+          </CurrencyProvider>
+        </TooltipProvider>
+      </ThemeProvider>
     </QueryClientProvider>
   );
 }
