@@ -52,7 +52,7 @@ export default function AdminReviews() {
               key={s}
               onClick={() => setFilterStatus(s)}
               className={`px-3 py-1.5 text-sm font-medium rounded-md capitalize transition-all ${
-                filterStatus === s ? 'bg-white text-blue-900 shadow-sm' : 'text-blue-800/70 hover:text-blue-900'
+                filterStatus === s ? 'bg-white/25 text-white font-semibold ring-1 ring-white/40 shadow-sm' : 'text-white/55 hover:text-white/85'
               }`}
             >
               {s}
