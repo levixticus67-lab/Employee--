@@ -229,12 +229,12 @@ export default function Dashboard() {
   if (!summary) return null;
 
   const statCards = [
-    { title: "Total Revenue", value: `$${summary.totalRevenue.toFixed(2)}`, icon: DollarSign, color: "text-green-600", bg: "bg-green-100/50" },
-    { title: "Total Orders", value: summary.ordersCount, icon: ShoppingCart, color: "text-blue-600", bg: "bg-blue-100/50" },
-    { title: "Pending Orders", value: summary.pendingOrdersCount, icon: AlertCircle, color: "text-orange-600", bg: "bg-orange-100/50", pulse: summary.pendingOrdersCount > 0 },
-    { title: "Total Products", value: summary.productsCount, icon: Package, color: "text-indigo-600", bg: "bg-indigo-100/50" },
-    { title: "Out of Stock", value: summary.outOfStockCount, icon: AlertCircle, color: "text-red-600", bg: "bg-red-100/50" },
-    { title: "Pending Reviews", value: summary.pendingReviewsCount, icon: MessageSquare, color: "text-purple-600", bg: "bg-purple-100/50" },
+    { title: "Total Revenue", value: `$${summary.totalRevenue.toFixed(2)}`, icon: DollarSign, color: "text-green-300", bg: "bg-green-400/15" },
+    { title: "Total Orders", value: summary.ordersCount, icon: ShoppingCart, color: "text-sky-300", bg: "bg-blue-400/15" },
+    { title: "Pending Orders", value: summary.pendingOrdersCount, icon: AlertCircle, color: "text-orange-300", bg: "bg-orange-400/15", pulse: summary.pendingOrdersCount > 0 },
+    { title: "Total Products", value: summary.productsCount, icon: Package, color: "text-indigo-300", bg: "bg-indigo-400/15" },
+    { title: "Out of Stock", value: summary.outOfStockCount, icon: AlertCircle, color: "text-red-300", bg: "bg-red-400/15" },
+    { title: "Pending Reviews", value: summary.pendingReviewsCount, icon: MessageSquare, color: "text-purple-300", bg: "bg-purple-400/15" },
   ];
 
   return (
@@ -255,10 +255,10 @@ export default function Dashboard() {
           title={permission === "granted" ? "Order notifications are on" : "Enable order notifications"}
           className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium border transition-all ${
             permission === "granted"
-              ? "glass-card border-green-200/60 text-green-800 bg-green-50/30 cursor-default"
+              ? "glass-card border-green-400/40 text-green-200 bg-green-400/10 cursor-default"
               : permission === "denied"
-              ? "glass-card border-red-200/50 text-red-700 bg-red-50/20 cursor-not-allowed"
-              : "glass-card border-blue-200/50 text-blue-700 hover:bg-blue-50/30 cursor-pointer"
+              ? "glass-card border-red-400/30 text-red-300 bg-red-400/8 cursor-not-allowed"
+              : "glass-card border-blue-400/30 text-sky-200 hover:bg-blue-400/10 cursor-pointer"
           }`}
         >
           {permission === "granted" ? (
@@ -272,7 +272,7 @@ export default function Dashboard() {
       </div>
 
       {permission === "denied" && (
-        <div className="mb-6 glass-card rounded-xl p-4 border-yellow-200/50 bg-yellow-50/20 flex gap-3">
+        <div className="mb-6 glass-card rounded-xl p-4 border-yellow-400/30 bg-yellow-400/8 flex gap-3">
           <BellOff className="w-4 h-4 text-yellow-600 flex-shrink-0 mt-0.5" />
           <p className="text-xs text-yellow-800">
             Notifications are blocked in your browser. To re-enable: click the lock icon in your browser's address bar → Notifications → Allow.
@@ -321,10 +321,10 @@ export default function Dashboard() {
                   <div className="text-right">
                     <p className="font-medium text-blue-900">${order.total.toFixed(2)}</p>
                     <span className={`text-xs px-2 py-1 rounded-full capitalize ${
-                      order.status === "delivered" ? "bg-green-100 text-green-800" :
-                      order.status === "cancelled" ? "bg-red-100 text-red-800" :
-                      order.status === "pending" ? "bg-yellow-100 text-yellow-800" :
-                      "bg-blue-100 text-blue-800"
+                      order.status === "delivered" ? "bg-green-400/20 text-green-200" :
+                      order.status === "cancelled" ? "bg-red-400/20 text-red-300" :
+                      order.status === "pending" ? "bg-yellow-400/20 text-yellow-200" :
+                      "bg-blue-400/20 text-sky-200"
                     }`}>
                       {order.status}
                     </span>
@@ -396,8 +396,8 @@ export default function Dashboard() {
                 </linearGradient>
               </defs>
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(147,197,253,0.2)" vertical={false} />
-              <XAxis dataKey="date" tick={{ fill: "rgba(30,58,138,0.5)", fontSize: 11 }} axisLine={false} tickLine={false} interval="preserveStartEnd" />
-              <YAxis tick={{ fill: "rgba(30,58,138,0.5)", fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={(v) => `$${v}`} width={55} />
+              <XAxis dataKey="date" tick={{ fill: "rgba(186,230,253,0.75)", fontSize: 11 }} axisLine={false} tickLine={false} interval="preserveStartEnd" />
+              <YAxis tick={{ fill: "rgba(186,230,253,0.75)", fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={(v) => `$${v}`} width={55} />
               <Tooltip content={<RevenueTooltip />} />
               <Area type="monotone" dataKey="revenue" stroke="#3b82f6" strokeWidth={2.5} fill="url(#dash_revenueGrad)" dot={false} activeDot={{ r: 5, fill: "#3b82f6", stroke: "#fff", strokeWidth: 2 }} />
               <Area type="monotone" dataKey="orders" stroke="#818cf8" strokeWidth={1.5} fill="url(#dash_ordersGrad)" dot={false} activeDot={{ r: 4, fill: "#818cf8", stroke: "#fff", strokeWidth: 2 }} />
@@ -433,10 +433,10 @@ export default function Dashboard() {
                   ))}
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(147,197,253,0.2)" vertical={false} />
-                <XAxis dataKey="label" tick={{ fill: "rgba(30,58,138,0.5)", fontSize: 10 }} axisLine={false} tickLine={false} interval="preserveStartEnd" />
-                <YAxis tick={{ fill: "rgba(30,58,138,0.5)", fontSize: 10 }} axisLine={false} tickLine={false} tickFormatter={(v) => `${v > 0 ? "+" : ""}${(v as number).toFixed(1)}%`} width={52} />
+                <XAxis dataKey="label" tick={{ fill: "rgba(186,230,253,0.75)", fontSize: 10 }} axisLine={false} tickLine={false} interval="preserveStartEnd" />
+                <YAxis tick={{ fill: "rgba(186,230,253,0.75)", fontSize: 10 }} axisLine={false} tickLine={false} tickFormatter={(v) => `${v > 0 ? "+" : ""}${(v as number).toFixed(1)}%`} width={52} />
                 <Tooltip content={<CurrencyTooltip />} />
-                <Legend wrapperStyle={{ fontSize: "12px", color: "rgba(30,58,138,0.7)", paddingTop: "12px" }} />
+                <Legend wrapperStyle={{ fontSize: "12px", color: "rgba(186,230,253,0.8)", paddingTop: "12px" }} />
                 {CURRENCIES.map(({ key, color, grad, label }) => (
                   <Area key={key} type="monotone" dataKey={key} name={label} stroke={color} strokeWidth={2} fill={`url(#${grad})`} dot={false} activeDot={{ r: 4, fill: color, stroke: "#fff", strokeWidth: 2 }} />
                 ))}
