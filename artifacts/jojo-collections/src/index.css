@@ -287,3 +287,32 @@ html[data-theme="gold"] textarea::placeholder {
 html[data-theme="gold"] [class*="text-blue-9"] { color: rgb(255 251 235) !important; }
 html[data-theme="gold"] [class*="text-blue-8"] { color: rgb(254 243 199) !important; }
 html[data-theme="gold"] [class*="text-blue-7"] { color: rgb(251 191 36) !important; }
+
+/* ─── Dark-theme: neutralise light hover-bg classes globally ─────────────
+   Any button or icon using hover:bg-*-50 / hover:bg-*-100 will get a
+   subtle semi-transparent tint instead of a jarring bright background.   */
+[class*="hover:bg-blue-50"]:hover,
+[class*="hover:bg-blue-100"]:hover   { background-color: rgba(59,130,246,0.12)  !important; }
+[class*="hover:bg-green-50"]:hover,
+[class*="hover:bg-green-100"]:hover  { background-color: rgba(34,197,94,0.12)   !important; }
+[class*="hover:bg-red-50"]:hover,
+[class*="hover:bg-red-100"]:hover    { background-color: rgba(239,68,68,0.12)   !important; }
+[class*="hover:bg-gray-50"]:hover,
+[class*="hover:bg-gray-100"]:hover   { background-color: rgba(156,163,175,0.12) !important; }
+[class*="hover:bg-amber-50"]:hover,
+[class*="hover:bg-amber-100"]:hover  { background-color: rgba(245,158,11,0.12)  !important; }
+[class*="hover:bg-orange-50"]:hover,
+[class*="hover:bg-orange-100"]:hover { background-color: rgba(249,115,22,0.12)  !important; }
+[class*="hover:bg-purple-50"]:hover,
+[class*="hover:bg-purple-100"]:hover { background-color: rgba(168,85,247,0.12)  !important; }
+[class*="hover:bg-yellow-50"]:hover,
+[class*="hover:bg-yellow-100"]:hover { background-color: rgba(234,179,8,0.12)   !important; }
+
+/* ─── Gold theme: fill gaps in blue text colour remapping ────────────────
+   text-blue-500/600 are not remapped by the default rules (only 7/8/9).  */
+html[data-theme="gold"] [class*="text-blue-5"],
+html[data-theme="gold"] [class*="text-blue-6"] { color: rgb(245,158,11) !important; }
+
+/* ─── Gold theme: hover-bg overrides use amber tint instead of blue ──── */
+html[data-theme="gold"] [class*="hover:bg-blue-50"]:hover,
+html[data-theme="gold"] [class*="hover:bg-blue-100"]:hover { background-color: rgba(245,158,11,0.12) !important; }
