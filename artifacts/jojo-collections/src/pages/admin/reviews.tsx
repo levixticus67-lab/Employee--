@@ -92,9 +92,9 @@ export default function AdminReviews() {
                   <span className="text-blue-800/50">{new Date(review.createdAt).toLocaleString()}</span>
                   <span className="text-blue-800/30">•</span>
                   <span className={`px-2 py-0.5 rounded-full capitalize font-medium ${
-                    review.status === 'approved' ? 'bg-green-100 text-green-800' :
-                    review.status === 'hidden' ? 'bg-gray-200 text-gray-800' :
-                    'bg-yellow-100 text-yellow-800'
+                    review.status === 'approved' ? 'bg-green-400/20 text-green-200' :
+                    review.status === 'hidden' ? 'bg-white/10 text-slate-300' :
+                    'bg-yellow-400/20 text-yellow-200'
                   }`}>
                     {review.status}
                   </span>
@@ -105,7 +105,7 @@ export default function AdminReviews() {
                 {review.status !== 'approved' && (
                   <button 
                     onClick={() => handleUpdateStatus(review.id, 'approved')}
-                    className="flex items-center gap-2 px-4 py-2 bg-green-50 hover:bg-green-100 text-green-700 rounded-lg transition-colors text-sm font-medium border border-green-200/50"
+                    className="flex items-center gap-2 px-4 py-2 bg-green-400/15 hover:bg-green-400/25 text-green-200 rounded-lg transition-colors text-sm font-medium border border-green-400/30"
                   >
                     <CheckCircle className="w-4 h-4" /> Approve
                   </button>
@@ -113,14 +113,14 @@ export default function AdminReviews() {
                 {review.status !== 'hidden' && (
                   <button 
                     onClick={() => handleUpdateStatus(review.id, 'hidden')}
-                    className="flex items-center gap-2 px-4 py-2 bg-gray-50 hover:bg-gray-100 text-gray-700 rounded-lg transition-colors text-sm font-medium border border-gray-200/50"
+                    className="flex items-center gap-2 px-4 py-2 bg-white/8 hover:bg-white/15 text-slate-300 rounded-lg transition-colors text-sm font-medium border border-white/20"
                   >
                     <EyeOff className="w-4 h-4" /> Hide
                   </button>
                 )}
                 <button 
                   onClick={() => handleDelete(review.id)}
-                  className="flex items-center gap-2 px-4 py-2 bg-red-50 hover:bg-red-100 text-red-700 rounded-lg transition-colors text-sm font-medium border border-red-200/50 mt-auto"
+                  className="flex items-center gap-2 px-4 py-2 bg-red-400/15 hover:bg-red-400/25 text-red-300 rounded-lg transition-colors text-sm font-medium border border-red-400/30 mt-auto"
                 >
                   <Trash2 className="w-4 h-4" /> Delete
                 </button>
