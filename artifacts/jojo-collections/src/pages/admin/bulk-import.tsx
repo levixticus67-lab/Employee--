@@ -86,8 +86,8 @@ export default function BulkImport() {
   return (
     <AdminLayout>
       <div className="mb-8">
-        <h1 className="text-3xl font-serif text-blue-950 mb-2">Bulk Product Import</h1>
-        <p className="text-blue-900/70">Upload a CSV file to add multiple products at once</p>
+        <h1 className="text-3xl font-serif text-foreground mb-2">Bulk Product Import</h1>
+        <p className="text-muted-foreground">Upload a CSV file to add multiple products at once</p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -99,8 +99,8 @@ export default function BulkImport() {
               onClick={() => inputRef.current?.click()}
             >
               <Upload className="w-10 h-10 text-blue-400 mx-auto mb-4" />
-              <p className="font-medium text-blue-950 mb-1">{filename || "Click to upload CSV"}</p>
-              <p className="text-sm text-blue-800/60">CSV files only · Max 500 rows</p>
+              <p className="font-medium text-foreground mb-1">{filename || "Click to upload CSV"}</p>
+              <p className="text-sm text-muted-foreground">CSV files only · Max 500 rows</p>
               <input ref={inputRef} type="file" accept=".csv" className="hidden" onChange={handleFile} />
             </div>
 
@@ -108,22 +108,22 @@ export default function BulkImport() {
               <div className="mt-6">
                 <div className="flex items-center gap-2 mb-4">
                   <FileText className="w-5 h-5 text-blue-600" />
-                  <span className="font-medium text-blue-950">{rows.length} rows ready to import</span>
+                  <span className="font-medium text-foreground">{rows.length} rows ready to import</span>
                 </div>
                 <div className="overflow-x-auto max-h-64 rounded-xl glass-card border-white/40">
                   <table className="w-full text-xs text-left">
                     <thead className="bg-white/20 sticky top-0">
-                      <tr>{Object.keys(rows[0] ?? {}).map((h) => <th key={h} className="px-3 py-2 text-blue-950 font-medium whitespace-nowrap">{h}</th>)}</tr>
+                      <tr>{Object.keys(rows[0] ?? {}).map((h) => <th key={h} className="px-3 py-2 text-foreground font-medium whitespace-nowrap">{h}</th>)}</tr>
                     </thead>
                     <tbody className="divide-y divide-white/20">
                       {rows.slice(0, 10).map((row, i) => (
                         <tr key={i}>
-                          {Object.values(row).map((v, j) => <td key={j} className="px-3 py-1.5 text-blue-900/80 max-w-[120px] truncate">{v}</td>)}
+                          {Object.values(row).map((v, j) => <td key={j} className="px-3 py-1.5 text-foreground/70 max-w-[120px] truncate">{v}</td>)}
                         </tr>
                       ))}
                     </tbody>
                   </table>
-                  {rows.length > 10 && <p className="text-center text-xs text-blue-800/50 py-2">... and {rows.length - 10} more rows</p>}
+                  {rows.length > 10 && <p className="text-center text-xs text-muted-foreground/60 py-2">... and {rows.length - 10} more rows</p>}
                 </div>
                 <Button onClick={handleImport} disabled={importing} className="w-full mt-4 rounded-xl bg-blue-600 hover:bg-blue-700 text-white h-11">
                   {importing ? "Importing..." : `Import ${rows.length} Products`}
@@ -150,21 +150,21 @@ export default function BulkImport() {
         {/* Template Download */}
         <div className="space-y-4">
           <div className="glass-panel-heavy rounded-2xl p-6 border-white/50">
-            <h2 className="font-serif text-lg text-blue-950 mb-3">CSV Template</h2>
-            <p className="text-sm text-blue-800/70 mb-4">Download our template to make sure your data is formatted correctly.</p>
-            <Button onClick={downloadTemplate} variant="outline" className="w-full glass-card text-blue-900 border-white/40">
+            <h2 className="font-serif text-lg text-foreground mb-3">CSV Template</h2>
+            <p className="text-sm text-muted-foreground mb-4">Download our template to make sure your data is formatted correctly.</p>
+            <Button onClick={downloadTemplate} variant="outline" className="w-full glass-card text-foreground border-white/40">
               <Download className="w-4 h-4 mr-2" /> Download Template
             </Button>
           </div>
 
           <div className="glass-panel-heavy rounded-2xl p-6 border-white/50">
-            <h2 className="font-serif text-lg text-blue-950 mb-3">Required Columns</h2>
-            <ul className="text-sm text-blue-800/70 space-y-1">
-              {["name", "brand", "price"].map((f) => <li key={f} className="flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-red-400 flex-shrink-0" /><code className="text-xs bg-white/40 px-1 rounded">{f}</code></li>)}
+            <h2 className="font-serif text-lg text-foreground mb-3">Required Columns</h2>
+            <ul className="text-sm text-foreground/70 space-y-1">
+              {["name", "brand", "price"].map((f) => <li key={f} className="flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-red-400 flex-shrink-0" /><code className="font-mono text-xs text-foreground/90">{f}</code></li>)}
             </ul>
-            <h2 className="font-serif text-lg text-blue-950 mt-4 mb-3">Optional Columns</h2>
-            <ul className="text-sm text-blue-800/70 space-y-1">
-              {["description", "category", "sizeMl", "stock", "featured", "notes", "topNotes", "heartNotes", "baseNotes", "imageUrl", "collection"].map((f) => <li key={f} className="flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-blue-300 flex-shrink-0" /><code className="text-xs bg-white/40 px-1 rounded">{f}</code></li>)}
+            <h2 className="font-serif text-lg text-foreground mt-4 mb-3">Optional Columns</h2>
+            <ul className="text-sm text-foreground/70 space-y-1">
+              {["description", "category", "sizeMl", "stock", "featured", "notes", "topNotes", "heartNotes", "baseNotes", "imageUrl", "collection"].map((f) => <li key={f} className="flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-blue-300 flex-shrink-0" /><code className="font-mono text-xs text-foreground/90">{f}</code></li>)}
             </ul>
           </div>
         </div>
