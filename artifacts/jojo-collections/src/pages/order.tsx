@@ -79,7 +79,7 @@ export default function OrderConfirmation() {
       <Layout>
         <div className="max-w-lg mx-auto px-4 py-20 text-center">
           <div className="glass-panel-heavy rounded-3xl p-10 border-white/50 space-y-6">
-            <div className="w-20 h-20 rounded-full bg-blue-100/60 flex items-center justify-center mx-auto">
+            <div className="w-20 h-20 rounded-full bg-blue-400/20 flex items-center justify-center mx-auto">
               <Loader2 className="w-10 h-10 text-blue-600 animate-spin" />
             </div>
             <div>
@@ -113,7 +113,7 @@ export default function OrderConfirmation() {
       <Layout>
         <div className="max-w-lg mx-auto px-4 py-20 text-center">
           <div className="glass-panel-heavy rounded-3xl p-10 border-white/50 space-y-6">
-            <div className="w-20 h-20 rounded-full bg-red-100/60 flex items-center justify-center mx-auto">
+            <div className="w-20 h-20 rounded-full bg-red-400/20 flex items-center justify-center mx-auto">
               <XCircle className="w-10 h-10 text-red-600" />
             </div>
             <div>
@@ -145,7 +145,7 @@ export default function OrderConfirmation() {
     <Layout>
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-16 text-center">
         <div className="mb-10">
-          <div className="w-20 h-20 bg-green-100/50 text-green-600 rounded-full flex items-center justify-center mx-auto mb-6">
+          <div className="w-20 h-20 bg-green-400/20 text-green-300 rounded-full flex items-center justify-center mx-auto mb-6">
             <CheckCircle2 className="w-10 h-10" />
           </div>
           <h1 className="text-4xl font-serif text-blue-950 mb-4">Thank you for your order!</h1>
@@ -158,7 +158,7 @@ export default function OrderConfirmation() {
         <div className="glass-panel-heavy rounded-3xl p-8 border-white/50 text-left mb-8">
           <h2 className="text-xl font-serif text-blue-950 mb-6">Order Status</h2>
           {o.status === "cancelled" ? (
-            <div className="flex items-center gap-3 text-red-700 bg-red-50/30 rounded-xl p-4">
+            <div className="flex items-center gap-3 text-red-300 bg-red-400/15 rounded-xl p-4">
               <XCircle className="w-5 h-5 flex-shrink-0" />
               <span className="font-medium">This order has been cancelled.</span>
             </div>
@@ -268,7 +268,7 @@ export default function OrderConfirmation() {
         </div>
 
         <Link href="/shop">
-          <Button className="rounded-full bg-white hover:bg-blue-50 text-blue-900 border border-blue-200 px-8 shadow-sm">
+          <Button className="rounded-full glass-card hover:bg-white/20 text-foreground border-white/30 px-8">
             Continue Shopping
           </Button>
         </Link>
