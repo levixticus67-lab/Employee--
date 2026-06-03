@@ -132,14 +132,14 @@ export default function BulkImport() {
             )}
 
             {error && (
-              <div className="mt-4 flex items-center gap-2 text-red-700 bg-red-50 rounded-xl px-4 py-3">
+              <div className="mt-4 flex items-center gap-2 text-red-300 bg-red-400/15 rounded-xl px-4 py-3">
                 <AlertCircle className="w-5 h-5 flex-shrink-0" />
                 <span className="text-sm">{error}</span>
               </div>
             )}
 
             {result && (
-              <div className="mt-4 flex items-center gap-2 text-green-700 bg-green-50 rounded-xl px-4 py-3">
+              <div className="mt-4 flex items-center gap-2 text-green-200 bg-green-400/15 rounded-xl px-4 py-3">
                 <CheckCircle className="w-5 h-5 flex-shrink-0" />
                 <span className="text-sm font-medium">{result.imported} products imported successfully!</span>
               </div>
