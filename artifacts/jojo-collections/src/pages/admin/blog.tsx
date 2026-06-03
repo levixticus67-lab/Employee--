@@ -140,21 +140,21 @@ import { useEffect, useState, useRef } from "react";
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1 flex-wrap">
                     <h3 className="font-serif text-lg text-blue-950 truncate">{p.title}</h3>
-                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${p.published ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500"}`}>{p.published ? "Published" : "Draft"}</span>
-                    {p.storedInFolder && <span className="text-xs px-2 py-0.5 rounded-full bg-amber-100 text-amber-700">Archived</span>}
+                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${p.published ? "bg-green-400/20 text-green-200" : "bg-white/10 text-slate-400"}`}>{p.published ? "Published" : "Draft"}</span>
+                    {p.storedInFolder && <span className="text-xs px-2 py-0.5 rounded-full bg-amber-400/20 text-amber-200">Archived</span>}
                   </div>
                   <p className="text-sm text-blue-800/60 line-clamp-2 mb-1">{p.summary}</p>
                   <p className="text-xs text-blue-800/40">By {p.author} · {new Date(p.createdAt).toLocaleDateString()}</p>
                 </div>
                 <div className="flex gap-1 flex-shrink-0 flex-wrap justify-end">
-                  <button onClick={() => handleTogglePublish(p)} className={`p-2 rounded-lg transition-colors ${p.published ? "text-amber-600 hover:bg-amber-50" : "text-green-600 hover:bg-green-50"}`} title={p.published ? "Unpublish" : "Publish"}>
+                  <button onClick={() => handleTogglePublish(p)} className={`p-2 rounded-lg transition-colors ${p.published ? "text-amber-400 hover:bg-amber-400/15" : "text-green-400 hover:bg-green-400/15"}`} title={p.published ? "Unpublish" : "Publish"}>
                     {p.published ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
                   {!p.storedInFolder && (
-                    <button onClick={() => openArchive(p)} className="p-2 text-blue-500 hover:bg-blue-50 rounded-lg" title="Move to storage"><Archive className="w-4 h-4" /></button>
+                    <button onClick={() => openArchive(p)} className="p-2 text-sky-400 hover:bg-blue-400/15 rounded-lg" title="Move to storage"><Archive className="w-4 h-4" /></button>
                   )}
-                  <button onClick={() => openEdit(p)} className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg"><Edit2 className="w-4 h-4" /></button>
-                  <button onClick={() => handleDelete(p.id)} className="p-2 text-red-600 hover:bg-red-50 rounded-lg"><Trash2 className="w-4 h-4" /></button>
+                  <button onClick={() => openEdit(p)} className="p-2 text-sky-300 hover:bg-blue-400/15 rounded-lg"><Edit2 className="w-4 h-4" /></button>
+                  <button onClick={() => handleDelete(p.id)} className="p-2 text-red-400 hover:bg-red-400/15 rounded-lg"><Trash2 className="w-4 h-4" /></button>
                 </div>
               </div>
             ))}
