@@ -95,13 +95,13 @@ export default function AdminAnalytics() {
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(147,197,253,0.2)" vertical={false} />
               <XAxis
                 dataKey="date"
-                tick={{ fill: "rgba(30,58,138,0.5)", fontSize: 11 }}
+                tick={{ fill: "rgba(186,230,253,0.75)", fontSize: 11 }}
                 axisLine={false}
                 tickLine={false}
                 interval="preserveStartEnd"
               />
               <YAxis
-                tick={{ fill: "rgba(30,58,138,0.5)", fontSize: 11 }}
+                tick={{ fill: "rgba(186,230,253,0.75)", fontSize: 11 }}
                 axisLine={false}
                 tickLine={false}
                 tickFormatter={(v) => `$${v}`}
