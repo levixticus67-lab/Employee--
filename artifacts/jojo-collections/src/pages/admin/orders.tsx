@@ -169,13 +169,13 @@ export default function AdminOrders() {
     <AdminLayout>
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
         <div>
-          <h1 className="text-3xl font-serif text-blue-950 mb-2">Orders</h1>
-          <p className="text-blue-900/70">Manage customer orders and fulfilment</p>
+          <h1 className="text-3xl font-serif text-foreground mb-2">Orders</h1>
+          <p className="text-muted-foreground">Manage customer orders and fulfilment</p>
         </div>
         <div className="flex flex-wrap gap-1 bg-white/20 backdrop-blur-md rounded-lg p-1 border border-white/30">
           {FILTERS.map((f) => (
             <button key={f} onClick={() => setFilterMode(f)}
-              className={`px-3 py-1.5 text-xs font-medium rounded-md capitalize transition-all ${filterMode === f ? "bg-white text-blue-900 shadow-sm" : "text-blue-800/70 hover:text-blue-900"}`}>
+              className={`px-3 py-1.5 text-xs font-medium rounded-md capitalize transition-all ${filterMode === f ? "bg-white/25 text-white font-semibold ring-1 ring-white/40 shadow-sm" : "text-white/55 hover:text-white/85"}`}>
               {f === "active" ? "Active" : f}
             </button>
           ))}
