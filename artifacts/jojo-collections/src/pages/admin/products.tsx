@@ -184,7 +184,7 @@ export default function AdminProducts() {
                     <td className="px-6 py-4 text-sm text-blue-900">{product.collection || <span className="text-blue-400 italic">—</span>}</td>
                     <td className="px-6 py-4 text-sm font-medium text-blue-950">${product.price.toFixed(2)}</td>
                     <td className="px-6 py-4">
-                      <span className={`text-xs px-2 py-1 rounded-full ${product.stock > 10 ? "bg-green-100 text-green-800" : product.stock > 0 ? "bg-orange-100 text-orange-800" : "bg-red-100 text-red-800"}`}>
+                      <span className={`text-xs px-2 py-1 rounded-full ${product.stock > 10 ? "bg-green-400/20 text-green-200" : product.stock > 0 ? "bg-orange-400/20 text-orange-200" : "bg-red-400/20 text-red-300"}`}>
                         {product.stock} in stock
                       </span>
                     </td>
