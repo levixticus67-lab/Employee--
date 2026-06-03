@@ -19,20 +19,20 @@ type StorageItem = {
 };
 
 const STATUS_COLORS: Record<string, string> = {
-  pending:    "bg-yellow-100 text-yellow-800 border-yellow-200",
-  processing: "bg-blue-100 text-blue-800 border-blue-200",
-  shipped:    "bg-purple-100 text-purple-800 border-purple-200",
-  delivered:  "bg-green-100 text-green-800 border-green-200",
-  cancelled:  "bg-red-100 text-red-800 border-red-200",
-  received:   "bg-emerald-100 text-emerald-800 border-emerald-200",
+  pending:    "bg-yellow-400/20 text-yellow-200 border-yellow-400/40",
+  processing: "bg-blue-400/20 text-sky-200 border-blue-400/40",
+  shipped:    "bg-purple-400/20 text-purple-200 border-purple-400/40",
+  delivered:  "bg-green-400/20 text-green-200 border-green-400/40",
+  cancelled:  "bg-red-400/20 text-red-300 border-red-400/40",
+  received:   "bg-emerald-400/20 text-emerald-200 border-emerald-400/40",
 };
 
 const PAYMENT_STATUS_COLORS: Record<string, string> = {
-  unpaid:  "bg-gray-100 text-gray-700",
-  partial: "bg-amber-100 text-amber-700",
-  paid:    "bg-green-100 text-green-700",
-  pending: "bg-blue-100 text-blue-700",
-  failed:  "bg-red-100 text-red-700",
+  unpaid:  "bg-white/10 text-slate-300",
+  partial: "bg-amber-400/20 text-amber-200",
+  paid:    "bg-green-400/20 text-green-200",
+  pending: "bg-blue-400/20 text-sky-200",
+  failed:  "bg-red-400/20 text-red-300",
 };
 
 const PAYMENT_METHOD_LABELS: Record<string, string> = {
@@ -95,7 +95,7 @@ function OrderLogDialog({ item, onClose }: { item: StorageItem; onClose: () => v
               Order #{orderId.slice(0, 8).toUpperCase()}
             </DialogTitle>
             <div className="flex items-center gap-2">
-              <span className={`text-sm px-3 py-1 rounded-full border capitalize font-medium ${STATUS_COLORS[status] ?? "bg-gray-100 text-gray-800 border-gray-200"}`}>
+              <span className={`text-sm px-3 py-1 rounded-full border capitalize font-medium ${STATUS_COLORS[status] ?? "bg-white/10 text-slate-300 border-white/20"}`}>
                 {status}
               </span>
               {status === "received" && <span title="Customer confirmed receipt" className="text-lg leading-none">📦</span>}
@@ -112,23 +112,23 @@ function OrderLogDialog({ item, onClose }: { item: StorageItem; onClose: () => v
           </p>
 
           {status === "received" && (
-            <div className="mt-3 bg-emerald-50/40 border border-emerald-200/60 rounded-xl p-3 flex items-start gap-3">
+            <div className="mt-3 bg-emerald-400/10 border border-emerald-400/30 rounded-xl p-3 flex items-start gap-3">
               <span className="text-2xl leading-none mt-0.5">📦</span>
               <div>
-                <p className="text-sm font-semibold text-emerald-800">Customer confirmed they received this order!</p>
+                <p className="text-sm font-semibold text-emerald-200">Customer confirmed they received this order!</p>
               </div>
             </div>
           )}
           {paymentStatus === "pending" && (
-            <div className="mt-3 bg-blue-50/40 border border-blue-200/60 rounded-xl p-3 flex items-center gap-3">
+            <div className="mt-3 bg-blue-400/10 border border-blue-400/30 rounded-xl p-3 flex items-center gap-3">
               <Loader2 className="w-4 h-4 text-blue-600 animate-spin flex-shrink-0" />
-              <p className="text-sm text-blue-800">Awaiting Pesapal payment confirmation.</p>
+              <p className="text-sm text-sky-200">Awaiting Pesapal payment confirmation.</p>
             </div>
           )}
           {paymentStatus === "failed" && (
-            <div className="mt-3 bg-red-50/40 border border-red-200/60 rounded-xl p-3 flex items-center gap-3">
+            <div className="mt-3 bg-red-400/10 border border-red-400/30 rounded-xl p-3 flex items-center gap-3">
               <AlertCircle className="w-4 h-4 text-red-600 flex-shrink-0" />
-              <p className="text-sm text-red-800">Pesapal payment was not completed.</p>
+              <p className="text-sm text-red-300">Pesapal payment was not completed.</p>
             </div>
           )}
         </DialogHeader>
@@ -142,7 +142,7 @@ function OrderLogDialog({ item, onClose }: { item: StorageItem; onClose: () => v
             <p className="text-sm font-medium text-blue-950">{customerName}</p>
             <p className="text-sm text-blue-800/80">{customerEmail}</p>
             {buyerPhone && (
-              <div className="mt-2 flex items-center gap-2.5 bg-blue-50/50 border border-blue-200/50 rounded-lg px-3 py-2">
+              <div className="mt-2 flex items-center gap-2.5 bg-blue-400/10 border border-blue-400/25 rounded-lg px-3 py-2">
                 <Phone className="w-4 h-4 text-blue-500 flex-shrink-0" />
                 <div>
                   <p className="text-[10px] font-bold text-blue-600 uppercase tracking-wide">Follow-up contact</p>
@@ -190,11 +190,11 @@ function OrderLogDialog({ item, onClose }: { item: StorageItem; onClose: () => v
               <div className="flex items-center justify-between">
                 <span className="text-xs text-blue-800/70">Payment status</span>
                 {isPesapalVerified ? (
-                  <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full font-medium bg-green-100 text-green-700">
+                  <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full font-medium bg-green-400/20 text-green-200 border border-green-400/30">
                     <ShieldCheck className="w-3 h-3" /> Verified · Pesapal
                   </span>
                 ) : (
-                  <span className={`text-xs px-2 py-0.5 rounded-full font-medium capitalize ${PAYMENT_STATUS_COLORS[paymentStatus] ?? "bg-gray-100 text-gray-700"}`}>
+                  <span className={`text-xs px-2 py-0.5 rounded-full font-medium capitalize ${PAYMENT_STATUS_COLORS[paymentStatus] ?? "bg-white/10 text-slate-300"}`}>
                     {paymentStatus === "partial"
                       ? `${total > 0 ? ((amountPaid / total) * 100).toFixed(0) : 0}% paid`
                       : paymentStatus}
@@ -236,7 +236,7 @@ function OrderLogDialog({ item, onClose }: { item: StorageItem; onClose: () => v
 
         {/* Delivery status */}
         {shippingConfirmed && (
-          <div className="glass-card rounded-xl p-3 border-green-200/50 bg-green-50/10 mb-6 flex items-center gap-2">
+          <div className="glass-card rounded-xl p-3 border-green-200/50 bg-green-400/10 mb-6 flex items-center gap-2">
             {freeDelivery
               ? <Gift className="w-4 h-4 text-green-600 flex-shrink-0" />
               : <CheckCircle2 className="w-4 h-4 text-green-600 flex-shrink-0" />}
@@ -248,7 +248,7 @@ function OrderLogDialog({ item, onClose }: { item: StorageItem; onClose: () => v
 
         {/* Gift order */}
         {giftWrapping && (
-          <div className="glass-card rounded-xl p-4 border-pink-200/50 bg-pink-50/10 mb-6">
+          <div className="glass-card rounded-xl p-4 border-pink-400/25 bg-pink-400/8 mb-6">
             <div className="flex items-start gap-3">
               <span className="text-2xl leading-none mt-0.5 flex-shrink-0">🎁</span>
               <div className="flex-1">
@@ -259,7 +259,7 @@ function OrderLogDialog({ item, onClose }: { item: StorageItem; onClose: () => v
                       <MessageSquare className="w-3.5 h-3.5 text-pink-400" />
                       <span className="text-[10px] font-bold text-pink-600 uppercase tracking-wide">Gift message from customer</span>
                     </div>
-                    <p className="text-sm text-pink-900 italic leading-relaxed bg-pink-50/60 rounded-lg px-3 py-2.5 border border-pink-200/50">
+                    <p className="text-sm text-pink-200 italic leading-relaxed bg-pink-400/10 rounded-lg px-3 py-2.5 border border-pink-400/25">
                       &ldquo;{giftNote}&rdquo;
                     </p>
                   </div>
@@ -503,7 +503,7 @@ export default function AdminStorage() {
                       className={`glass-panel rounded-2xl p-4 flex items-start gap-4 transition-all ${item.type === "order_log" ? "cursor-pointer hover:bg-white/25 hover:ring-1 hover:ring-blue-200/50" : ""}`}
                       onClick={() => { if (item.type === "order_log") setViewItem(item); }}
                     >
-                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${item.type === "order_log" ? "bg-green-100" : "bg-blue-100"}`}>
+                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${item.type === "order_log" ? "bg-green-400/15" : "bg-blue-400/15"}`}>
                         {item.type === "order_log"
                           ? <ShoppingCart className="w-5 h-5 text-green-600" />
                           : <BookOpen className="w-5 h-5 text-blue-600" />}
@@ -511,7 +511,7 @@ export default function AdminStorage() {
                       <div className="flex-1 min-w-0">
                         <p className="font-medium text-blue-950 truncate">{item.title}</p>
                         <div className="flex items-center gap-3 mt-1 flex-wrap">
-                          <span className={`text-xs px-2 py-0.5 rounded-full ${item.type === "order_log" ? "bg-green-50 text-green-700" : "bg-blue-50 text-blue-700"}`}>
+                          <span className={`text-xs px-2 py-0.5 rounded-full ${item.type === "order_log" ? "bg-green-400/15 text-green-200" : "bg-blue-400/15 text-sky-200"}`}>
                             {item.type === "order_log" ? "Order" : "Journal"}
                           </span>
                           <span className="text-xs text-blue-800/50">
