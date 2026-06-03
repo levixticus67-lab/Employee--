@@ -17,20 +17,20 @@ const ACTIVE_FILTER      = "active";
 const FILTERS = [ACTIVE_FILTER, "all", ...ALL_STATUSES];
 
 const STATUS_COLORS: Record<string, string> = {
-  pending:    "bg-yellow-100 text-yellow-800 border-yellow-200",
-  processing: "bg-blue-100 text-blue-800 border-blue-200",
-  shipped:    "bg-purple-100 text-purple-800 border-purple-200",
-  delivered:  "bg-green-100 text-green-800 border-green-200",
-  cancelled:  "bg-red-100 text-red-800 border-red-200",
-  received:   "bg-emerald-100 text-emerald-800 border-emerald-200",
+  pending:    "bg-yellow-400/20 text-yellow-200 border-yellow-400/40",
+  processing: "bg-blue-400/20 text-sky-200 border-blue-400/40",
+  shipped:    "bg-purple-400/20 text-purple-200 border-purple-400/40",
+  delivered:  "bg-green-400/20 text-green-200 border-green-400/40",
+  cancelled:  "bg-red-400/20 text-red-300 border-red-400/40",
+  received:   "bg-emerald-400/20 text-emerald-200 border-emerald-400/40",
 };
 
 const PAYMENT_STATUS_COLORS: Record<string, string> = {
-  unpaid:  "bg-gray-100 text-gray-700",
-  partial: "bg-amber-100 text-amber-700",
-  paid:    "bg-green-100 text-green-700",
-  pending: "bg-blue-100 text-blue-700",
-  failed:  "bg-red-100 text-red-700",
+  unpaid:  "bg-white/10 text-slate-300",
+  partial: "bg-amber-400/20 text-amber-200",
+  paid:    "bg-green-400/20 text-green-200",
+  pending: "bg-blue-400/20 text-sky-200",
+  failed:  "bg-red-400/20 text-red-300",
 };
 
 const PAYMENT_METHOD_LABELS: Record<string, string> = {
@@ -44,27 +44,27 @@ const PAYMENT_METHOD_LABELS: Record<string, string> = {
 function PaymentBadge({ order }: { order: any }) {
   if (order.paymentStatus === "paid" && (order.pesapalTrackingId || order.txRef)) {
     return (
-      <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full font-medium bg-green-100 text-green-700">
+      <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full font-medium bg-green-400/20 text-green-200 border border-green-400/30">
         <ShieldCheck className="w-3 h-3" /> Verified · Pesapal
       </span>
     );
   }
   if (order.paymentStatus === "pending") {
     return (
-      <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full font-medium bg-blue-100 text-blue-700 animate-pulse">
+      <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full font-medium bg-blue-400/20 text-sky-200 border border-blue-400/30 animate-pulse">
         <Loader2 className="w-3 h-3 animate-spin" /> Awaiting Pesapal
       </span>
     );
   }
   if (order.paymentStatus === "failed") {
     return (
-      <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full font-medium bg-red-100 text-red-700">
+      <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full font-medium bg-red-400/20 text-red-300 border border-red-400/30">
         <AlertCircle className="w-3 h-3" /> Payment Failed
       </span>
     );
   }
   return (
-    <span className={`text-xs px-2 py-0.5 rounded-full font-medium capitalize ${PAYMENT_STATUS_COLORS[order.paymentStatus] ?? "bg-gray-100 text-gray-700"}`}>
+    <span className={`text-xs px-2 py-0.5 rounded-full font-medium capitalize ${PAYMENT_STATUS_COLORS[order.paymentStatus] ?? "bg-white/10 text-slate-300"}`}>
       {order.paymentStatus === "partial"
         ? `${((order.amountPaid / order.total) * 100).toFixed(0)}% paid`
         : order.paymentStatus}
