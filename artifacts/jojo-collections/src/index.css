@@ -65,13 +65,13 @@
   --primary-foreground: 210 20% 98%;
 
   --secondary: 215 45% 20% / 0.6;
-  --secondary-foreground: 210 60% 80%;
+  --secondary-foreground: 210 65% 86%;
 
   --muted: 215 40% 18% / 0.5;
-  --muted-foreground: 210 40% 62%;
+  --muted-foreground: 210 55% 74%;
 
   --accent: 215 40% 22% / 0.6;
-  --accent-foreground: 210 60% 85%;
+  --accent-foreground: 210 65% 90%;
 
   --destructive: 0 80% 60%;
   --destructive-foreground: 0 20% 98%;
