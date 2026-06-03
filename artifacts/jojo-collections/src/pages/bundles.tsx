@@ -58,19 +58,19 @@ export default function BundlesPage() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         {/* Header */}
         <div className="text-center mb-14">
-          <h1 className="text-5xl font-serif text-blue-950 mb-4">Gift Sets & Bundles</h1>
-          <p className="text-blue-800/60 text-lg max-w-xl mx-auto">Curated combinations of our finest fragrances at exclusive prices — perfect for gifting or treating yourself.</p>
+          <h1 className="text-5xl font-serif text-foreground mb-4">Gift Sets & Bundles</h1>
+          <p className="text-muted-foreground text-lg max-w-xl mx-auto">Curated combinations of our finest fragrances at exclusive prices — perfect for gifting or treating yourself.</p>
         </div>
 
         {loading ? (
           <div className="flex justify-center items-center h-64">
-            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-600" />
+            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary" />
           </div>
         ) : bundles.length === 0 ? (
           <div className="glass-panel rounded-3xl p-16 text-center">
             <Package className="w-16 h-16 text-blue-200 mx-auto mb-6" />
-            <h2 className="text-2xl font-serif text-blue-950 mb-4">No bundles available</h2>
-            <p className="text-blue-800/60">Check back soon for curated gift sets.</p>
+            <h2 className="text-2xl font-serif text-foreground mb-4">No bundles available</h2>
+            <p className="text-muted-foreground">Check back soon for curated gift sets.</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
@@ -80,7 +80,7 @@ export default function BundlesPage() {
               return (
                 <div key={bundle.id} className="glass-panel rounded-3xl overflow-hidden flex flex-col group hover:shadow-2xl transition-shadow duration-300">
                   {/* Image area */}
-                  <div className="relative h-56 bg-gradient-to-br from-blue-50 to-indigo-100 overflow-hidden">
+                  <div className="relative h-56 bg-gradient-to-br from-blue-900/40 to-indigo-900/30 overflow-hidden">
                     {bundle.imageUrl ? (
                       <img src={bundle.imageUrl} alt={bundle.name} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
                     ) : (
@@ -93,7 +93,7 @@ export default function BundlesPage() {
                         <Tag className="w-3 h-3" /> Save {format(savings)}
                       </div>
                     )}
-                    <div className="absolute top-4 right-4 bg-white/80 backdrop-blur-sm text-blue-950 text-xs font-semibold px-3 py-1.5 rounded-full">
+                    <div className="absolute top-4 right-4 bg-black/50 backdrop-blur-sm text-white text-xs font-semibold px-3 py-1.5 rounded-full">
                       {bundle.productIds.length} item{bundle.productIds.length !== 1 ? "s" : ""}
                     </div>
                   </div>
@@ -101,24 +101,24 @@ export default function BundlesPage() {
                   {/* Content */}
                   <div className="p-6 flex flex-col flex-1 gap-4">
                     <div>
-                      <h2 className="text-2xl font-serif text-blue-950 mb-2 group-hover:text-blue-700 transition-colors">{bundle.name}</h2>
-                      <p className="text-blue-800/60 text-sm leading-relaxed line-clamp-3">{bundle.description}</p>
+                      <h2 className="text-2xl font-serif text-foreground mb-2 group-hover:text-sky-300 transition-colors">{bundle.name}</h2>
+                      <p className="text-muted-foreground text-sm leading-relaxed line-clamp-3">{bundle.description}</p>
                     </div>
 
                     {/* Products included */}
                     {bundleProducts.length > 0 && (
                       <div className="space-y-2">
-                        <p className="text-xs font-semibold text-blue-900/60 uppercase tracking-wider">Includes</p>
+                        <p className="text-xs font-semibold text-foreground/50 uppercase tracking-wider">Includes</p>
                         <div className="flex flex-wrap gap-2">
                           {bundleProducts.slice(0, 4).map((p) => (
-                            <div key={(p as any).id} className="flex items-center gap-1.5 bg-white/40 backdrop-blur-sm rounded-full px-3 py-1 border border-white/50">
+                            <div key={(p as any).id} className="flex items-center gap-1.5 bg-white/15 backdrop-blur-sm rounded-full px-3 py-1 border border-white/25">
                               {(p as any).imageUrl && <img src={(p as any).imageUrl} alt={(p as any).name} className="w-5 h-5 rounded-full object-cover" />}
-                              <span className="text-xs text-blue-900 font-medium">{(p as any).name}</span>
+                              <span className="text-xs text-foreground font-medium">{(p as any).name}</span>
                             </div>
                           ))}
                           {bundleProducts.length > 4 && (
-                            <div className="flex items-center bg-blue-50/60 rounded-full px-3 py-1">
-                              <span className="text-xs text-blue-600 font-medium">+{bundleProducts.length - 4} more</span>
+                            <div className="flex items-center bg-white/15 rounded-full px-3 py-1">
+                              <span className="text-xs text-foreground/70 font-medium">+{bundleProducts.length - 4} more</span>
                             </div>
                           )}
                         </div>
@@ -128,7 +128,7 @@ export default function BundlesPage() {
                     {/* Price and CTA */}
                     <div className="flex items-center justify-between mt-auto pt-4 border-t border-white/30">
                       <div>
-                        <p className="text-3xl font-bold text-blue-950">{format(bundle.price)}</p>
+                        <p className="text-3xl font-bold text-foreground">{format(bundle.price)}</p>
                         {savings > 0 && (
                           <p className="text-xs text-red-500 font-medium">You save {format(savings)}</p>
                         )}
