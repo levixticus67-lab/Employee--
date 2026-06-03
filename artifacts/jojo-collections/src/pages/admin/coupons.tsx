@@ -142,7 +142,7 @@ export default function AdminCoupons() {
                     <div className="flex items-center gap-2">
                       <Tag className="w-4 h-4 text-blue-500 flex-shrink-0" />
                       <span className="font-mono font-bold text-blue-950 text-sm">{c.code}</span>
-                      {isExpired(c) && <span className="text-xs text-red-600 font-medium bg-red-50 px-1.5 py-0.5 rounded whitespace-nowrap">Expired</span>}
+                      {isExpired(c) && <span className="text-xs text-red-300 font-medium bg-red-400/20 px-1.5 py-0.5 rounded whitespace-nowrap">Expired</span>}
                     </div>
                   </td>
                   <td className="px-4 py-3 text-sm text-blue-900 whitespace-nowrap">
@@ -171,10 +171,10 @@ export default function AdminCoupons() {
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex gap-1 items-center">
-                      <button onClick={() => openEdit(c)} title="Edit" className="p-2 text-blue-600 hover:bg-blue-50/60 rounded-lg transition-colors">
+                      <button onClick={() => openEdit(c)} title="Edit" className="p-2 text-sky-300 hover:bg-blue-400/15 rounded-lg transition-colors">
                         <Edit2 className="w-4 h-4" />
                       </button>
-                      <button onClick={() => handleDelete(c.id)} title="Delete" className="p-2 text-red-600 hover:bg-red-50/60 rounded-lg transition-colors">
+                      <button onClick={() => handleDelete(c.id)} title="Delete" className="p-2 text-red-400 hover:bg-red-400/15 rounded-lg transition-colors">
                         <Trash2 className="w-4 h-4" />
                       </button>
                     </div>
@@ -193,7 +193,7 @@ export default function AdminCoupons() {
           </DialogHeader>
 
           {/* Rules info box */}
-          <div className="mt-3 rounded-xl bg-blue-50/40 border border-blue-200/50 p-3 flex gap-2.5">
+          <div className="mt-3 rounded-xl bg-blue-400/10 border border-blue-400/25 p-3 flex gap-2.5">
             <Info className="w-4 h-4 text-blue-500 flex-shrink-0 mt-0.5" />
             <div className="text-xs text-blue-800/80 space-y-1">
               <p><span className="font-semibold">Max Uses is required</span> — unlimited coupons are not allowed. Set a realistic cap (e.g. 50 or 100).</p>
@@ -204,7 +204,7 @@ export default function AdminCoupons() {
 
           {/* Error banner */}
           {formError && (
-            <div className="mt-3 rounded-xl bg-red-50/60 border border-red-200/60 p-3 flex gap-2.5">
+            <div className="mt-3 rounded-xl bg-red-400/10 border border-red-400/30 p-3 flex gap-2.5">
               <AlertTriangle className="w-4 h-4 text-red-500 flex-shrink-0 mt-0.5" />
               <p className="text-xs text-red-800">{formError}</p>
             </div>
