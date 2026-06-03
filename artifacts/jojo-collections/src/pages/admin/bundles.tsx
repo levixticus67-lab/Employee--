@@ -128,11 +128,11 @@ import { useEffect, useState, useRef } from "react";
                       <p className="text-xs text-blue-800/50">{b.productIds.length} item{b.productIds.length !== 1 ? "s" : ""}</p>
                     </div>
                     <div className="flex gap-2 items-center">
-                      <button onClick={() => toggleActive(b)} className={`text-xs px-3 py-1.5 rounded-lg font-medium transition-colors ${b.active ? "bg-amber-100 text-amber-700 hover:bg-amber-200" : "bg-green-100 text-green-700 hover:bg-green-200"}`}>
+                      <button onClick={() => toggleActive(b)} className={`text-xs px-3 py-1.5 rounded-lg font-medium transition-colors ${b.active ? "bg-amber-400/20 text-amber-200 hover:bg-amber-400/30" : "bg-green-400/20 text-green-200 hover:bg-green-400/30"}`}>
                         {b.active ? "Deactivate" : "Activate"}
                       </button>
-                      <button onClick={() => openEdit(b)} className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg"><Edit2 className="w-4 h-4" /></button>
-                      <button onClick={() => handleDelete(b.id)} className="p-2 text-red-600 hover:bg-red-50 rounded-lg"><Trash2 className="w-4 h-4" /></button>
+                      <button onClick={() => openEdit(b)} className="p-2 text-sky-300 hover:bg-blue-400/15 rounded-lg"><Edit2 className="w-4 h-4" /></button>
+                      <button onClick={() => handleDelete(b.id)} className="p-2 text-red-400 hover:bg-red-400/15 rounded-lg"><Trash2 className="w-4 h-4" /></button>
                     </div>
                   </div>
                 </div>
@@ -180,7 +180,7 @@ import { useEffect, useState, useRef } from "react";
                 <div className="max-h-48 overflow-y-auto space-y-1 glass-card rounded-lg p-2">
                   {products?.map((p) => (
                     <button key={p.id} type="button" onClick={() => toggleProduct(p.id)}
-                      className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-colors ${form.productIds.includes(p.id) ? "bg-blue-100/60 text-blue-900" : "hover:bg-white/30 text-blue-800"}`}>
+                      className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-colors ${form.productIds.includes(p.id) ? "bg-blue-400/20 text-sky-200" : "hover:bg-white/10 text-sky-300/80"}`}>
                       {form.productIds.includes(p.id) ? <CheckSquare className="w-4 h-4 text-blue-600 flex-shrink-0" /> : <Square className="w-4 h-4 text-blue-300 flex-shrink-0" />}
                       <span className="text-sm truncate">{p.name}</span>
                       <span className="ml-auto text-xs text-blue-600/70">${p.price}</span>
