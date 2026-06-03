@@ -255,7 +255,7 @@ export default function AdminSettings() {
                   </button>
                 </div>
               ) : (
-                <div className="w-16 h-16 rounded-full bg-blue-100/60 flex items-center justify-center border-2 border-dashed border-blue-300">
+                <div className="w-16 h-16 rounded-full bg-blue-400/15 flex items-center justify-center border-2 border-dashed border-blue-400/50">
                   <ImageIcon className="w-7 h-7 text-blue-300" />
                 </div>
               )}
@@ -330,7 +330,7 @@ export default function AdminSettings() {
               <button
                 type="button"
                 onClick={handleToggleBanner}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-colors ${form.bannerEnabled ? "bg-green-100 text-green-700 hover:bg-green-200" : "bg-gray-100 text-gray-500 hover:bg-gray-200"}`}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-colors ${form.bannerEnabled ? "bg-green-400/20 text-green-200 hover:bg-green-400/30" : "bg-white/10 text-slate-400 hover:bg-white/15"}`}
               >
                 {form.bannerEnabled ? <><Eye className="w-3.5 h-3.5" /> Live</> : <><EyeOff className="w-3.5 h-3.5" /> Hidden</>}
               </button>
@@ -406,7 +406,7 @@ export default function AdminSettings() {
                     <Timer className="w-4 h-4 text-blue-500" /> Flash Sale Countdown
                   </label>
                   <button type="button" onClick={handleToggleCountdown}
-                    className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold transition-colors ${form.bannerCountdownEnabled ? "bg-blue-100 text-blue-700" : "bg-gray-100 text-gray-500"}`}>
+                    className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold transition-colors ${form.bannerCountdownEnabled ? "bg-blue-400/20 text-sky-200" : "bg-white/10 text-slate-400"}`}>
                     {form.bannerCountdownEnabled ? "On" : "Off"}
                   </button>
                 </div>
@@ -473,7 +473,7 @@ export default function AdminSettings() {
             <h2 className="text-lg font-serif text-blue-950 mb-1 flex items-center gap-2">
               <Smartphone className="w-5 h-5 text-yellow-600" /> Mobile Money — Your Business Numbers
             </h2>
-            <div className="flex gap-2 mb-4 glass-card rounded-xl p-3 border-blue-100/50 bg-blue-50/20">
+            <div className="flex gap-2 mb-4 glass-card rounded-xl p-3 border-blue-400/20 bg-blue-400/8">
               <Info className="w-4 h-4 text-blue-600 flex-shrink-0 mt-0.5" />
               <div className="text-xs text-blue-800/70 space-y-1">
                 <p className="font-semibold">How it works:</p>
@@ -577,7 +577,7 @@ export default function AdminSettings() {
                     <p className="font-medium text-blue-950 text-sm truncate">{p.name}</p>
                     <p className="text-xs text-blue-800/60">{p.brand}</p>
                   </div>
-                  <span className={`text-xs px-2 py-1 rounded-full font-medium flex-shrink-0 ${p.stock === 0 ? "bg-red-100 text-red-800" : "bg-orange-100 text-orange-800"}`}>
+                  <span className={`text-xs px-2 py-1 rounded-full font-medium flex-shrink-0 ${p.stock === 0 ? "bg-red-400/20 text-red-300" : "bg-orange-400/20 text-orange-200"}`}>
                     {p.stock === 0 ? "Out of stock" : `${p.stock} left`}
                   </span>
                 </div>
