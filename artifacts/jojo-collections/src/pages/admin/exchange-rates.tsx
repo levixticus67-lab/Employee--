@@ -248,19 +248,19 @@ export default function AdminExchangeRates() {
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(147,197,253,0.2)" vertical={false} />
                 <XAxis
                   dataKey="label"
-                  tick={{ fill: "rgba(30,58,138,0.5)", fontSize: 10 }}
+                  tick={{ fill: "rgba(186,230,253,0.75)", fontSize: 10 }}
                   axisLine={false} tickLine={false}
                   interval="preserveStartEnd"
                 />
                 <YAxis
-                  tick={{ fill: "rgba(30,58,138,0.5)", fontSize: 10 }}
+                  tick={{ fill: "rgba(186,230,253,0.75)", fontSize: 10 }}
                   axisLine={false} tickLine={false}
                   tickFormatter={(v) => `${v > 0 ? "+" : ""}${(v as number).toFixed(1)}%`}
                   width={52}
                 />
                 <Tooltip content={<RateTooltip />} />
                 <Legend
-                  wrapperStyle={{ fontSize: "12px", color: "rgba(30,58,138,0.7)", paddingTop: "12px" }}
+                  wrapperStyle={{ fontSize: "12px", color: "rgba(186,230,253,0.8)", paddingTop: "12px" }}
                 />
                 {CURRENCIES.map(({ key, color, grad, label }) => (
                   <Area
