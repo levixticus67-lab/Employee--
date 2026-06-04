@@ -1,4 +1,5 @@
 import { Router, type IRouter } from "express";
+import { getAuth as getFirebaseAuth } from "firebase-admin/auth";
 import bcrypt from "bcryptjs";
 import { firestore, COLLECTIONS, Timestamp, type UserDoc } from "@workspace/db";
 import { SignupBody, LoginBody, AdminLoginBody } from "@workspace/api-zod";
@@ -127,6 +128,53 @@ router.post("/admin/auth/logout", (req, res) => {
   req.session.save(() => {
     res.status(204).end();
   });
+});
+
+router.post("/auth/google", async (req, res) => {
+  const { idToken } = req.body as { idToken?: string };
+  if (!idToken || typeof idToken !== "string") {
+    res.status(400).json({ error: "idToken is required" });
+    return;
+  }
+  try {
+    const decoded = await getFirebaseAuth().verifyIdToken(idToken);
+    const email = decoded.email?.toLowerCase().trim();
+    if (!email) {
+      res.status(400).json({ error: "Google account has no email" });
+      return;
+    }
+    const name = (decoded.name as string | undefined) || email.split("@")[0] || "User";
+
+    const snap = await firestore
+      .collection(COLLECTIONS.users)
+      .where("email", "==", email)
+      .limit(1)
+      .get();
+
+    let userId: string;
+    let userName: string;
+    let userEmail: string;
+
+    if (snap.empty) {
+      const data: UserDoc = { name, email, passwordHash: "", createdAt: Timestamp.now() };
+      const ref = await firestore.collection(COLLECTIONS.users).add(data);
+      userId = ref.id;
+      userName = name;
+      userEmail = email;
+    } else {
+      const doc = snap.docs[0]!;
+      const userData = doc.data() as UserDoc;
+      userId = doc.id;
+      userName = userData.name;
+      userEmail = userData.email;
+    }
+
+    req.session.userId = userId;
+    res.status(200).json({ id: userId, email: userEmail, name: userName });
+  } catch (err) {
+    req.log.error(err, "Google auth failed");
+    res.status(401).json({ error: "Google sign-in failed" });
+  }
 });
 
 export default router;
