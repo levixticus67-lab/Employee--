@@ -221,5 +221,70 @@ import { Router, type IRouter } from "express";
     });
   });
 
+
+  // ── Google Sign-In ──────────────────────────────────────────────────────────
+  // Flow: Firebase popup (client) → ID token → verify → find-or-create user → session
+  router.post("/auth/google", authLimiter, async (req, res) => {
+    const { firebaseIdToken } = req.body as { firebaseIdToken?: string };
+    if (!firebaseIdToken) { res.status(400).json({ error: "firebaseIdToken is required" }); return; }
+
+    let decodedToken: Awaited<ReturnType<ReturnType<typeof getAuth>["verifyIdToken"]>>;
+    try { decodedToken = await getAuth().verifyIdToken(firebaseIdToken); }
+    catch (err) {
+      req.log.warn({ err }, "Google auth: token verification failed");
+      res.status(401).json({ error: "Invalid or expired Google token" }); return;
+    }
+
+    const email = (decodedToken.email ?? "").toLowerCase().trim();
+    if (!email) { res.status(400).json({ error: "Google account has no email" }); return; }
+    const name = (decodedToken.name as string | undefined) || email.split("@")[0] || "User";
+
+    let userDocId: string;
+    let userName: string;
+    let userEmail: string;
+
+    // Try to find user by Firebase UID first (fastest path)
+    const byUid = await firestore.collection(COLLECTIONS.users).doc(decodedToken.uid).get();
+    if (byUid.exists) {
+      userDocId = byUid.id;
+      const u = byUid.data() as UserDoc;
+      userName = u.name;
+      userEmail = u.email;
+    } else {
+      // Fall back to email lookup (existing email/password users signing in with Google)
+      const snap = await firestore.collection(COLLECTIONS.users).where("email", "==", email).limit(1).get();
+      if (!snap.empty) {
+        userDocId = snap.docs[0]!.id;
+        const u = snap.docs[0]!.data() as UserDoc;
+        userName = u.name;
+        userEmail = u.email;
+        await firestore.collection(COLLECTIONS.users).doc(userDocId).update({
+          emailVerified: true,
+          firebaseUid: decodedToken.uid,
+        });
+      } else {
+        // Brand-new Google user — auto-create profile
+        const data: UserDoc = {
+          name, email, passwordHash: "",
+          createdAt: Timestamp.now(),
+          emailVerified: true,
+          firebaseUid: decodedToken.uid,
+          phoneNumber: null,
+        };
+        await firestore.collection(COLLECTIONS.users).doc(decodedToken.uid).set(data);
+        userDocId = decodedToken.uid;
+        userName  = name;
+        userEmail = email;
+      }
+    }
+
+    req.session.userId      = userDocId;
+    req.session.firebaseUid = decodedToken.uid;
+    req.session.save((err) => {
+      if (err) { req.log.error({ err }, "Google auth: session save failed"); res.status(500).json({ error: "Session error" }); return; }
+      res.status(200).json({ id: userDocId, email: userEmail, name: userName });
+    });
+  });
+
   export default router;
   
