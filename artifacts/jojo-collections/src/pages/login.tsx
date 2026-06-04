@@ -4,13 +4,15 @@ import { toast } from "sonner";
 import { Layout } from "@/components/layout";
 import { useAuth, EmailNotVerifiedError } from "@/components/auth-context";
 import { Mail } from "lucide-react";
+import { FcGoogle } from "react-icons/fc";
 
 export default function LoginPage() {
-  const { login } = useAuth();
+  const { login, googleSignIn } = useAuth();
   const [, setLocation] = useLocation();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
   const [unverified, setUnverified] = useState(false);
 
   async function onSubmit(e: FormEvent) {
@@ -37,6 +39,19 @@ export default function LoginPage() {
       toast.error(msg);
     } finally {
       setSubmitting(false);
+    }
+  }
+
+  async function handleGoogleSignIn() {
+    setGoogleLoading(true);
+    try {
+      await googleSignIn();
+      toast.success("Welcome back!");
+      setLocation("/");
+    } catch {
+      toast.error("Could not sign in with Google. Please try again.");
+    } finally {
+      setGoogleLoading(false);
     }
   }
 
@@ -95,6 +110,30 @@ export default function LoginPage() {
               {submitting ? "Signing in…" : "Sign In"}
             </button>
           </form>
+
+          <div className="relative my-6">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-blue-200/50" />
+            </div>
+            <div className="relative flex justify-center">
+              <span className="bg-white/20 backdrop-blur-sm px-3 text-xs text-blue-800/60">or</span>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={handleGoogleSignIn}
+            disabled={googleLoading}
+            className="w-full flex items-center justify-center gap-3 py-3 rounded-full bg-white/60 border border-white/50 text-blue-950 font-medium hover:bg-white/80 disabled:opacity-60 transition-colors shadow-sm"
+          >
+            {googleLoading ? (
+              <span className="w-5 h-5 border-2 border-blue-300/40 border-t-blue-600 rounded-full animate-spin" />
+            ) : (
+              <FcGoogle className="w-5 h-5" />
+            )}
+            Continue with Google
+          </button>
+
           <p className="text-center text-sm text-blue-800/70 mt-6">
             Don't have an account?{" "}
             <Link href="/signup" className="text-blue-700 font-medium hover:underline">
