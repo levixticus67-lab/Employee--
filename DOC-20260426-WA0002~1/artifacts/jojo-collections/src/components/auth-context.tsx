@@ -1,4 +1,6 @@
 import { createContext, useContext, type ReactNode } from "react";
+import { signInWithPopup } from "firebase/auth";
+import { firebaseAuth, googleProvider } from "@/lib/firebase";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   useGetCurrentUser,
@@ -21,6 +23,7 @@ type AuthContextValue = {
   logout: () => Promise<void>;
   adminLogin: (password: string) => Promise<void>;
   adminLogout: () => Promise<void>;
+  googleSignIn: () => Promise<void>;
   refresh: () => Promise<void>;
 };
 
@@ -66,6 +69,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     },
     adminLogout: async () => {
       await adminLogoutMut.mutateAsync();
+      await refresh();
+    },
+    googleSignIn: async () => {
+      const result = await signInWithPopup(firebaseAuth, googleProvider);
+      const idToken = await result.user.getIdToken();
+      const res = await fetch("/api/auth/google", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ idToken }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({})) as { error?: string };
+        throw new Error(data.error ?? "Google sign-in failed");
+      }
       await refresh();
     },
   };
