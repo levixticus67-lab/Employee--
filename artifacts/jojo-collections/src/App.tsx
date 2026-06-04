@@ -21,6 +21,7 @@ import Checkout      from "@/pages/checkout";
 import OrderConfirmation from "@/pages/order";
 import LoginPage     from "@/pages/login";
 import SignupPage    from "@/pages/signup";
+import ForgotPasswordPage from "@/pages/forgot-password";
 import WishlistPage  from "@/pages/wishlist";
 import BlogPage      from "@/pages/blog";
 import BlogPostPage  from "@/pages/blog-post";
@@ -90,7 +91,7 @@ function AdminRoute({ children }: { children: React.ReactNode }) {
 }
 
 // ── Storefront route guard ────────────────────────────────────────────────────
-// Public: /  |  /login  |  /signup  |  /admin/*
+// Public: /  |  /login  |  /signup  |  /forgot-password  |  /admin/*
 // Protected (must be logged in AND email-verified): everything else
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
@@ -104,9 +105,10 @@ function Router() {
   return (
     <Switch>
       {/* ── Publicly accessible ── */}
-      <Route path="/"       component={Home} />
-      <Route path="/login"  component={LoginPage} />
-      <Route path="/signup" component={SignupPage} />
+      <Route path="/"                component={Home} />
+      <Route path="/login"           component={LoginPage} />
+      <Route path="/signup"          component={SignupPage} />
+      <Route path="/forgot-password" component={ForgotPasswordPage} />
 
       {/* ── Protected storefront (login + verified email required) ── */}
       <Route path="/shop">           <ProtectedRoute><Shop /></ProtectedRoute></Route>
@@ -136,7 +138,7 @@ function Router() {
 
       <Route path="/admin">           <AdminRoute><Dashboard /></AdminRoute></Route>
 
-            <Route component={NotFound} />
+      <Route component={NotFound} />
     </Switch>
   );
 }
