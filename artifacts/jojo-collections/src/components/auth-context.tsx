@@ -1,12 +1,11 @@
-import { createContext, useContext, useEffect, type ReactNode } from "react";
+import { createContext, useContext, type ReactNode } from "react";
     import { useQueryClient } from "@tanstack/react-query";
     import {
       createUserWithEmailAndPassword,
       sendEmailVerification,
       signInWithEmailAndPassword,
-      signInWithPopup,
-      signInWithRedirect,
-      getRedirectResult,
+      signInWithCredential,
+      GoogleAuthProvider,
       signOut as firebaseSignOut,
     } from "firebase/auth";
     import {
@@ -15,7 +14,7 @@ import { createContext, useContext, useEffect, type ReactNode } from "react";
       useAdminLogout,
       getGetCurrentUserQueryKey,
     } from "@workspace/api-client-react";
-    import { auth, isFirebaseConfigured, googleProvider } from "@/lib/firebase";
+    import { auth, isFirebaseConfigured, GOOGLE_CLIENT_ID } from "@/lib/firebase";
     import { apiFetch } from "@/lib/api";
 
     type AuthUser = {
@@ -63,9 +62,42 @@ import { createContext, useContext, useEffect, type ReactNode } from "react";
       }
     }
 
-    
-    const isMobile = () =>
-      /Android|iPhone|iPad|iPod|Opera Mini|IEMobile|WPDesktop/i.test(navigator.userAgent);
+    /**
+     * Sign in via Google Identity Services (GIS).
+     *
+     * Uses google.accounts.oauth2.initTokenClient — Google's own OAuth2 library.
+     * This NEVER touches firebaseapp.com/__/auth/handler.
+     * Instead it opens accounts.google.com directly, returns an access token,
+     * and we hand that token to Firebase via signInWithCredential.
+     */
+    function gisGoogleSignIn(): Promise<string> {
+      return new Promise((resolve, reject) => {
+        const gis = (window as { google?: { accounts?: { oauth2?: { initTokenClient: (cfg: unknown) => { requestAccessToken: (opts: unknown) => void } } } } }).google?.accounts?.oauth2;
+        if (!gis) {
+          reject(new Error("Google Identity Services not loaded. Please refresh and try again."));
+          return;
+        }
+        if (!GOOGLE_CLIENT_ID) {
+          reject(new Error("VITE_GOOGLE_CLIENT_ID is not set. Add it to your environment variables."));
+          return;
+        }
+        const client = gis.initTokenClient({
+          client_id: GOOGLE_CLIENT_ID,
+          scope: "openid email profile",
+          callback: (resp: { access_token?: string; error?: string }) => {
+            if (resp.error || !resp.access_token) {
+              reject(new Error(resp.error ?? "Google did not return an access token"));
+            } else {
+              resolve(resp.access_token);
+            }
+          },
+          error_callback: (err: { type: string }) => {
+            reject(new Error(err.type ?? "Google sign-in was cancelled"));
+          },
+        });
+        client.requestAccessToken({ prompt: "select_account" });
+      });
+    }
 
     export function AuthProvider({ children }: { children: ReactNode }) {
       const qc    = useQueryClient();
@@ -75,28 +107,6 @@ import { createContext, useContext, useEffect, type ReactNode } from "react";
       });
 
       const refresh = async () => { await qc.invalidateQueries({ queryKey: meKey }); };
-
-      // Handle Google sign-in redirect result (mobile flow)
-      useEffect(() => {
-        if (!isFirebaseConfigured || !auth) return;
-        getRedirectResult(auth)
-          .then(async (result) => {
-            if (!result) return;
-            const idToken = await result.user.getIdToken();
-            await firebaseSignOut(auth);
-            const res = await apiFetch("/api/auth/google", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ firebaseIdToken: idToken }),
-            });
-            if (res.ok) {
-              await refresh();
-              window.location.href = "/";
-            }
-          })
-          .catch(() => {});
-      // eslint-disable-next-line react-hooks/exhaustive-deps
-      }, []);
 
       const logoutMut      = useLogout();
       const adminLogoutMut = useAdminLogout();
@@ -185,24 +195,21 @@ import { createContext, useContext, useEffect, type ReactNode } from "react";
           await refresh();
         },
 
-        // ── Google Sign-In ───────────────────────────────────────────────────────
+        // ── Google Sign-In via GIS ────────────────────────────────────────────
         // Flow:
-        //   1. Firebase popup — user picks their Google account
-        //   2. Get ID token, sign out of Firebase client session
-        //   3. Backend verifies token, finds-or-creates Firestore profile, sets session
+        //   1. GIS opens accounts.google.com directly (no firebaseapp.com handler)
+        //   2. User picks their Google account → GIS returns an access token
+        //   3. We convert it to a Firebase credential via GoogleAuthProvider.credential
+        //   4. signInWithCredential authenticates with Firebase (direct API call, no redirect)
+        //   5. Get Firebase ID token → POST to backend → session created
         googleSignIn: async () => {
           requireFirebase();
           const a = auth!;
 
-          if (isMobile()) {
-            // Mobile: redirect flow — popup windows don't work reliably in mobile Chrome.
-            // getRedirectResult() in the useEffect above handles the result on return.
-            await signInWithRedirect(a, googleProvider);
-            return; // page navigates away; execution resumes in useEffect after redirect
-          }
+          const accessToken = await gisGoogleSignIn();
 
-          // Desktop: popup flow
-          const result = await signInWithPopup(a, googleProvider);
+          const firebaseCredential = GoogleAuthProvider.credential(null, accessToken);
+          const result = await signInWithCredential(a, firebaseCredential);
           const idToken = await result.user.getIdToken();
           await firebaseSignOut(a);
 
@@ -260,4 +267,3 @@ import { createContext, useContext, useEffect, type ReactNode } from "react";
       if (!ctx) throw new Error("useAuth must be used within AuthProvider");
       return ctx;
     }
-    
