@@ -1,10 +1,12 @@
-import { createContext, useContext, type ReactNode } from "react";
+import { createContext, useContext, useEffect, type ReactNode } from "react";
     import { useQueryClient } from "@tanstack/react-query";
     import {
       createUserWithEmailAndPassword,
       sendEmailVerification,
       signInWithEmailAndPassword,
       signInWithPopup,
+      signInWithRedirect,
+      getRedirectResult,
       signOut as firebaseSignOut,
     } from "firebase/auth";
     import {
@@ -61,6 +63,10 @@ import { createContext, useContext, type ReactNode } from "react";
       }
     }
 
+    
+    const isMobile = () =>
+      /Android|iPhone|iPad|iPod|Opera Mini|IEMobile|WPDesktop/i.test(navigator.userAgent);
+
     export function AuthProvider({ children }: { children: ReactNode }) {
       const qc    = useQueryClient();
       const meKey = getGetCurrentUserQueryKey();
@@ -69,6 +75,28 @@ import { createContext, useContext, type ReactNode } from "react";
       });
 
       const refresh = async () => { await qc.invalidateQueries({ queryKey: meKey }); };
+
+      // Handle Google sign-in redirect result (mobile flow)
+      useEffect(() => {
+        if (!isFirebaseConfigured || !auth) return;
+        getRedirectResult(auth)
+          .then(async (result) => {
+            if (!result) return;
+            const idToken = await result.user.getIdToken();
+            await firebaseSignOut(auth);
+            const res = await apiFetch("/api/auth/google", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ firebaseIdToken: idToken }),
+            });
+            if (res.ok) {
+              await refresh();
+              window.location.href = "/";
+            }
+          })
+          .catch(() => {});
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+      }, []);
 
       const logoutMut      = useLogout();
       const adminLogoutMut = useAdminLogout();
@@ -166,6 +194,14 @@ import { createContext, useContext, type ReactNode } from "react";
           requireFirebase();
           const a = auth!;
 
+          if (isMobile()) {
+            // Mobile: redirect flow — popup windows don't work reliably in mobile Chrome.
+            // getRedirectResult() in the useEffect above handles the result on return.
+            await signInWithRedirect(a, googleProvider);
+            return; // page navigates away; execution resumes in useEffect after redirect
+          }
+
+          // Desktop: popup flow
           const result = await signInWithPopup(a, googleProvider);
           const idToken = await result.user.getIdToken();
           await firebaseSignOut(a);
