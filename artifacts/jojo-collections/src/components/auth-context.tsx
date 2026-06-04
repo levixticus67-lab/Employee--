@@ -4,6 +4,7 @@ import { createContext, useContext, type ReactNode } from "react";
       createUserWithEmailAndPassword,
       sendEmailVerification,
       signInWithEmailAndPassword,
+      signInWithPopup,
       signOut as firebaseSignOut,
     } from "firebase/auth";
     import {
@@ -12,7 +13,7 @@ import { createContext, useContext, type ReactNode } from "react";
       useAdminLogout,
       getGetCurrentUserQueryKey,
     } from "@workspace/api-client-react";
-    import { auth, isFirebaseConfigured } from "@/lib/firebase";
+    import { auth, isFirebaseConfigured, googleProvider } from "@/lib/firebase";
     import { apiFetch } from "@/lib/api";
 
     type AuthUser = {
@@ -34,6 +35,7 @@ import { createContext, useContext, type ReactNode } from "react";
       adminLogout: () => Promise<void>;
       refresh: () => Promise<void>;
       resendVerificationEmail: () => Promise<void>;
+      googleSignIn: () => Promise<void>;
     };
 
     const AuthContext = createContext<AuthContextValue | null>(null);
@@ -77,16 +79,6 @@ import { createContext, useContext, type ReactNode } from "react";
         loading: isLoading,
         refresh,
 
-        // ── Signup ──────────────────────────────────────────────────────────────
-        // Flow:
-        //   1. Firebase Auth creates the user (validates email + password strength)
-        //   2. Get the Firebase ID token while still signed in — sent to backend for
-        //      server-side UID verification (prevents UID spoofing)
-        //   3. Verification email sent while still signed in
-        //   4. Firebase client session ended (cannot use the app until verified)
-        //   5. Backend verifies the ID token cryptographically, extracts UID, writes
-        //      Firestore profile — the client-provided UID is never trusted
-        //   6. EmailVerificationSentError thrown → UI shows "check your inbox"
         signup: async (name, email, password) => {
           requireFirebase();
           const a = auth!;
@@ -94,11 +86,9 @@ import { createContext, useContext, type ReactNode } from "react";
           let firebaseIdToken: string;
           try {
             const credential = await createUserWithEmailAndPassword(a, email, password);
-            // Capture the ID token BEFORE signing out — the backend will verify it
-            // server-side and use the UID extracted from the verified token.
             firebaseIdToken = await credential.user.getIdToken();
-            await sendEmailVerification(credential.user); // while still signed in
-            await firebaseSignOut(a);                     // sign out — unverified
+            await sendEmailVerification(credential.user);
+            await firebaseSignOut(a);
           } catch (fbErr: unknown) {
             const code = (fbErr as { code?: string }).code ?? "";
             if (code === "auth/email-already-in-use") {
@@ -112,8 +102,6 @@ import { createContext, useContext, type ReactNode } from "react";
           const res = await apiFetch("/api/auth/signup", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            // Send the Firebase ID token — backend verifies it and extracts the UID.
-            // We no longer send a bare firebaseUid that could be forged by the client.
             body: JSON.stringify({ name, email, password, firebaseIdToken }),
           });
           if (!res.ok) {
@@ -123,7 +111,6 @@ import { createContext, useContext, type ReactNode } from "react";
               { data: body }
             );
           }
-          // Always show the verification screen — account is locked until email confirmed
           throw new EmailVerificationSentError();
         },
 
@@ -135,12 +122,6 @@ import { createContext, useContext, type ReactNode } from "react";
           await sendEmailVerification(auth!.currentUser);
         },
 
-        // ── Customer login ───────────────────────────────────────────────────────
-        // Flow:
-        //   1. Firebase SDK signs in with email + password
-        //   2. If email is not verified → reject immediately (no session started)
-        //   3. Get short-lived ID token, sign out of Firebase client
-        //   4. Send token to backend → backend verifies cryptographically, starts session
         login: async (email, password) => {
           requireFirebase();
           const a = auth!;
@@ -176,14 +157,33 @@ import { createContext, useContext, type ReactNode } from "react";
           await refresh();
         },
 
+        // ── Google Sign-In ───────────────────────────────────────────────────────
+        // Flow:
+        //   1. Firebase popup — user picks their Google account
+        //   2. Get ID token, sign out of Firebase client session
+        //   3. Backend verifies token, finds-or-creates Firestore profile, sets session
+        googleSignIn: async () => {
+          requireFirebase();
+          const a = auth!;
+
+          const result = await signInWithPopup(a, googleProvider);
+          const idToken = await result.user.getIdToken();
+          await firebaseSignOut(a);
+
+          const res = await apiFetch("/api/auth/google", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ firebaseIdToken: idToken }),
+          });
+          if (!res.ok) {
+            const body = (await res.json().catch(() => ({}))) as Record<string, unknown>;
+            throw new Error((body["error"] as string | undefined) ?? "Google sign-in failed");
+          }
+          await refresh();
+        },
+
         logout: async () => { await logoutMut.mutateAsync(); await refresh(); },
 
-        // ── Admin login — Firebase only ──────────────────────────────────────────
-        // Flow:
-        //   1. Firebase SDK signs in with admin email + password
-        //   2. Get ID token, immediately sign out of Firebase client
-        //   3. Backend verifies token and confirms email === ADMIN_EMAIL
-        //   4. Session cookie set with isAdmin = true
         adminLogin: async (email: string, password: string) => {
           requireFirebase();
           const a = auth!;
