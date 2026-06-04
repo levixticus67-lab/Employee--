@@ -1,19 +1,30 @@
 import { initializeApp, getApps, type FirebaseApp } from "firebase/app";
 import { getAuth, GoogleAuthProvider, type Auth } from "firebase/auth";
 
-// These values are intentionally public — Firebase client config is always
-// embedded in client-side JS. Hardcoded as fallbacks so a misconfigured
-// GitHub secret can never break Google sign-in.
 const firebaseConfig = {
-  apiKey:            import.meta.env.VITE_FIREBASE_API_KEY            ?? "AIzaSyA9ER2RfVM4Iw7Ka6eQ100KDnbuFI31_pg",
-  authDomain:        import.meta.env.VITE_FIREBASE_AUTH_DOMAIN        ?? "jojo-collection.firebaseapp.com",
-  projectId:         import.meta.env.VITE_FIREBASE_PROJECT_ID         ?? "jojo-collection",
-  storageBucket:     import.meta.env.VITE_FIREBASE_STORAGE_BUCKET     ?? "jojo-collection.firebasestorage.app",
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID ?? "469101720449",
-  appId:             import.meta.env.VITE_FIREBASE_APP_ID             ?? "1:469101720449:web:c668b39259ea141f69ee80",
+  apiKey:            import.meta.env.VITE_FIREBASE_API_KEY            as string | undefined,
+  authDomain:        import.meta.env.VITE_FIREBASE_AUTH_DOMAIN        as string | undefined,
+  projectId:         import.meta.env.VITE_FIREBASE_PROJECT_ID         as string | undefined,
+  storageBucket:     import.meta.env.VITE_FIREBASE_STORAGE_BUCKET     as string | undefined,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID as string | undefined,
+  appId:             import.meta.env.VITE_FIREBASE_APP_ID             as string | undefined,
 };
 
-const app: FirebaseApp = getApps().length ? getApps()[0]! : initializeApp(firebaseConfig);
-export const auth: Auth = getAuth(app);
-export const isFirebaseConfigured = true;
+let _auth: Auth | null = null;
+
+if (firebaseConfig.apiKey && firebaseConfig.authDomain && firebaseConfig.projectId) {
+  const app: FirebaseApp = getApps().length ? getApps()[0]! : initializeApp(firebaseConfig as Record<string, string>);
+  _auth = getAuth(app);
+} else {
+  console.warn(
+    "[Jojo Firebase] Client SDK not initialised — set VITE_FIREBASE_API_KEY, " +
+    "VITE_FIREBASE_AUTH_DOMAIN, VITE_FIREBASE_PROJECT_ID to enable auth."
+  );
+}
+
+export const auth: Auth | null = _auth;
+export const isFirebaseConfigured: boolean = _auth !== null;
 export const googleProvider = new GoogleAuthProvider();
+
+/** Google OAuth 2.0 Client ID — used by Google Identity Services for sign-in */
+export const GOOGLE_CLIENT_ID: string = (import.meta.env.VITE_GOOGLE_CLIENT_ID as string | undefined) ?? "";
