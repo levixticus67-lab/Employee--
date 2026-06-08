@@ -69,22 +69,22 @@ function CurrencyTooltip({ active, payload, label }: { active?: boolean; payload
   );
 }
 
-function FlowerCelebration({ customerName, onClose }: { customerName: string; onClose: () => void }) {
+function FlowerCelebration({ customerName, storeName, onClose }: { customerName: string; storeName: string; onClose: () => void }) {
   return (
     <Dialog open onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-sm text-center border-white/50 shadow-2xl" style={{ background: "linear-gradient(135deg, #fff9f0 0%, #fef3ff 50%, #f0f9ff 100%)" }}>
+      <DialogContent className="max-w-sm text-center shadow-2xl border border-sky-400/20 backdrop-blur-xl" style={{ background: "linear-gradient(135deg, rgba(8,20,60,0.97) 0%, rgba(12,30,80,0.97) 50%, rgba(16,28,70,0.97) 100%)" }}>
         <div className="py-6 px-3 space-y-4">
           <div className="text-6xl flex justify-center gap-1 flex-wrap">
             {"🌺🌸🌼🌻🌹🌷".split("").map((f, i) => (
               <span key={i} className="animate-bounce inline-block" style={{ animationDelay: `${i * 0.1}s` }}>{f}</span>
             ))}
           </div>
-          <h2 className="text-2xl font-serif text-blue-950">Order Received! 🎉</h2>
-          <p className="text-blue-900/80 leading-relaxed text-sm">
+          <h2 className="text-2xl font-serif text-sky-50">Order Received! 🎉</h2>
+          <p className="text-sky-200/80 leading-relaxed text-sm">
             <span className="font-semibold">{customerName}</span> has confirmed they received their order! 🌸<br /><br />
             Another happy customer for {storeName}. Keep up the amazing work! 💛
           </p>
-          <p className="text-sm text-purple-700/80 italic">Your hard work is paying off. ✨</p>
+          <p className="text-sm text-sky-300/70 italic">Your hard work is paying off. ✨</p>
           <button
             onClick={onClose}
             className="mt-2 px-7 py-2.5 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white rounded-full text-sm font-medium transition-all shadow-md"
@@ -98,6 +98,7 @@ function FlowerCelebration({ customerName, onClose }: { customerName: string; on
 }
 
 function useOrderNotifications() {
+  const storeName = useStoreName();
   const [permission, setPermission] = useState<NotificationPermission>(
     typeof Notification !== "undefined" ? Notification.permission : "default"
   );
@@ -192,7 +193,7 @@ export default function Dashboard() {
   const { permission, requestPermission, celebrationOrder, clearCelebration } = useOrderNotifications();
 
   // Analytics chart data
-    const storeName = useStoreName();
+  const storeName = useStoreName();
   const [analyticsData, setAnalyticsData] = useState<{ revenueChart: ChartPoint[] } | null>(null);
   const [currencyHistory, setCurrencyHistory] = useState<HistoryPt[]>([]);
 
@@ -243,7 +244,7 @@ export default function Dashboard() {
     <AdminLayout>
       {/* Flower celebration when customer marks order received */}
       {celebrationOrder && (
-        <FlowerCelebration customerName={celebrationOrder.customerName} onClose={clearCelebration} />
+        <FlowerCelebration customerName={celebrationOrder.customerName} storeName={storeName} onClose={clearCelebration} />
       )}
 
       <div className="mb-8 flex items-start justify-between gap-4 flex-wrap">
