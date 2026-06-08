@@ -252,7 +252,7 @@ export default function AdminSettings() {
                 type="text"
                 value={form.storeName ?? ""}
                 onChange={(e) => setForm({ ...form, storeName: e.target.value })}
-                placeholder="e.g. Jojo Collections"
+                placeholder="e.g. Fume"
                 className="w-full px-3 py-2 rounded-xl bg-white/20 border border-white/30 text-blue-950 placeholder-blue-900/40 focus:outline-none focus:ring-2 focus:ring-blue-300"
               />
               <p className="text-xs text-blue-800/60 mt-2">Displayed in your storefront, admin panel, notifications, and customer messages.</p>
