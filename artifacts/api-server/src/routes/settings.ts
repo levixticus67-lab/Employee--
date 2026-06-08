@@ -7,6 +7,7 @@ const router: IRouter = Router();
 const SETTINGS_DOC = "settings/global";
 
 type StoreSettings = {
+  storeName: string;
   whatsappNumber: string;
   whatsappMessage: string;
   currencyDefault: string;
@@ -29,6 +30,7 @@ type StoreSettings = {
 };
 
 const defaultSettings: StoreSettings = {
+  storeName: "",
   whatsappNumber: "",
   whatsappMessage: "Hi! I need help with my order.",
   currencyDefault: "USD",
@@ -55,6 +57,7 @@ router.get("/settings/public", async (_req, res) => {
     const snap = await firestore.doc(SETTINGS_DOC).get();
     const data = snap.exists ? snap.data() : {};
     res.json({
+      storeName: data?.["storeName"] ?? "",
       whatsappNumber: data?.["whatsappNumber"] ?? "",
       whatsappMessage: data?.["whatsappMessage"] ?? "Hi! I need help with my order.",
       currencyDefault: data?.["currencyDefault"] ?? "USD",
@@ -75,7 +78,7 @@ router.get("/settings/public", async (_req, res) => {
       heroImage3: data?.["heroImage3"] ?? "",
     });
   } catch {
-    res.json({ whatsappNumber: "", whatsappMessage: "Hi! I need help.", currencyDefault: "USD", mtnNumber: "", airtelNumber: "", logoUrl: "", bannerEnabled: false, heroImage1: "", heroImage2: "", heroImage3: "" });
+    res.json({ storeName: "", whatsappNumber: "", whatsappMessage: "Hi! I need help.", currencyDefault: "USD", mtnNumber: "", airtelNumber: "", logoUrl: "", bannerEnabled: false, heroImage1: "", heroImage2: "", heroImage3: "" });
   }
 });
 
@@ -92,6 +95,7 @@ router.put("/admin/settings", requireAdmin, async (req, res) => {
   const body = req.body as Partial<StoreSettings>;
   const updates: Partial<StoreSettings> = {};
   const strKeys: (keyof StoreSettings)[] = [
+    "storeName",
     "whatsappNumber", "whatsappMessage", "currencyDefault", "mtnNumber", "airtelNumber",
     "logoUrl", "bannerText", "bannerBgColor", "bannerMediaUrl", "bannerMediaType", "bannerCountdownEnd",
     "heroImage1", "heroImage2", "heroImage3",
