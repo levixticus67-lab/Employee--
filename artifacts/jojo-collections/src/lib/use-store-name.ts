@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 
 let _cachedPromise: Promise<string> | null = null;
+const _listeners = new Set<(name: string) => void>();
 
 function resolveStoreName(): Promise<string> {
   if (!_cachedPromise) {
@@ -12,8 +13,19 @@ function resolveStoreName(): Promise<string> {
   return _cachedPromise;
 }
 
+export function invalidateStoreName(): void {
+  _cachedPromise = null;
+  resolveStoreName().then((name) => {
+    _listeners.forEach((set) => set(name));
+  });
+}
+
 export function useStoreName(): string {
   const [name, setName] = useState<string>("Fume");
-  useEffect(() => { resolveStoreName().then(setName); }, []);
+  useEffect(() => {
+    resolveStoreName().then(setName);
+    _listeners.add(setName);
+    return () => { _listeners.delete(setName); };
+  }, []);
   return name;
 }
