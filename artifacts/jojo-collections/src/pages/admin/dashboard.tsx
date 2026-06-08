@@ -10,6 +10,7 @@ import {
   ResponsiveContainer, Legend,
 } from "recharts";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { useStoreName } from "@/lib/use-store-name";
 
 const STORAGE_KEY = "jojo_seen_order_ids";
 const STORAGE_KEY_RECEIVED = "jojo_seen_received_ids";
@@ -81,7 +82,7 @@ function FlowerCelebration({ customerName, onClose }: { customerName: string; on
           <h2 className="text-2xl font-serif text-blue-950">Order Received! 🎉</h2>
           <p className="text-blue-900/80 leading-relaxed text-sm">
             <span className="font-semibold">{customerName}</span> has confirmed they received their order! 🌸<br /><br />
-            Another happy customer for Jojo Collections. Keep up the amazing work! 💛
+            Another happy customer for {storeName}. Keep up the amazing work! 💛
           </p>
           <p className="text-sm text-purple-700/80 italic">Your hard work is paying off. ✨</p>
           <button
@@ -138,7 +139,7 @@ function useOrderNotifications() {
 
         if (permission === "granted" && typeof Notification !== "undefined") {
           newOrders.forEach((o) => {
-            const title = "New Order — Jojo Collections";
+            const title = `New Order — ${storeName}`;
             const opts: NotificationOptions = {
               body: `${o.customerName} placed an order for ${o.total.toFixed(2)}`,
               icon: "/favicon.ico",
@@ -191,6 +192,7 @@ export default function Dashboard() {
   const { permission, requestPermission, celebrationOrder, clearCelebration } = useOrderNotifications();
 
   // Analytics chart data
+    const storeName = useStoreName();
   const [analyticsData, setAnalyticsData] = useState<{ revenueChart: ChartPoint[] } | null>(null);
   const [currencyHistory, setCurrencyHistory] = useState<HistoryPt[]>([]);
 

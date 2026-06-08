@@ -20,7 +20,7 @@ import { useEffect, useState, useRef } from "react";
 
   type Post = { id: string; title: string; summary: string; content: string; imageUrl: string | null; author: string; published: boolean; storedInFolder: string | null; createdAt: string };
   type StorageFolder = { id: string; name: string; isSystem: boolean };
-  const empty = { title: "", summary: "", content: "", imageUrl: "", author: "Jojo Collections", published: false };
+  const empty = { title: "", summary: "", content: "", imageUrl: "", author: "", published: false };
 
   export default function AdminBlog() {
     const [posts, setPosts] = useState<Post[]>([]);

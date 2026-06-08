@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useStoreName } from "@/lib/use-store-name";
   import { useLocation } from "wouter";
   import { useGetCurrentUser } from "@workspace/api-client-react";
   import { Layout } from "@/components/layout";
@@ -19,7 +20,8 @@ import { useState, useEffect } from "react";
   const DEPOSIT_PRESETS = [0.3, 0.5, 0.7] as const;
 
   export default function Checkout() {
-    const [, setLocation] = useLocation();
+      const storeName = useStoreName();
+  const [, setLocation] = useLocation();
     const { items, bundles, subtotal, clearCart } = useCart();
     const { data: session } = useGetCurrentUser();
     const { format } = useCurrency();
@@ -142,7 +144,7 @@ import { useState, useEffect } from "react";
           const waClean = whatsappNumber.replace(/\D/g, "");
           const orderId = (data["id"] as string | undefined) ?? "";
           const waMsg   = encodeURIComponent(
-            `Hi Jojo Collections! I just placed order #${orderId.slice(0, 8).toUpperCase()} and would like to confirm my delivery details.`
+            `Hi ${storeName}! I just placed order #${orderId.slice(0, 8).toUpperCase()} and would like to confirm my delivery details.`
           );
           const waUrl = waClean ? `https://wa.me/${waClean}?text=${waMsg}` : null;
           toast.success("Order placed!", {
@@ -416,7 +418,7 @@ import { useState, useEffect } from "react";
                       </div>
                       {whatsappNumber && (
                         <a
-                          href={`https://wa.me/${whatsappNumber.replace(/\D/g, "")}?text=${encodeURIComponent("Hi Jojo Collections! I'd like to confirm my order delivery details.")}`}
+                          href={`https://wa.me/${whatsappNumber.replace(/\D/g, "")}?text=${encodeURIComponent(`Hi ${storeName}! I'd like to confirm my order delivery details.`)}`}
                           target="_blank" rel="noopener noreferrer"
                           className="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl bg-green-500/90 hover:bg-green-600 text-white text-sm font-medium transition-colors"
                         >

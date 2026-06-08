@@ -5,6 +5,7 @@ import { Layout } from "@/components/layout";
 import { useAuth, EmailVerificationSentError } from "@/components/auth-context";
 import { Mail, CheckCircle, RefreshCw, Clock } from "lucide-react";
 import { FcGoogle } from "react-icons/fc";
+import { useStoreName } from "@/lib/use-store-name";
 
 // Per-email rate limit: max 2 resends per 24 h, stored in localStorage
 function getResendState(email: string): { count: number; windowStart: number } {
@@ -29,6 +30,7 @@ function saveResendState(email: string, count: number, windowStart: number) {
 
 export default function SignupPage() {
   const { signup, resendVerificationEmail, googleSignIn } = useAuth();
+    const storeName = useStoreName();
   const [, setLocation] = useLocation();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -63,7 +65,7 @@ export default function SignupPage() {
     setSubmitting(true);
     try {
       await signup(name, email, password);
-      toast.success("Account created. Welcome to Jojo Collections!");
+      toast.success(`Account created. Welcome to ${storeName}!`);
       setLocation("/");
     } catch (err) {
       if (err instanceof EmailVerificationSentError) {
@@ -105,7 +107,7 @@ export default function SignupPage() {
     setGoogleLoading(true);
     try {
       await googleSignIn();
-      toast.success("Welcome to Jojo Collections!");
+      toast.success(`Welcome to ${storeName}!`);
       setLocation("/");
     } catch {
       toast.error("Could not sign in with Google. Please try again.");

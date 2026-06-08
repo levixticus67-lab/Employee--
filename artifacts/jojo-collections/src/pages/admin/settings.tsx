@@ -16,6 +16,7 @@ type SettingsData = {
   airtelNumber: string;
   freeDeliveryThreshold: number;
   locationDeliveryThreshold: number;
+  storeName: string;
   logoUrl: string;
   bannerEnabled: boolean;
   bannerText: string;
@@ -38,6 +39,7 @@ const defaults: SettingsData = {
   airtelNumber: "",
   freeDeliveryThreshold: 0,
   locationDeliveryThreshold: 0,
+  storeName: "",
   logoUrl: "",
   bannerEnabled: false,
   bannerText: "",
@@ -241,7 +243,22 @@ export default function AdminSettings() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         <form onSubmit={handleSave} className="space-y-6">
 
-          {/* Store Logo */}
+          {/* Store Name */}
+            <div className="glass-panel rounded-2xl p-6 border-white/50">
+              <h2 className="text-lg font-serif text-blue-950 mb-4 flex items-center gap-2">
+                <Settings className="w-5 h-5 text-blue-600" /> Store Name
+              </h2>
+              <input
+                type="text"
+                value={form.storeName ?? ""}
+                onChange={(e) => setForm({ ...form, storeName: e.target.value })}
+                placeholder="e.g. Jojo Collections"
+                className="w-full px-3 py-2 rounded-xl bg-white/20 border border-white/30 text-blue-950 placeholder-blue-900/40 focus:outline-none focus:ring-2 focus:ring-blue-300"
+              />
+              <p className="text-xs text-blue-800/60 mt-2">Displayed in your storefront, admin panel, notifications, and customer messages.</p>
+            </div>
+
+            {/* Store Logo */}
           <div className="glass-panel-heavy rounded-2xl p-6 border-white/50">
             <h2 className="text-lg font-serif text-blue-950 mb-4 flex items-center gap-2">
               <ImageIcon className="w-5 h-5 text-blue-600" /> Store Logo

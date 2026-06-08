@@ -25,12 +25,12 @@ const STATUS_ICONS: Record<string, React.ElementType> = {
   cancelled: XCircle, received: CheckCircle2,
 };
 const STATUS_COLORS: Record<string, string> = {
-  pending: "text-yellow-600 bg-yellow-100",
-  processing: "text-blue-600 bg-blue-100",
-  shipped: "text-indigo-600 bg-indigo-100",
-  delivered: "text-green-600 bg-green-100",
-  cancelled: "text-red-600 bg-red-100",
-  received: "text-emerald-600 bg-emerald-100",
+  pending:    "text-yellow-200 bg-yellow-500/20 border border-yellow-400/40",
+  processing: "text-sky-200 bg-blue-500/20 border border-blue-400/40",
+  shipped:    "text-purple-200 bg-purple-500/20 border border-purple-400/40",
+  delivered:  "text-emerald-200 bg-emerald-500/20 border border-emerald-400/40",
+  cancelled:  "text-red-200 bg-red-500/20 border border-red-400/40",
+  received:   "text-emerald-200 bg-emerald-500/20 border border-emerald-400/40",
 };
 const PAYMENT_LABELS: Record<string, string> = { online: "Credit/Debit Card", mtn_momo: "MTN Mobile Money", airtel_money: "Airtel Money" };
 
@@ -128,7 +128,7 @@ function OrderCard({ order, email, onRefresh }: { order: Order; email: string; o
               </div>
             </div>
           ) : isReceived ? (
-            <div className="flex items-center gap-2 text-emerald-700 bg-emerald-50/30 rounded-xl p-3">
+            <div className="flex items-center gap-2 text-emerald-200 bg-emerald-500/15 border border-emerald-400/30 rounded-xl p-3">
               <CheckCircle2 className="w-4 h-4" /><span className="text-sm font-medium">You confirmed receiving this order.</span>
             </div>
           ) : (

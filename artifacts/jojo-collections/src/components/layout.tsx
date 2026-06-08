@@ -15,6 +15,7 @@ type PublicSettings = {
   whatsappNumber: string;
   whatsappMessage: string;
   logoUrl: string;
+  storeName?: string;
   bannerEnabled: boolean;
   bannerText: string;
   bannerBgColor: string;
@@ -105,6 +106,8 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
       .then((d) => setSettings((prev) => ({ ...prev, ...d })))
       .catch(() => {});
   }, []);
+
+  useEffect(() => { if (settings.storeName) document.title = settings.storeName; }, [settings.storeName]);
 
   const countdown = useCountdown(settings.bannerCountdownEnd, settings.bannerCountdownEnabled);
 
@@ -200,7 +203,7 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
               {settings.logoUrl && (
                 <img src={settings.logoUrl} alt="Logo" className="w-9 h-9 rounded-full object-cover border-2 border-sky-400/30 shadow-sm flex-shrink-0" />
               )}
-              <span className="text-2xl font-serif text-sky-50 font-bold tracking-widest">JOJO</span>
+              <span className="text-2xl font-serif text-sky-50 font-bold tracking-widest">{(settings.storeName || "Jojo Collections").toUpperCase()}</span>
             </Link>
 
             <nav className="hidden md:flex items-center gap-5 flex-1">
@@ -329,7 +332,7 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
         <div className="max-w-7xl mx-auto px-4">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-8 text-sm">
             <div>
-              <p className="font-serif text-sky-50 font-bold mb-3 tracking-widest">JOJO COLLECTIONS</p>
+              <p className="font-serif text-sky-50 font-bold mb-3 tracking-widest">{(settings.storeName || "Jojo Collections").toUpperCase()}</p>
               <p className="text-sky-300/60 text-xs leading-relaxed">Premium fragrances for the modern connoisseur.</p>
             </div>
             <div>
@@ -356,7 +359,7 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
             </div>
           </div>
           <div className="border-t border-white/10 pt-6 text-center">
-            <p className="text-xs text-sky-300/40 uppercase tracking-widest">&copy; {new Date().getFullYear()} Jojo Collections. All rights reserved.</p>
+            <p className="text-xs text-sky-300/40 uppercase tracking-widest">&copy; {new Date().getFullYear()} {settings.storeName || "Jojo Collections"}. All rights reserved.</p>
           </div>
         </div>
       </footer>

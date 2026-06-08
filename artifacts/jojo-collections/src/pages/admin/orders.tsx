@@ -269,11 +269,11 @@ export default function AdminOrders() {
               <p className="text-sm text-blue-800/70 mt-1">{new Date(selectedOrder.createdAt).toLocaleString()}</p>
 
               {selectedOrder.status === "received" && (
-                <div className="mt-3 bg-emerald-50/40 border border-emerald-200/60 rounded-xl p-3 flex items-start gap-3">
+                <div className="mt-3 bg-emerald-500/10 border border-emerald-400/30 rounded-xl p-3 flex items-start gap-3">
                   <span className="text-2xl leading-none mt-0.5">📦</span>
                   <div>
-                    <p className="text-sm font-semibold text-emerald-800">Customer confirmed they received this order!</p>
-                    <p className="text-xs text-emerald-700/80 mt-0.5">Use the dropdown to change status to <strong>Delivered</strong>.</p>
+                    <p className="text-sm font-semibold text-emerald-200">Customer confirmed they received this order!</p>
+                    <p className="text-xs text-emerald-300/80 mt-0.5">Use the dropdown to change status to <strong>Delivered</strong>.</p>
                   </div>
                 </div>
               )}
@@ -408,8 +408,8 @@ export default function AdminOrders() {
               </div>
             ) : (
               <div className="glass-card rounded-xl p-3 border-green-200/50 bg-green-50/10 mb-6 flex items-center gap-2">
-                {selectedOrder.freeDelivery ? <Gift className="w-4 h-4 text-green-600 flex-shrink-0" /> : <CheckCircle2 className="w-4 h-4 text-green-600 flex-shrink-0" />}
-                <span className="text-sm text-green-800 font-medium">
+                {selectedOrder.freeDelivery ? <Gift className="w-4 h-4 text-emerald-300 flex-shrink-0" /> : <CheckCircle2 className="w-4 h-4 text-emerald-300 flex-shrink-0" />}
+                <span className="text-sm text-emerald-200 font-medium">
                   {selectedOrder.freeDelivery ? "Free delivery confirmed" : `Delivery fee: ${format(selectedOrder.shipping)}`}
                 </span>
                 <button onClick={() => setSelectedOrder((p: any) => ({ ...p, shippingConfirmed: false }))} className="ml-auto text-xs text-blue-500 hover:underline">Change</button>

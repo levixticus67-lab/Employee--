@@ -1,4 +1,5 @@
 import { Link, useLocation } from "wouter";
+import { useStoreName } from "@/lib/use-store-name";
   import { useAuth } from "@/components/auth-context";
   import { useTheme, ThemeProvider } from "@/components/theme-context";
   import { toast } from "sonner";
@@ -78,6 +79,7 @@ import { Link, useLocation } from "wouter";
   function AdminLayoutContent({ children }: { children: React.ReactNode }) {
     const [location, setLocation] = useLocation();
     const { adminLogout } = useAuth();
+  const storeName = useStoreName();
     const { theme, toggleTheme } = useTheme();
     const [showCelebration, setShowCelebration] = useState(false);
     const [receivedCount, setReceivedCount] = useState(0);
@@ -147,7 +149,7 @@ import { Link, useLocation } from "wouter";
         <aside className="w-64 glass-panel border-r border-white/10 hidden md:flex flex-col relative z-20">
           <div className="h-20 flex items-center px-6 border-b border-white/10">
             <Link href="/admin" className="text-xl font-serif text-sky-50 font-bold tracking-wider">
-              JOJO ADMIN
+              {storeName.toUpperCase()} ADMIN
             </Link>
           </div>
           <nav className="flex-1 py-4 px-4 space-y-1 overflow-y-auto">
@@ -202,7 +204,7 @@ import { Link, useLocation } from "wouter";
 
         <main className="flex-1 flex flex-col min-w-0 relative z-10">
           <header className="md:hidden glass-panel h-16 flex items-center justify-between px-4 border-b border-white/10">
-            <span className="font-serif font-bold text-sky-50">JOJO ADMIN</span>
+            <span className="font-serif font-bold text-sky-50">{storeName.toUpperCase()} ADMIN</span>
             <div className="flex items-center gap-3">
               <button
                 onClick={toggleTheme}

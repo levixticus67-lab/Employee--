@@ -11,6 +11,7 @@ import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
 import { getListProductReviewsQueryKey } from "@workspace/api-client-react";
 import { apiFetch } from "@/lib/api";
+import { useStoreName } from "@/lib/use-store-name";
 
 type RelatedProduct = { id: string; name: string; brand: string; price: number; salePrice?: number | null; imageUrl: string | null };
 
@@ -202,6 +203,7 @@ function ImageSlider({ images, name }: { images: string[]; name: string }) {
 }
 
 export default function ProductDetail() {
+    const storeName = useStoreName();
   const [, params] = useRoute("/product/:id");
   const productId = params?.id || "";
   const queryClient = useQueryClient();
@@ -258,7 +260,7 @@ export default function ProductDetail() {
 
   const handleShare = async () => {
     const url = window.location.href;
-    const text = `Check out ${product?.name} on Jojo Collections!`;
+    const text = `Check out ${product?.name} on ${storeName}!`;
     if (navigator.share) {
       try { await navigator.share({ title: product?.name, text, url }); return; } catch {}
     }
