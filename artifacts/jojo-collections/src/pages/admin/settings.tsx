@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Settings, MessageCircle, DollarSign, AlertTriangle, Smartphone, Info, Truck, ImageIcon, Upload, X, Megaphone, Video, Eye, EyeOff, Timer } from "lucide-react";
 import { toast } from "sonner";
 import { apiFetch } from "@/lib/api";
+import { invalidateStoreName } from "@/lib/use-store-name";
 
 type BannerMediaType = "none" | "image" | "video";
 
@@ -213,7 +214,7 @@ export default function AdminSettings() {
         body: JSON.stringify(form),
       });
       if (!res.ok) { toast.error("Could not save settings. Please try again."); }
-      else { toast.success("Settings saved!"); }
+      else { toast.success("Settings saved!"); invalidateStoreName(); }
     } catch { toast.error("Network error — please check your connection."); }
     finally { setSaving(false); }
   };
