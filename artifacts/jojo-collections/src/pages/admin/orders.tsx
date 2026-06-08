@@ -316,7 +316,7 @@ export default function AdminOrders() {
                 </div>
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between text-blue-800/80"><span>Subtotal</span><span>{format(selectedOrder.subtotal)}</span></div>
-                  {selectedOrder.discount > 0 && <div className="flex justify-between text-green-700"><span>Discount</span><span>−{format(selectedOrder.discount)}</span></div>}
+                  {selectedOrder.discount > 0 && <div className="flex justify-between text-green-300"><span>Discount</span><span>−{format(selectedOrder.discount)}</span></div>}
                   <div className="flex justify-between text-blue-800/80"><span>Shipping</span><span>{format(selectedOrder.shipping)}</span></div>
                   <div className="flex justify-between font-medium text-blue-950 pt-2 border-t border-white/20"><span>Total</span><span>{format(selectedOrder.total)}</span></div>
                 </div>
@@ -337,7 +337,7 @@ export default function AdminOrders() {
                   </div>
                   {selectedOrder.paymentStatus === "paid" && (
                     <div className="flex justify-between text-xs text-blue-800/80">
-                      <span>Amount paid</span><span className="text-green-700 font-medium">{format(selectedOrder.amountPaid)}</span>
+                      <span>Amount paid</span><span className="text-emerald-300 font-medium">{format(selectedOrder.amountPaid)}</span>
                     </div>
                   )}
                   {/* Pesapal reference IDs */}

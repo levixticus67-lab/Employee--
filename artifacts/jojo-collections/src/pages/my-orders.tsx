@@ -147,12 +147,12 @@ function OrderCard({ order, email, onRefresh }: { order: Order; email: string; o
             </div>
             {order.paymentStatus === "partial" && (
               <div className="mt-2 space-y-1 border-t border-white/20 pt-2">
-                <div className="flex justify-between text-xs text-blue-800/70"><span>Paid so far</span><span className="text-green-700 font-medium">{format(order.amountPaid)}</span></div>
+                <div className="flex justify-between text-xs text-blue-800/70"><span>Paid so far</span><span className="text-emerald-300 font-medium">{format(order.amountPaid)}</span></div>
                 <div className="flex justify-between text-xs text-blue-800/70"><span>Remaining on delivery</span><span className="text-amber-700 font-medium">{format(remaining)}</span></div>
               </div>
             )}
             {order.paymentStatus === "paid" && (
-              <div className="flex items-center gap-1.5 text-xs text-green-700 mt-1"><CheckCircle2 className="w-3.5 h-3.5" /> Fully paid</div>
+              <div className="flex items-center gap-1.5 text-xs text-emerald-300 mt-1"><CheckCircle2 className="w-3.5 h-3.5" /> Fully paid</div>
             )}
             {order.paymentStatus === "unpaid" && order.status === "pending" && order.paymentMethod !== "online" && (
               <p className="text-xs text-yellow-700 mt-1.5 bg-yellow-50/30 rounded-lg p-2">
@@ -183,7 +183,7 @@ function OrderCard({ order, email, onRefresh }: { order: Order; email: string; o
           {/* Totals */}
           <div className="border-t border-white/20 pt-3 space-y-1.5 text-sm">
             <div className="flex justify-between text-blue-900/70"><span>Subtotal</span><span>{format(order.subtotal)}</span></div>
-            {order.discount > 0 && <div className="flex justify-between text-green-700"><span>Discount{order.couponCode ? ` (${order.couponCode})` : ""}</span><span>−{format(order.discount)}</span></div>}
+            {order.discount > 0 && <div className="flex justify-between text-green-300"><span>Discount{order.couponCode ? ` (${order.couponCode})` : ""}</span><span>−{format(order.discount)}</span></div>}
             <div className="flex justify-between text-blue-900/70"><span>Shipping</span><span>{order.shipping === 0 ? "Free" : format(order.shipping)}</span></div>
             <div className="flex justify-between font-semibold text-blue-950 pt-1.5 border-t border-white/20"><span>Total</span><span>{format(order.total)}</span></div>
           </div>

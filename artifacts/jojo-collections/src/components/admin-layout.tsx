@@ -10,7 +10,7 @@ import { Link, useLocation } from "wouter";
   } from "lucide-react";
 
   const FLOWERS = ["🌸", "🌺", "🌼", "🌻", "🌹", "💐", "🌷", "✨"];
-  const RECENT_WINDOW_MS = 5 * 60 * 1000;
+  const RECENT_WINDOW_MS = 30 * 60 * 1000;
   const COOLDOWN_MS = 60_000;
   const CELEBRATED_KEY = "jojo-celebrated-orders";
   const LAST_CELEBRATED_KEY = "jojo-last-celebrated-at";
