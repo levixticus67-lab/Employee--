@@ -72,8 +72,8 @@ function CurrencyTooltip({ active, payload, label }: { active?: boolean; payload
 function FlowerCelebration({ customerName, storeName, onClose }: { customerName: string; storeName: string; onClose: () => void }) {
   return (
     <Dialog open onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-sm text-center shadow-2xl border border-sky-400/20 backdrop-blur-xl" style={{ background: "linear-gradient(135deg, rgba(8,20,60,0.97) 0%, rgba(12,30,80,0.97) 50%, rgba(16,28,70,0.97) 100%)" }}>
-        <div className="py-6 px-3 space-y-4">
+      <DialogContent className="max-w-sm text-center shadow-2xl border border-sky-400/20 !bg-transparent p-0 overflow-hidden">
+        <div style={{ background: "linear-gradient(135deg, rgba(8,20,60,0.97) 0%, rgba(12,30,80,0.97) 50%, rgba(16,28,70,0.97) 100%)" }} className="py-6 px-6 space-y-4">
           <div className="text-6xl flex justify-center gap-1 flex-wrap">
             {"🌺🌸🌼🌻🌹🌷".split("").map((f, i) => (
               <span key={i} className="animate-bounce inline-block" style={{ animationDelay: `${i * 0.1}s` }}>{f}</span>
