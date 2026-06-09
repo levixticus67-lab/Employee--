@@ -3,7 +3,7 @@ import { Link } from "wouter";
 import { Layout } from "@/components/layout";
 import { useGetCurrentUser } from "@workspace/api-client-react";
 import { useCurrency } from "@/components/currency-context";
-import { Package, Clock, Truck, PackageCheck, XCircle, ChevronDown, ChevronUp, Smartphone, CreditCard, CheckCircle2, Trash2, Wallet } from "lucide-react";
+import { Package, Clock, Truck, PackageCheck, XCircle, ChevronDown, ChevronUp, Smartphone, CreditCard, CheckCircle2, Trash2, Receipt, Wallet } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { toast } from "sonner";
@@ -17,6 +17,13 @@ type Order = {
   couponCode: string | null; paymentMethod: string; paymentNumber: string | null;
   buyerPhone: string | null; amountPaid: number; paymentStatus: string;
   items: OrderItem[]; archived: boolean;
+};
+type ReceiptItem = { productId: string; name: string; brand: string; price: number; quantity: number; imageUrl: string | null };
+type ReceiptData = {
+  id: string; orderId: string; customerEmail: string; customerName: string;
+  items: ReceiptItem[]; total: number; subtotal: number; shipping: number;
+  discount: number; couponCode: string | null; paymentMethod: string;
+  createdAt: string; deliveredAt: string; expiresAt: string; collapsed: boolean;
 };
 
 const STATUS_STEPS = ["pending", "processing", "shipped", "delivered"];
@@ -34,6 +41,137 @@ const STATUS_COLORS: Record<string, string> = {
 };
 const PAYMENT_LABELS: Record<string, string> = { online: "Credit/Debit Card", mtn_momo: "MTN Mobile Money", airtel_money: "Airtel Money" };
 
+// ─── Receipt Card ─────────────────────────────────────────────────────────────
+function ReceiptCard({ receipt }: { receipt: ReceiptData }) {
+  const { format } = useCurrency();
+  const [expanded, setExpanded] = useState(false);
+  const isExpired = receipt.collapsed || new Date(receipt.expiresAt) < new Date();
+
+  const primaryProductName = receipt.items.length > 0
+    ? receipt.items[0]!.name + (receipt.items.length > 1 ? ` +${receipt.items.length - 1} more` : "")
+    : "Order";
+
+  const deliveredDate = new Date(receipt.deliveredAt).toLocaleDateString("en-GB", {
+    day: "numeric", month: "short", year: "numeric",
+  });
+
+  // Tombstone — 1 compact line
+  if (isExpired) {
+    return (
+      <div className="glass-panel-heavy rounded-2xl border-white/30 overflow-hidden px-5 py-3.5 flex items-center gap-3 opacity-60">
+        <Receipt className="w-4 h-4 text-emerald-400/60 flex-shrink-0" />
+        <p className="text-xs text-blue-900/60 font-mono truncate">
+          {primaryProductName} &middot; {deliveredDate} &middot; Order #{receipt.orderId.slice(0, 8).toUpperCase()}
+        </p>
+      </div>
+    );
+  }
+
+  // Full receipt (within 2 weeks)
+  const daysLeft = Math.ceil((new Date(receipt.expiresAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+
+  return (
+    <div className="glass-panel-heavy rounded-2xl border-emerald-400/30 overflow-hidden ring-1 ring-emerald-400/20">
+      <button
+        onClick={() => setExpanded(!expanded)}
+        className="w-full flex items-center gap-4 p-5 text-left hover:bg-white/10 transition-colors"
+      >
+        <div className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 text-emerald-200 bg-emerald-500/20 border border-emerald-400/40">
+          <Receipt className="w-5 h-5" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            <p className="font-mono text-sm font-medium text-blue-950">Order #{receipt.orderId.slice(0, 8).toUpperCase()}</p>
+            <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-emerald-500/20 text-emerald-200 border border-emerald-400/40">
+              ✓ Delivered
+            </span>
+            <span className="text-xs px-2 py-0.5 rounded-full bg-white/20 text-blue-800/50">
+              Receipt · {daysLeft}d left
+            </span>
+          </div>
+          <p className="text-xs text-blue-800/50 mt-0.5">
+            {new Date(receipt.createdAt).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })}
+            {" · "}{receipt.items.length} item{receipt.items.length !== 1 ? "s" : ""}
+          </p>
+        </div>
+        <div className="text-right flex-shrink-0">
+          <p className="font-semibold text-blue-950">{format(receipt.total)}</p>
+          {expanded ? <ChevronUp className="w-4 h-4 text-blue-400 ml-auto mt-1" /> : <ChevronDown className="w-4 h-4 text-blue-400 ml-auto mt-1" />}
+        </div>
+      </button>
+
+      {expanded && (
+        <div className="border-t border-emerald-400/20 p-5 space-y-5">
+          {/* Delivered confirmation */}
+          <div className="flex items-center gap-3 bg-emerald-500/10 border border-emerald-400/25 rounded-xl p-3.5">
+            <CheckCircle2 className="w-5 h-5 text-emerald-400 flex-shrink-0" />
+            <div>
+              <p className="text-sm font-medium text-emerald-200">Order Delivered</p>
+              <p className="text-xs text-blue-800/50 mt-0.5">
+                Delivered on {new Date(receipt.deliveredAt).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })}
+              </p>
+            </div>
+          </div>
+
+          {/* Payment method */}
+          {receipt.paymentMethod && (
+            <div className="glass-card rounded-xl p-4 border-white/30">
+              <p className="text-xs font-medium text-blue-900/60 uppercase tracking-wider mb-2">Payment</p>
+              <div className="flex items-center gap-2 text-sm text-blue-900">
+                {receipt.paymentMethod === "online" ? <CreditCard className="w-4 h-4" /> : <Smartphone className="w-4 h-4" />}
+                <span>{PAYMENT_LABELS[receipt.paymentMethod] ?? receipt.paymentMethod}</span>
+              </div>
+              <div className="flex items-center gap-1.5 text-xs text-emerald-300 mt-1.5">
+                <CheckCircle2 className="w-3.5 h-3.5" /> Fully paid
+              </div>
+            </div>
+          )}
+
+          {/* Items */}
+          <div>
+            <p className="text-xs font-medium text-blue-900/60 uppercase tracking-wider mb-3">Items</p>
+            <div className="space-y-3">
+              {receipt.items.map((item) => (
+                <div key={item.productId} className="flex items-center gap-3">
+                  <div className="w-12 h-12 glass-card rounded-lg p-1 flex-shrink-0 bg-white/40 overflow-hidden">
+                    {item.imageUrl
+                      ? <img src={item.imageUrl} alt={item.name} className="w-full h-full object-contain" />
+                      : <div className="w-full h-full flex items-center justify-center text-[8px] text-blue-400">Img</div>}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-blue-950 truncate">{item.name}</p>
+                    <p className="text-xs text-blue-800/60">{item.brand} · Qty {item.quantity}</p>
+                  </div>
+                  <p className="text-sm font-medium text-blue-900 flex-shrink-0">{format(item.price * item.quantity)}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Totals */}
+          <div className="border-t border-white/20 pt-3 space-y-1.5 text-sm">
+            <div className="flex justify-between text-blue-900/70"><span>Subtotal</span><span>{format(receipt.subtotal)}</span></div>
+            {receipt.discount > 0 && (
+              <div className="flex justify-between text-green-300">
+                <span>Discount{receipt.couponCode ? ` (${receipt.couponCode})` : ""}</span>
+                <span>−{format(receipt.discount)}</span>
+              </div>
+            )}
+            <div className="flex justify-between text-blue-900/70"><span>Shipping</span><span>{receipt.shipping === 0 ? "Free" : format(receipt.shipping)}</span></div>
+            <div className="flex justify-between font-semibold text-blue-950 pt-1.5 border-t border-white/20"><span>Total</span><span>{format(receipt.total)}</span></div>
+          </div>
+
+          {/* Receipt notice */}
+          <p className="text-center text-[11px] text-blue-800/40 italic">
+            Full receipt visible for {daysLeft} more day{daysLeft !== 1 ? "s" : ""}.
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Order Card ───────────────────────────────────────────────────────────────
 function OrderCard({ order, email, onRefresh }: { order: Order; email: string; onRefresh: () => void }) {
   const { format } = useCurrency();
   const [expanded, setExpanded] = useState(false);
@@ -238,17 +376,25 @@ function OrderCard({ order, email, onRefresh }: { order: Order; email: string; o
   );
 }
 
+// ─── Page ─────────────────────────────────────────────────────────────────────
 export default function MyOrders() {
   const { data: session, isLoading: sessionLoading } = useGetCurrentUser();
   const [orders, setOrders] = useState<Order[]>([]);
+  const [receipts, setReceipts] = useState<ReceiptData[]>([]);
   const [loading, setLoading] = useState(false);
   const hasLoadedRef = useRef(false);
 
-  const loadOrders = (email: string, silent = false) => {
+  const loadAll = (email: string, silent = false) => {
     if (!silent) setLoading(true);
-    apiFetch(`/api/orders/by-email/${encodeURIComponent(email)}`)
-      .then((r) => r.json())
-      .then((data) => { setOrders(data); hasLoadedRef.current = true; })
+    Promise.all([
+      apiFetch(`/api/orders/by-email/${encodeURIComponent(email)}`).then((r) => r.json()),
+      apiFetch(`/api/receipts/by-email/${encodeURIComponent(email)}`).then((r) => r.json()),
+    ])
+      .then(([ordersData, receiptsData]) => {
+        setOrders(Array.isArray(ordersData) ? ordersData : []);
+        setReceipts(Array.isArray(receiptsData) ? receiptsData : []);
+        hasLoadedRef.current = true;
+      })
       .catch(() => {})
       .finally(() => { if (!silent) setLoading(false); });
   };
@@ -256,7 +402,7 @@ export default function MyOrders() {
   useEffect(() => {
     const email = session?.user?.email;
     if (!email) return;
-    loadOrders(email);
+    loadAll(email);
   }, [session?.user?.email]);
 
   if (sessionLoading) {
@@ -276,6 +422,8 @@ export default function MyOrders() {
     );
   }
 
+  const isEmpty = orders.length === 0 && receipts.length === 0;
+
   return (
     <Layout>
       <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
@@ -286,7 +434,7 @@ export default function MyOrders() {
 
         {loading ? (
           <div className="flex justify-center items-center h-48"><div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-blue-600" /></div>
-        ) : orders.length === 0 ? (
+        ) : isEmpty ? (
           <div className="glass-panel rounded-3xl p-12 text-center">
             <Package className="w-12 h-12 text-blue-200 mx-auto mb-4" />
             <h2 className="text-xl font-serif text-blue-950 mb-2">No orders yet</h2>
@@ -300,8 +448,18 @@ export default function MyOrders() {
                 key={order.id}
                 order={order}
                 email={session.user!.email}
-                onRefresh={() => loadOrders(session.user!.email, true)}
+                onRefresh={() => loadAll(session.user!.email, true)}
               />
+            ))}
+            {receipts.length > 0 && orders.length > 0 && (
+              <div className="flex items-center gap-3 py-2">
+                <div className="flex-1 h-px bg-white/20" />
+                <p className="text-xs text-blue-800/40 font-medium uppercase tracking-wider">Completed</p>
+                <div className="flex-1 h-px bg-white/20" />
+              </div>
+            )}
+            {receipts.map((receipt) => (
+              <ReceiptCard key={receipt.id} receipt={receipt} />
             ))}
           </div>
         )}
