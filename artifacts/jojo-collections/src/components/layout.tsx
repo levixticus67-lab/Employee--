@@ -4,7 +4,7 @@ import { useAuth } from "./auth-context";
 import { useWishlist } from "./wishlist-context";
 import { useCurrency, type Currency } from "./currency-context";
 import { useTheme, ThemeProvider } from "./theme-context";
-import { ShoppingBag, Menu, X, User, LogOut, Heart, MessageCircle, Package } from "lucide-react";
+import { ShoppingBag, User, LogOut, Heart, MessageCircle, Package, X } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import { toast } from "sonner";
 import { apiFetch } from "@/lib/api";
@@ -77,6 +77,228 @@ const PARTICLES = [
   { id: 24, size: 5, left: 38, dur: 8,    delay: 9    },
   { id: 25, size: 3, left: 90, dur: 11,   delay: 2.8  },
 ];
+
+/* ── Floating pill bottom nav (mobile only) ── */
+function FloatingPillNav({
+  location,
+  isMobileMenuOpen,
+  setIsMobileMenuOpen,
+  wishlistCount,
+  totalItems,
+}: {
+  location: string;
+  isMobileMenuOpen: boolean;
+  setIsMobileMenuOpen: (v: boolean) => void;
+  wishlistCount: number;
+  totalItems: number;
+}) {
+  const [pressed, setPressed] = useState<string | null>(null);
+
+  const press = (id: string) => {
+    setPressed(id);
+    setTimeout(() => setPressed(null), 150);
+  };
+
+  const navItems = [
+    {
+      id: "home",
+      href: "/",
+      label: "Home",
+      icon: (active: boolean) => (
+        <svg width="19" height="19" viewBox="0 0 24 24" fill={active ? "#0d1b3e" : "none"}
+          stroke={active ? "#0d1b3e" : "rgba(255,255,255,0.65)"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M3 9.5L12 3l9 6.5V20a1 1 0 01-1 1H4a1 1 0 01-1-1V9.5z"/>
+          <path d="M9 21V12h6v9" stroke={active ? "#0d1b3e" : "rgba(255,255,255,0.65)"}/>
+        </svg>
+      ),
+    },
+    {
+      id: "shop",
+      href: "/shop",
+      label: "Shop",
+      icon: (active: boolean) => (
+        <svg width="19" height="19" viewBox="0 0 24 24" fill="none"
+          stroke={active ? "#0d1b3e" : "rgba(255,255,255,0.65)"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/>
+          <path d="M1 1h4l2.68 13.39a2 2 0 002 1.61h9.72a2 2 0 001.95-1.57L23 6H6"/>
+        </svg>
+      ),
+    },
+    {
+      id: "wishlist",
+      href: "/wishlist",
+      label: "Wishlist",
+      icon: (active: boolean) => (
+        <svg width="19" height="19" viewBox="0 0 24 24" fill="none"
+          stroke={active ? "#0d1b3e" : "rgba(255,255,255,0.65)"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 000-7.78z"/>
+        </svg>
+      ),
+    },
+    {
+      id: "journal",
+      href: "/blog",
+      label: "Journal",
+      icon: (active: boolean) => (
+        <svg width="19" height="19" viewBox="0 0 24 24" fill="none"
+          stroke={active ? "#0d1b3e" : "rgba(255,255,255,0.65)"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M2 3h6a4 4 0 014 4v14a3 3 0 00-3-3H2z"/><path d="M22 3h-6a4 4 0 00-4 4v14a3 3 0 013-3h7z"/>
+        </svg>
+      ),
+    },
+    {
+      id: "menu",
+      href: null,
+      label: "Menu",
+      icon: (active: boolean) => (
+        <svg width="19" height="19" viewBox="0 0 24 24" fill="none"
+          stroke={active ? "#0d1b3e" : "rgba(255,255,255,0.65)"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <line x1="3" y1="6" x2="21" y2="6"/>
+          <line x1="3" y1="12" x2="21" y2="12"/>
+          <line x1="3" y1="18" x2="21" y2="18"/>
+        </svg>
+      ),
+    },
+  ] as const;
+
+  return (
+    <div
+      className="fixed bottom-7 left-0 right-0 flex justify-center md:hidden"
+      style={{ zIndex: 60 }}
+    >
+      <div
+        className="flex items-center gap-1 px-2 py-2"
+        style={{
+          background: "rgba(255,255,255,0.10)",
+          backdropFilter: "blur(24px)",
+          WebkitBackdropFilter: "blur(24px)",
+          borderRadius: "999px",
+          border: "1px solid rgba(255,255,255,0.18)",
+          boxShadow: "0 8px 32px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.12)",
+        }}
+      >
+        {navItems.map(({ id, href, label, icon }) => {
+          const isActive = href ? location === href : isMobileMenuOpen;
+          const isPressed = pressed === id;
+
+          const inner = (
+            <>
+              {icon(isActive)}
+              {isActive && (
+                <span
+                  style={{
+                    fontSize: 12,
+                    fontWeight: 600,
+                    color: "#0d1b3e",
+                    whiteSpace: "nowrap",
+                    marginLeft: 6,
+                  }}
+                >
+                  {label}
+                </span>
+              )}
+              {id === "wishlist" && !isActive && wishlistCount > 0 && (
+                <span
+                  style={{
+                    position: "absolute",
+                    top: 6,
+                    right: 6,
+                    width: 14,
+                    height: 14,
+                    borderRadius: "50%",
+                    background: "#ef4444",
+                    color: "#fff",
+                    fontSize: 9,
+                    fontWeight: 700,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  {wishlistCount > 9 ? "9+" : wishlistCount}
+                </span>
+              )}
+            </>
+          );
+
+          const btnStyle: React.CSSProperties = {
+            position: "relative",
+            display: "flex",
+            alignItems: "center",
+            padding: isActive ? "10px 16px" : "10px 11px",
+            borderRadius: "999px",
+            background: isActive ? "rgba(255,255,255,0.95)" : "transparent",
+            transition: "all 0.25s cubic-bezier(0.34,1.56,0.64,1)",
+            transform: isPressed ? "scale(0.88)" : "scale(1)",
+            border: "none",
+            cursor: "pointer",
+          };
+
+          if (href) {
+            return (
+              <Link key={id} href={href} onClick={() => press(id)} style={btnStyle}>
+                {inner}
+              </Link>
+            );
+          }
+
+          return (
+            <button
+              key={id}
+              onClick={() => { setIsMobileMenuOpen(!isMobileMenuOpen); press(id); }}
+              style={btnStyle}
+            >
+              {inner}
+            </button>
+          );
+        })}
+
+        {/* Cart — separate white circle */}
+        <Link
+          href="/cart"
+          onClick={() => press("cart")}
+          style={{
+            position: "relative",
+            width: 44,
+            height: 44,
+            borderRadius: "50%",
+            background: "rgba(255,255,255,0.92)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            marginLeft: 4,
+            flexShrink: 0,
+            transition: "transform 0.15s ease",
+            transform: pressed === "cart" ? "scale(0.88)" : "scale(1)",
+          }}
+        >
+          <ShoppingBag style={{ width: 19, height: 19, color: "#0d1b3e" }} />
+          {totalItems > 0 && (
+            <span
+              style={{
+                position: "absolute",
+                top: 0,
+                right: -2,
+                width: 16,
+                height: 16,
+                borderRadius: "50%",
+                background: "#3b82f6",
+                color: "#fff",
+                fontSize: 9,
+                fontWeight: 700,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              {totalItems > 9 ? "9+" : totalItems}
+            </span>
+          )}
+        </Link>
+      </div>
+    </div>
+  );
+}
 
 function LayoutContent({ children }: { children: React.ReactNode }) {
   const { totalItems } = useCart();
@@ -215,6 +437,7 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
               ))}
             </nav>
 
+            {/* Desktop right icons */}
             <div className="hidden md:flex items-center gap-2 ml-auto">
               <select value={currency} onChange={(e) => setCurrency(e.target.value as Currency)} className="text-xs font-medium text-sky-300/70 bg-transparent border-0 focus:outline-none cursor-pointer hover:text-sky-100 pr-1">
                 {currencies.map((c) => <option key={c} value={c} className="bg-slate-900">{c}</option>)}
@@ -264,23 +487,22 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
               </Link>
             </div>
 
+            {/* Mobile — logo only; pill nav handles navigation */}
             <div className="md:hidden flex items-center gap-1 ml-auto">
-              {user && <Link href="/my-orders" className="p-2 text-sky-200"><Package className="w-5 h-5" /></Link>}
-              <Link href="/wishlist" className="relative p-2 text-sky-200">
-                <Heart className="w-5 h-5" />
-                {wishlistCount > 0 && <span className="absolute top-0.5 right-0.5 flex items-center justify-center w-3.5 h-3.5 text-[9px] font-bold text-white bg-red-500 rounded-full">{wishlistCount}</span>}
-              </Link>
-              <Link href="/cart" className="relative p-2 text-sky-200">
-                <ShoppingBag className="w-5 h-5" />
-                {totalItems > 0 && <span className="absolute top-0.5 right-0.5 flex items-center justify-center w-3.5 h-3.5 text-[9px] font-bold text-white bg-blue-500 rounded-full">{totalItems}</span>}
-              </Link>
-              <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} className="p-2 text-sky-200">
-                {isMobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-              </button>
+              {isMobileMenuOpen && (
+                <button
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="p-2 text-sky-200"
+                  aria-label="Close menu"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              )}
             </div>
           </div>
         </div>
 
+        {/* Mobile dropdown menu */}
         {isMobileMenuOpen && (
           <div className="md:hidden absolute w-full z-50 border-t border-white/10 bg-slate-900/95 backdrop-blur-xl shadow-xl">
             <div className="px-4 pt-2 pb-4 space-y-1">
@@ -326,9 +548,9 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
         )}
       </header>
 
-      <main className="flex-1 w-full relative z-10">{children}</main>
+      <main className="flex-1 w-full relative z-10 pb-28 md:pb-0">{children}</main>
 
-      <footer className="glass-panel mt-auto border-t border-white/10 py-10 relative z-10">
+      <footer className="glass-panel mt-auto border-t border-white/10 py-10 relative z-10 pb-28 md:pb-10">
         <div className="max-w-7xl mx-auto px-4">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-8 text-sm">
             <div>
@@ -364,9 +586,18 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
         </div>
       </footer>
 
+      {/* Floating pill nav — mobile only */}
+      <FloatingPillNav
+        location={location}
+        isMobileMenuOpen={isMobileMenuOpen}
+        setIsMobileMenuOpen={setIsMobileMenuOpen}
+        wishlistCount={wishlistCount}
+        totalItems={totalItems}
+      />
+
       {whatsappUrl && (
         <a href={whatsappUrl} target="_blank" rel="noopener noreferrer"
-          className="fixed bottom-6 right-6 z-50 bg-green-500 hover:bg-green-400 rounded-full shadow-lg shadow-green-500/30 flex items-center justify-center transition-all hover:scale-110"
+          className="fixed bottom-24 right-6 z-50 bg-green-500 hover:bg-green-400 rounded-full shadow-lg shadow-green-500/30 flex items-center justify-center transition-all hover:scale-110 md:bottom-6"
           style={{ width: 52, height: 52 }} title="Chat on WhatsApp">
           <MessageCircle className="w-6 h-6 text-white fill-white" />
         </a>
