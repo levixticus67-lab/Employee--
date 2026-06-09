@@ -50,6 +50,7 @@ export const COLLECTIONS = {
   storageFolders: "storageFolders",
   storageItems: "storageItems",
   paymentTransactions: "paymentTransactions",
+  receipts: "receipts",
 } as const;
 
 export { Timestamp };
@@ -138,6 +139,24 @@ export type StorageFolderDoc = { name: string; description: string; isSystem: bo
 export type StorageItemDoc = {
   folderId: string; type: "order_log" | "blog_post"; referenceId: string;
   title: string; snapshot: Record<string, unknown>; archivedAt: Timestamp;
+};
+
+export type ReceiptItemDoc = { productId: string; name: string; brand: string; price: number; quantity: number; imageUrl: string | null };
+export type ReceiptDoc = {
+  orderId: string;
+  customerEmail: string;
+  customerName: string;
+  items: ReceiptItemDoc[];
+  total: number;
+  subtotal: number;
+  shipping: number;
+  discount: number;
+  couponCode: string | null;
+  paymentMethod: string;
+  createdAt: string;
+  deliveredAt: string;
+  expiresAt: string;
+  collapsed: boolean;
 };
 
 export { seedProductsIfEmpty } from "./seed";
