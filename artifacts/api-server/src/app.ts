@@ -6,6 +6,7 @@ import express, { type Express } from "express";
   import router from "./routes";
   import { logger } from "./lib/logger";
   import { sessionMiddleware } from "./middlewares/session";
+import { setupExpressErrorHandler } from "@sentry/node";
 
   const app: Express = express();
 
@@ -59,6 +60,9 @@ import express, { type Express } from "express";
   app.use(sessionMiddleware);
 
   app.use("/api", router);
+
+  // Sentry must come after all routes and before any other error handlers
+  setupExpressErrorHandler(app);
 
   seedProductsIfEmpty()
     .then(() => logger.info("Firestore product seed check complete"))
