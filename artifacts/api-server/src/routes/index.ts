@@ -10,6 +10,7 @@ import adminRouter from "./admin";
 import settingsRouter from "./settings";
 import bundlesRouter from "./bundles";
 import blogRouter from "./blog";
+import receiptsRouter from "./receipts";
 import { requireAdmin } from "../middlewares/requireAdmin";
 
 const router: IRouter = Router();
@@ -23,6 +24,7 @@ router.use(paymentsRouter);
 router.use(settingsRouter);
 router.use(bundlesRouter);
 router.use(blogRouter);
+router.use(receiptsRouter);
 
 // Auth gate — must run before storageRouter and adminRouter so that
 // /storage/uploads/* and /admin/* are protected before any route handler fires.
