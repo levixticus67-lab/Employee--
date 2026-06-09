@@ -213,8 +213,8 @@ function OrderCard({ order, email, onRefresh }: { order: Order; email: string; o
           if (!open) onRefresh();
         }}
       >
-        <DialogContent className="max-w-sm text-center shadow-2xl border border-sky-400/20 backdrop-blur-xl" style={{ background: "linear-gradient(135deg, rgba(8,20,60,0.97) 0%, rgba(12,30,80,0.97) 50%, rgba(16,28,70,0.97) 100%)" }}>
-          <div className="py-4 px-2 space-y-4">
+        <DialogContent className="max-w-sm text-center shadow-2xl border border-sky-400/20 !bg-transparent p-0 overflow-hidden">
+          <div style={{ background: "linear-gradient(135deg, rgba(8,20,60,0.97) 0%, rgba(12,30,80,0.97) 50%, rgba(16,28,70,0.97) 100%)" }} className="py-6 px-6 space-y-4">
             <div className="text-5xl animate-bounce">🌺</div>
             <h2 className="text-2xl font-serif text-sky-50">Thank You So Much!</h2>
             <p className="text-sky-200/80 leading-relaxed text-sm">
