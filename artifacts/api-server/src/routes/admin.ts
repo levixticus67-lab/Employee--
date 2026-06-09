@@ -11,6 +11,7 @@ import {
   type BlogPostDoc,
   type StorageFolderDoc,
   type StorageItemDoc,
+  type ReceiptDoc,
 } from "@workspace/db";
 import {
   CreateProductBody,
@@ -20,6 +21,39 @@ import {
 import { loadProductsWithStats } from "./products";
 import { loadAllOrders, loadOrderById, type OrderDto } from "./orders";
 import { toReviewDto } from "./reviews";
+
+
+// ─── Receipt helper ───────────────────────────────────────────────────────────
+async function createReceiptForOrder(orderId: string, order: OrderDoc, amountPaid?: number): Promise<void> {
+  const alreadyExists = await firestore.collection(COLLECTIONS.receipts)
+    .where('orderId', '==', orderId).limit(1).get();
+  if (!alreadyExists.empty) return; // idempotent
+
+  const deliveredAt = new Date().toISOString();
+  const expiresAt   = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString();
+  const orderCreatedAt = order.createdAt instanceof Timestamp
+    ? order.createdAt.toDate().toISOString()
+    : String(order.createdAt);
+
+  const receipt: ReceiptDoc = {
+    orderId,
+    customerEmail: order.customerEmail,
+    customerName:  order.customerName,
+    items:         (order.items ?? []) as ReceiptDoc['items'],
+    total:         Number(order.total),
+    subtotal:      Number(order.subtotal ?? order.total),
+    shipping:      Number(order.shipping ?? 0),
+    discount:      Number(order.discount ?? 0),
+    couponCode:    order.couponCode ?? null,
+    paymentMethod: order.paymentMethod,
+    createdAt:     orderCreatedAt,
+    deliveredAt,
+    expiresAt,
+    collapsed:     false,
+  };
+
+  await firestore.collection(COLLECTIONS.receipts).add(receipt as unknown as Record<string, unknown>);
+}
 
 const router: IRouter = Router();
 
@@ -248,6 +282,8 @@ router.put("/admin/orders/:id/status", async (req, res) => {
           archivedAt: Timestamp.now(),
         } satisfies StorageItemDoc);
       }
+      // Create customer receipt before deleting the order
+      await createReceiptForOrder(req.params.id, existing).catch(() => {});
       // Move entirely to storage: delete from the orders collection
       await ref.delete();
     } catch { /* non-critical */ }
@@ -315,6 +351,8 @@ router.put("/admin/orders/:id/status", async (req, res) => {
             archivedAt: Timestamp.now(),
           } satisfies StorageItemDoc);
         }
+        // Create customer receipt before deleting the order
+        await createReceiptForOrder(req.params.id, order, newAmountPaid).catch(() => {});
         // Move entirely to storage: delete from the orders collection
         await ref.delete();
       } catch { /* non-critical */ }
