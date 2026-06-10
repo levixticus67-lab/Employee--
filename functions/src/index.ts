@@ -1,4 +1,5 @@
-import * as functions from "firebase-functions/v1";
+import { onRequest } from "firebase-functions/v2/https";
+import { logger } from "firebase-functions";
 import * as admin from "firebase-admin";
 
 admin.initializeApp();
@@ -24,7 +25,7 @@ function escapeHtml(str: string): string {
     .replace(/"/g, "&quot;");
 }
 
-export const ogPreview = functions.https.onRequest(async (req, res) => {
+export const ogPreview = onRequest(async (req, res) => {
   const FRONTEND_URL = getFrontendUrl();
 
   // Path comes in as /product/:id (Firebase Hosting passes the original path)
@@ -75,7 +76,7 @@ export const ogPreview = functions.https.onRequest(async (req, res) => {
   <body><p>Redirecting to <a href="${url}">${title}</a>&hellip;</p></body>
 </html>`);
   } catch (err) {
-    functions.logger.error("ogPreview error", { productId, err });
+    logger.error("ogPreview error", { productId, err });
     res.redirect(302, productUrl);
   }
 });
