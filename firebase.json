@@ -1,7 +1,4 @@
 {
-  "functions": {
-    "source": "functions"
-  },
   "hosting": {
     "public": "artifacts/jojo-collections/dist/public",
     "ignore": [
@@ -9,11 +6,14 @@
       "**/.*",
       "**/node_modules/**"
     ],
-    "rewrites": [
+    "redirects": [
       {
-        "source": "/product/**",
-        "function": "ogPreview"
-      },
+        "source": "/og/product/:productId",
+        "destination": "https://jojo-collections-api.onrender.com/api/og/product/:productId",
+        "type": 302
+      }
+    ],
+    "rewrites": [
       {
         "source": "**",
         "destination": "/index.html"
