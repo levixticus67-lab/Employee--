@@ -35,20 +35,6 @@ jobs:
           VITE_GOOGLE_CLIENT_ID: ${{ secrets.VITE_GOOGLE_CLIENT_ID }}
         run: pnpm --filter jojo-collections run build
 
-      - name: Install Functions dependencies
-        run: cd functions && npm install --legacy-peer-deps
-
-      - name: Build Functions
-        run: cd functions && npm run build
-
-      - name: Deploy Firebase Functions
-        env:
-          GOOGLE_APPLICATION_CREDENTIALS_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
-        run: |
-          echo "$GOOGLE_APPLICATION_CREDENTIALS_JSON" > /tmp/sa.json
-          GOOGLE_APPLICATION_CREDENTIALS=/tmp/sa.json npx firebase-tools@latest deploy --only functions --project jojo-collection --force
-          rm /tmp/sa.json
-
       - uses: FirebaseExtended/action-hosting-deploy@v0
         with:
           repoToken: ${{ secrets.GITHUB_TOKEN }}
