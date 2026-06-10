@@ -87,6 +87,7 @@ function GuestPillNav({
   isMobileMenuOpen,
   setIsMobileMenuOpen,
   totalItems,
+  theme,
 }: {
   location: string;
   isMobileMenuOpen: boolean;
@@ -181,6 +182,7 @@ function AuthBottomBar({
   isMobileMenuOpen,
   setIsMobileMenuOpen,
   totalItems,
+  theme,
 }: {
   location: string;
   isMobileMenuOpen: boolean;
