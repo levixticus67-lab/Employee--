@@ -6,13 +6,6 @@
       "**/.*",
       "**/node_modules/**"
     ],
-    "redirects": [
-      {
-        "source": "/og/product/:productId",
-        "destination": "https://jojo-collections-api.onrender.com/api/og/product/:productId",
-        "type": 302
-      }
-    ],
     "rewrites": [
       {
         "source": "**",
