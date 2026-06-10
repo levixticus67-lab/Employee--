@@ -78,106 +78,26 @@ const PARTICLES = [
   { id: 25, size: 3, left: 90, dur: 11,   delay: 2.8  },
 ];
 
-/* ── Floating pill nav — mobile only ── */
-function FloatingPillNav({
+/* ─────────────────────────────────────────────
+   GUEST pill — 3 items only (Home, Menu, Cart)
+   Floating, centered, bottom-7
+───────────────────────────────────────────── */
+function GuestPillNav({
   location,
   isMobileMenuOpen,
   setIsMobileMenuOpen,
-  wishlistCount,
   totalItems,
-  isLoggedIn,
 }: {
   location: string;
   isMobileMenuOpen: boolean;
   setIsMobileMenuOpen: (v: boolean) => void;
-  wishlistCount: number;
   totalItems: number;
-  isLoggedIn: boolean;
 }) {
   const [pressed, setPressed] = useState<string | null>(null);
+  const press = (id: string) => { setPressed(id); setTimeout(() => setPressed(null), 150); };
 
-  const press = (id: string) => {
-    setPressed(id);
-    setTimeout(() => setPressed(null), 150);
-  };
-
-  type NavEntry = {
-    id: string;
-    href: string | null;
-    label: string;
-    icon: (active: boolean) => React.ReactNode;
-    badge?: number;
-  };
-
-  const baseItems: NavEntry[] = [
-    {
-      id: "home", href: "/", label: "Home",
-      icon: (a) => (
-        <svg width="19" height="19" viewBox="0 0 24 24" fill={a ? "#0d1b3e" : "none"}
-          stroke={a ? "#0d1b3e" : "rgba(255,255,255,0.65)"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M3 9.5L12 3l9 6.5V20a1 1 0 01-1 1H4a1 1 0 01-1-1V9.5z"/>
-          <path d="M9 21V12h6v9" stroke={a ? "#0d1b3e" : "rgba(255,255,255,0.65)"}/>
-        </svg>
-      ),
-    },
-    {
-      id: "shop", href: "/shop", label: "Shop",
-      icon: (a) => (
-        <svg width="19" height="19" viewBox="0 0 24 24" fill="none"
-          stroke={a ? "#0d1b3e" : "rgba(255,255,255,0.65)"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/>
-          <path d="M1 1h4l2.68 13.39a2 2 0 002 1.61h9.72a2 2 0 001.95-1.57L23 6H6"/>
-        </svg>
-      ),
-    },
-    {
-      id: "wishlist", href: "/wishlist", label: "Wishlist",
-      icon: (a) => (
-        <svg width="19" height="19" viewBox="0 0 24 24" fill="none"
-          stroke={a ? "#0d1b3e" : "rgba(255,255,255,0.65)"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 000-7.78z"/>
-        </svg>
-      ),
-    },
-  ];
-
-  const ordersItem: NavEntry = {
-    id: "orders", href: "/my-orders", label: "My Orders",
-    icon: (a) => (
-      <svg width="19" height="19" viewBox="0 0 24 24" fill="none"
-        stroke={a ? "#0d1b3e" : "rgba(255,255,255,0.65)"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M16.5 9.4l-9-5.19M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/>
-        <polyline points="3.29 7 12 12 20.71 7"/><line x1="12" y1="22" x2="12" y2="12"/>
-      </svg>
-    ),
-  };
-
-  const journalItem: NavEntry = {
-    id: "journal", href: "/blog", label: "Journal",
-    icon: (a) => (
-      <svg width="19" height="19" viewBox="0 0 24 24" fill="none"
-        stroke={a ? "#0d1b3e" : "rgba(255,255,255,0.65)"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M2 3h6a4 4 0 014 4v14a3 3 0 00-3-3H2z"/><path d="M22 3h-6a4 4 0 00-4 4v14a3 3 0 013-3h7z"/>
-      </svg>
-    ),
-  };
-
-  const menuItem: NavEntry = {
-    id: "menu", href: null, label: "Menu",
-    icon: (a) => (
-      <svg width="19" height="19" viewBox="0 0 24 24" fill="none"
-        stroke={a ? "#0d1b3e" : "rgba(255,255,255,0.65)"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <line x1="3" y1="6" x2="21" y2="6"/>
-        <line x1="3" y1="12" x2="21" y2="12"/>
-        <line x1="3" y1="18" x2="21" y2="18"/>
-      </svg>
-    ),
-  };
-
-  /* When logged in: show My Orders in the pill; always keep Journal + Menu */
-  const navItems: NavEntry[] = isLoggedIn
-    ? [...baseItems, ordersItem, journalItem, menuItem]
-    : [...baseItems, journalItem, menuItem];
+  const isHomeActive = location === "/";
+  const isMenuActive = isMobileMenuOpen;
 
   return (
     <div className="fixed bottom-7 left-0 right-0 flex justify-center md:hidden" style={{ zIndex: 60 }}>
@@ -189,72 +109,50 @@ function FloatingPillNav({
         border: "1px solid rgba(255,255,255,0.18)",
         boxShadow: "0 8px 32px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.12)",
       }}>
-        {navItems.map(({ id, href, label, icon }) => {
-          const isActive = href ? location === href : isMobileMenuOpen;
-          const isPressed = pressed === id;
 
-          const btnStyle: React.CSSProperties = {
-            position: "relative",
-            display: "flex",
-            alignItems: "center",
-            padding: isActive ? "10px 16px" : "10px 11px",
-            borderRadius: "999px",
-            background: isActive ? "rgba(255,255,255,0.95)" : "transparent",
-            transition: "all 0.25s cubic-bezier(0.34,1.56,0.64,1)",
-            transform: isPressed ? "scale(0.88)" : "scale(1)",
-            border: "none",
-            cursor: "pointer",
-          };
+        {/* Home */}
+        <Link href="/" onClick={() => press("home")} style={{
+          position: "relative", display: "flex", alignItems: "center",
+          padding: isHomeActive ? "10px 18px" : "10px 14px",
+          borderRadius: "999px",
+          background: isHomeActive ? "rgba(255,255,255,0.95)" : "transparent",
+          transition: "all 0.25s cubic-bezier(0.34,1.56,0.64,1)",
+          transform: pressed === "home" ? "scale(0.88)" : "scale(1)",
+        }}>
+          <svg width="19" height="19" viewBox="0 0 24 24" fill={isHomeActive ? "#0d1b3e" : "none"}
+            stroke={isHomeActive ? "#0d1b3e" : "rgba(255,255,255,0.65)"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M3 9.5L12 3l9 6.5V20a1 1 0 01-1 1H4a1 1 0 01-1-1V9.5z"/>
+            <path d="M9 21V12h6v9" stroke={isHomeActive ? "#0d1b3e" : "rgba(255,255,255,0.65)"}/>
+          </svg>
+          {isHomeActive && <span style={{ fontSize: 12, fontWeight: 600, color: "#0d1b3e", marginLeft: 6, whiteSpace: "nowrap" }}>Home</span>}
+        </Link>
 
-          const inner = (
-            <>
-              {icon(isActive)}
-              {isActive && (
-                <span style={{ fontSize: 12, fontWeight: 600, color: "#0d1b3e", whiteSpace: "nowrap", marginLeft: 6 }}>
-                  {label}
-                </span>
-              )}
-              {id === "wishlist" && !isActive && wishlistCount > 0 && (
-                <span style={{
-                  position: "absolute", top: 6, right: 6,
-                  width: 14, height: 14, borderRadius: "50%",
-                  background: "#ef4444", color: "#fff",
-                  fontSize: 9, fontWeight: 700,
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                }}>{wishlistCount > 9 ? "9+" : wishlistCount}</span>
-              )}
-            </>
-          );
+        {/* Menu */}
+        <button onClick={() => { setIsMobileMenuOpen(!isMobileMenuOpen); press("menu"); }} style={{
+          position: "relative", display: "flex", alignItems: "center",
+          padding: isMenuActive ? "10px 18px" : "10px 14px",
+          borderRadius: "999px",
+          background: isMenuActive ? "rgba(255,255,255,0.95)" : "transparent",
+          transition: "all 0.25s cubic-bezier(0.34,1.56,0.64,1)",
+          transform: pressed === "menu" ? "scale(0.88)" : "scale(1)",
+          border: "none", cursor: "pointer",
+        }}>
+          <svg width="19" height="19" viewBox="0 0 24 24" fill="none"
+            stroke={isMenuActive ? "#0d1b3e" : "rgba(255,255,255,0.65)"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
+          </svg>
+          {isMenuActive && <span style={{ fontSize: 12, fontWeight: 600, color: "#0d1b3e", marginLeft: 6, whiteSpace: "nowrap" }}>Menu</span>}
+        </button>
 
-          if (href) {
-            return (
-              <Link key={id} href={href} onClick={() => press(id)} style={btnStyle as React.CSSProperties}>
-                {inner}
-              </Link>
-            );
-          }
-          return (
-            <button key={id} onClick={() => { setIsMobileMenuOpen(!isMobileMenuOpen); press(id); }} style={btnStyle}>
-              {inner}
-            </button>
-          );
-        })}
-
-        {/* Cart — separate white circle */}
-        <Link
-          href="/cart"
-          onClick={() => press("cart")}
-          style={{
-            position: "relative",
-            width: 44, height: 44,
-            borderRadius: "50%",
-            background: "rgba(255,255,255,0.92)",
-            display: "flex", alignItems: "center", justifyContent: "center",
-            marginLeft: 4, flexShrink: 0,
-            transition: "transform 0.15s ease",
-            transform: pressed === "cart" ? "scale(0.88)" : "scale(1)",
-          }}
-        >
+        {/* Cart circle */}
+        <Link href="/cart" onClick={() => press("cart")} style={{
+          position: "relative", width: 44, height: 44, borderRadius: "50%",
+          background: "rgba(255,255,255,0.92)",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          marginLeft: 4, flexShrink: 0,
+          transition: "transform 0.15s ease",
+          transform: pressed === "cart" ? "scale(0.88)" : "scale(1)",
+        }}>
           <ShoppingBag style={{ width: 19, height: 19, color: "#0d1b3e" }} />
           {totalItems > 0 && (
             <span style={{
@@ -266,6 +164,134 @@ function FloatingPillNav({
             }}>{totalItems > 9 ? "9+" : totalItems}</span>
           )}
         </Link>
+      </div>
+    </div>
+  );
+}
+
+/* ─────────────────────────────────────────────
+   LOGGED-IN tab bar — sits flush at bottom-0
+   Full width, solid glass, no pill shape
+   Items: Home, Shop, Cart, My Orders, Menu
+───────────────────────────────────────────── */
+function AuthBottomBar({
+  location,
+  isMobileMenuOpen,
+  setIsMobileMenuOpen,
+  totalItems,
+}: {
+  location: string;
+  isMobileMenuOpen: boolean;
+  setIsMobileMenuOpen: (v: boolean) => void;
+  totalItems: number;
+}) {
+  const tabs = [
+    {
+      id: "home", href: "/", label: "Home",
+      icon: (active: boolean) => (
+        <svg width="22" height="22" viewBox="0 0 24 24" fill={active ? "rgba(125,211,252,0.9)" : "none"}
+          stroke={active ? "rgb(125,211,252)" : "rgba(255,255,255,0.45)"} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M3 9.5L12 3l9 6.5V20a1 1 0 01-1 1H4a1 1 0 01-1-1V9.5z"/>
+          <path d="M9 21V12h6v9" stroke={active ? "rgb(125,211,252)" : "rgba(255,255,255,0.45)"}/>
+        </svg>
+      ),
+    },
+    {
+      id: "shop", href: "/shop", label: "Shop",
+      icon: (active: boolean) => (
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none"
+          stroke={active ? "rgb(125,211,252)" : "rgba(255,255,255,0.45)"} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+          <circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/>
+          <path d="M1 1h4l2.68 13.39a2 2 0 002 1.61h9.72a2 2 0 001.95-1.57L23 6H6"/>
+        </svg>
+      ),
+    },
+    {
+      id: "cart", href: "/cart", label: "Cart",
+      icon: (active: boolean) => (
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none"
+          stroke={active ? "rgb(125,211,252)" : "rgba(255,255,255,0.45)"} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/>
+          <path d="M16 10a4 4 0 01-8 0"/>
+        </svg>
+      ),
+    },
+    {
+      id: "orders", href: "/my-orders", label: "My Orders",
+      icon: (active: boolean) => (
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none"
+          stroke={active ? "rgb(125,211,252)" : "rgba(255,255,255,0.45)"} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M16.5 9.4l-9-5.19M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/>
+          <polyline points="3.29 7 12 12 20.71 7"/><line x1="12" y1="22" x2="12" y2="12"/>
+        </svg>
+      ),
+    },
+    {
+      id: "menu", href: null as string | null, label: "Menu",
+      icon: (active: boolean) => (
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none"
+          stroke={active ? "rgb(125,211,252)" : "rgba(255,255,255,0.45)"} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+          <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
+        </svg>
+      ),
+    },
+  ];
+
+  return (
+    <div
+      className="fixed bottom-0 left-0 right-0 md:hidden"
+      style={{
+        zIndex: 60,
+        background: "rgba(8,15,42,0.92)",
+        backdropFilter: "blur(20px)",
+        WebkitBackdropFilter: "blur(20px)",
+        borderTop: "1px solid rgba(255,255,255,0.10)",
+        paddingBottom: "env(safe-area-inset-bottom, 0px)",
+      }}
+    >
+      <div className="flex items-stretch justify-around">
+        {tabs.map(({ id, href, label, icon }) => {
+          const isActive = href ? location === href : isMobileMenuOpen;
+
+          const inner = (
+            <div className="flex flex-col items-center gap-1 pt-2.5 pb-2 min-w-[56px]">
+              <div className="relative">
+                {icon(isActive)}
+                {id === "cart" && totalItems > 0 && (
+                  <span style={{
+                    position: "absolute", top: -4, right: -6,
+                    minWidth: 16, height: 16, borderRadius: "9999px",
+                    background: "#3b82f6", color: "#fff",
+                    fontSize: 9, fontWeight: 700, padding: "0 3px",
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                  }}>{totalItems > 9 ? "9+" : totalItems}</span>
+                )}
+              </div>
+              <span style={{
+                fontSize: 10, fontWeight: 500, letterSpacing: "0.02em",
+                color: isActive ? "rgb(125,211,252)" : "rgba(255,255,255,0.4)",
+                lineHeight: 1,
+              }}>{label}</span>
+              {isActive && (
+                <div style={{
+                  width: 20, height: 2, borderRadius: 1,
+                  background: "rgb(125,211,252)",
+                  marginTop: 1,
+                }} />
+              )}
+            </div>
+          );
+
+          if (href) {
+            return <Link key={id} href={href} style={{ flex: 1, display: "flex", justifyContent: "center" }}>{inner}</Link>;
+          }
+          return (
+            <button key={id} onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+              style={{ flex: 1, display: "flex", justifyContent: "center", background: "none", border: "none", cursor: "pointer" }}>
+              {inner}
+            </button>
+          );
+        })}
       </div>
     </div>
   );
@@ -326,10 +352,13 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
   const showBanner = settings.bannerEnabled && !bannerDismissed;
   const bannerMinHeight = hasMedia ? 52 : 40;
 
+  /* Mobile bottom padding: tab bar (logged in) = ~64px; pill (guest) = ~96px */
+  const mobilePb = user ? "pb-20 md:pb-0" : "pb-28 md:pb-0";
+
   return (
     <div className="min-h-screen flex flex-col relative">
 
-      {/* Floating particles */}
+      {/* Particles */}
       <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
         {PARTICLES.map(p => (
           <div key={p.id} className="particle" style={{
@@ -368,13 +397,14 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
               </div>
             )}
           </div>
-          <button onClick={() => setBannerDismissed(true)} className="absolute right-3 top-3 z-20 text-white/70 hover:text-white transition-colors p-1.5 rounded-full hover:bg-white/20" aria-label="Dismiss banner">
+          <button onClick={() => setBannerDismissed(true)}
+            className="absolute right-3 top-3 z-20 text-white/70 hover:text-white transition-colors p-1.5 rounded-full hover:bg-white/20" aria-label="Dismiss banner">
             <X className="w-4 h-4" />
           </button>
         </div>
       )}
 
-      {/* ── Desktop header only ── */}
+      {/* Desktop header only */}
       <header className="hidden md:block sticky top-0 z-50 glass-panel-heavy border-b border-white/10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center h-20 gap-6">
@@ -395,11 +425,13 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
             </nav>
 
             <div className="flex items-center gap-2 ml-auto">
-              <select value={currency} onChange={(e) => setCurrency(e.target.value as Currency)} className="text-xs font-medium text-sky-300/70 bg-transparent border-0 focus:outline-none cursor-pointer hover:text-sky-100 pr-1">
+              <select value={currency} onChange={(e) => setCurrency(e.target.value as Currency)}
+                className="text-xs font-medium text-sky-300/70 bg-transparent border-0 focus:outline-none cursor-pointer hover:text-sky-100 pr-1">
                 {currencies.map((c) => <option key={c} value={c} className="bg-slate-900">{c}</option>)}
               </select>
 
-              <button onClick={toggleTheme} title={theme === "gold" ? "Switch to Blue theme" : "Switch to Gold theme"}
+              <button onClick={toggleTheme}
+                title={theme === "gold" ? "Switch to Blue theme" : "Switch to Gold theme"}
                 className="flex items-center gap-1.5 text-[11px] font-medium px-2.5 py-1 rounded-full transition-all duration-300 border"
                 style={theme === "gold"
                   ? { background: "rgba(251,191,36,0.12)", borderColor: "rgba(251,191,36,0.3)", color: "rgb(251,191,36)" }
@@ -442,7 +474,7 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
         </div>
       </header>
 
-      {/* ── Mobile menu overlay — triggered by pill Menu button ── */}
+      {/* Mobile menu overlay (both guest and auth) */}
       {isMobileMenuOpen && (
         <div className="fixed inset-0 z-50 md:hidden" onClick={() => setIsMobileMenuOpen(false)}>
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
@@ -470,7 +502,8 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
 
               <div className="px-3 py-2 flex items-center gap-2 border-t border-white/10 mt-2 pt-3">
                 <span className="text-xs text-sky-300/60 uppercase tracking-wide">Currency:</span>
-                <select value={currency} onChange={(e) => setCurrency(e.target.value as Currency)} className="text-sm text-sky-100 bg-transparent border-0 focus:outline-none">
+                <select value={currency} onChange={(e) => setCurrency(e.target.value as Currency)}
+                  className="text-sm text-sky-100 bg-transparent border-0 focus:outline-none">
                   {currencies.map((c) => <option key={c} value={c} className="bg-slate-900">{c}</option>)}
                 </select>
               </div>
@@ -516,9 +549,9 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
         </div>
       )}
 
-      <main className="flex-1 w-full relative z-10 pb-28 md:pb-0">{children}</main>
+      <main className={`flex-1 w-full relative z-10 ${mobilePb}`}>{children}</main>
 
-      <footer className="glass-panel mt-auto border-t border-white/10 py-10 relative z-10 pb-28 md:pb-10">
+      <footer className={`glass-panel mt-auto border-t border-white/10 py-10 relative z-10 ${user ? "pb-20 md:pb-10" : "pb-28 md:pb-10"}`}>
         <div className="max-w-7xl mx-auto px-4">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-8 text-sm">
             <div>
@@ -554,30 +587,36 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
         </div>
       </footer>
 
-      {/* Floating pill nav — mobile only */}
-      <FloatingPillNav
-        location={location}
-        isMobileMenuOpen={isMobileMenuOpen}
-        setIsMobileMenuOpen={setIsMobileMenuOpen}
-        wishlistCount={wishlistCount}
-        totalItems={totalItems}
-        isLoggedIn={!!user}
-      />
+      {/* Guest: floating pill (3 items) */}
+      {!user && (
+        <GuestPillNav
+          location={location}
+          isMobileMenuOpen={isMobileMenuOpen}
+          setIsMobileMenuOpen={setIsMobileMenuOpen}
+          totalItems={totalItems}
+        />
+      )}
 
-      {/* WhatsApp FAB — glass style on mobile, original on desktop */}
-      {whatsappUrl && (
+      {/* Logged-in: solid bottom tab bar */}
+      {user && (
+        <AuthBottomBar
+          location={location}
+          isMobileMenuOpen={isMobileMenuOpen}
+          setIsMobileMenuOpen={setIsMobileMenuOpen}
+          totalItems={totalItems}
+        />
+      )}
+
+      {/* WhatsApp FAB — only shown when logged in */}
+      {user && whatsappUrl && (
         <a
           href={whatsappUrl}
           target="_blank"
           rel="noopener noreferrer"
           title="Chat on WhatsApp"
           className="fixed right-5 z-50 flex items-center justify-center transition-all hover:scale-110 bottom-24 md:bottom-6"
-          style={{
-            width: 52, height: 52,
-            borderRadius: "50%",
-          }}
+          style={{ width: 52, height: 52, borderRadius: "50%" }}
         >
-          {/* Mobile: glass style */}
           <span className="absolute inset-0 rounded-full md:hidden" style={{
             background: "rgba(255,255,255,0.12)",
             backdropFilter: "blur(16px)",
@@ -585,8 +624,7 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
             border: "1px solid rgba(255,255,255,0.22)",
             boxShadow: "0 4px 20px rgba(0,0,0,0.35)",
           }} />
-          {/* Desktop: green */}
-          <span className="absolute inset-0 rounded-full hidden md:block bg-green-500 hover:bg-green-400 shadow-lg shadow-green-500/30" />
+          <span className="absolute inset-0 rounded-full hidden md:block bg-green-500 shadow-lg shadow-green-500/30" />
           <MessageCircle className="relative z-10 w-6 h-6 text-white fill-white" />
         </a>
       )}
