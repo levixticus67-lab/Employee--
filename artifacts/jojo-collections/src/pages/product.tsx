@@ -259,12 +259,15 @@ export default function ProductDetail() {
   };
 
   const handleShare = async () => {
-    const url = window.location.href;
+    const apiBase = (import.meta.env.VITE_API_URL as string | undefined) ?? "";
+    const shareUrl = apiBase
+      ? `${apiBase}/api/share/product/${productId}`
+      : window.location.href;
     const text = `Check out ${product?.name} on ${storeName}!`;
     if (navigator.share) {
-      try { await navigator.share({ title: product?.name, text, url }); return; } catch {}
+      try { await navigator.share({ title: product?.name, text, url: shareUrl }); return; } catch {}
     }
-    await navigator.clipboard.writeText(url);
+    await navigator.clipboard.writeText(shareUrl);
     toast.success("Link copied to clipboard");
   };
 
