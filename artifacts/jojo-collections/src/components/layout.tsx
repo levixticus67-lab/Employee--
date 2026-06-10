@@ -250,10 +250,10 @@ function AuthBottomBar({
       className="fixed bottom-0 left-0 right-0 md:hidden"
       style={{
         zIndex: 60,
-        background: "rgba(8,15,42,0.92)",
+        background: theme === "gold" ? "rgba(35,18,3,0.94)" : "rgba(8,15,42,0.92)",
         backdropFilter: "blur(20px)",
         WebkitBackdropFilter: "blur(20px)",
-        borderTop: "1px solid rgba(255,255,255,0.10)",
+        borderTop: theme === "gold" ? "1px solid rgba(251,191,36,0.18)" : "1px solid rgba(255,255,255,0.10)",
         paddingBottom: "env(safe-area-inset-bottom, 0px)",
       }}
     >
