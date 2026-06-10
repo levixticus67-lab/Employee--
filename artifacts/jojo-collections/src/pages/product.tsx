@@ -259,22 +259,12 @@ export default function ProductDetail() {
   };
 
   const handleShare = async () => {
-    const apiBase = (import.meta.env.VITE_API_URL as string | undefined) ?? "";
-    let shareUrl: string;
-    if (apiBase && p) {
-      const params = new URLSearchParams();
-      if (p.imageUrl) params.set("img", p.imageUrl);
-      params.set("title", p.name);
-      if (p.description) params.set("desc", p.description.slice(0, 200));
-      shareUrl = `${apiBase}/api/share/product/${productId}?${params.toString()}`;
-    } else {
-      shareUrl = window.location.href;
-    }
+    const url = window.location.href;
     const text = `Check out ${product?.name} on ${storeName}!`;
     if (navigator.share) {
-      try { await navigator.share({ title: product?.name, text, url: shareUrl }); return; } catch {}
+      try { await navigator.share({ title: product?.name, text, url }); return; } catch {}
     }
-    await navigator.clipboard.writeText(shareUrl);
+    await navigator.clipboard.writeText(url);
     toast.success("Link copied to clipboard");
   };
 
