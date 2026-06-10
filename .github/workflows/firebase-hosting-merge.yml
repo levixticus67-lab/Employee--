@@ -43,11 +43,9 @@ jobs:
 
       - name: Deploy Firebase Functions
         env:
-          GOOGLE_APPLICATION_CREDENTIALS_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
         run: |
-          echo "$GOOGLE_APPLICATION_CREDENTIALS_JSON" > /tmp/sa.json
-          GOOGLE_APPLICATION_CREDENTIALS=/tmp/sa.json npx firebase-tools@latest deploy --only functions --project jojo-collection --force
-          rm /tmp/sa.json
+          npx firebase-tools@latest deploy --only functions --project jojo-collection --force --token "$FIREBASE_TOKEN"
 
       - uses: FirebaseExtended/action-hosting-deploy@v0
         with:
