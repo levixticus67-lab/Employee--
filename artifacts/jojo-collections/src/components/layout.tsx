@@ -78,19 +78,21 @@ const PARTICLES = [
   { id: 25, size: 3, left: 90, dur: 11,   delay: 2.8  },
 ];
 
-/* ── Floating pill bottom nav (mobile only) ── */
+/* ── Floating pill nav — mobile only ── */
 function FloatingPillNav({
   location,
   isMobileMenuOpen,
   setIsMobileMenuOpen,
   wishlistCount,
   totalItems,
+  isLoggedIn,
 }: {
   location: string;
   isMobileMenuOpen: boolean;
   setIsMobileMenuOpen: (v: boolean) => void;
   wishlistCount: number;
   totalItems: number;
+  isLoggedIn: boolean;
 }) {
   const [pressed, setPressed] = useState<string | null>(null);
 
@@ -99,127 +101,97 @@ function FloatingPillNav({
     setTimeout(() => setPressed(null), 150);
   };
 
-  const navItems = [
+  type NavEntry = {
+    id: string;
+    href: string | null;
+    label: string;
+    icon: (active: boolean) => React.ReactNode;
+    badge?: number;
+  };
+
+  const baseItems: NavEntry[] = [
     {
-      id: "home",
-      href: "/",
-      label: "Home",
-      icon: (active: boolean) => (
-        <svg width="19" height="19" viewBox="0 0 24 24" fill={active ? "#0d1b3e" : "none"}
-          stroke={active ? "#0d1b3e" : "rgba(255,255,255,0.65)"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      id: "home", href: "/", label: "Home",
+      icon: (a) => (
+        <svg width="19" height="19" viewBox="0 0 24 24" fill={a ? "#0d1b3e" : "none"}
+          stroke={a ? "#0d1b3e" : "rgba(255,255,255,0.65)"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <path d="M3 9.5L12 3l9 6.5V20a1 1 0 01-1 1H4a1 1 0 01-1-1V9.5z"/>
-          <path d="M9 21V12h6v9" stroke={active ? "#0d1b3e" : "rgba(255,255,255,0.65)"}/>
+          <path d="M9 21V12h6v9" stroke={a ? "#0d1b3e" : "rgba(255,255,255,0.65)"}/>
         </svg>
       ),
     },
     {
-      id: "shop",
-      href: "/shop",
-      label: "Shop",
-      icon: (active: boolean) => (
+      id: "shop", href: "/shop", label: "Shop",
+      icon: (a) => (
         <svg width="19" height="19" viewBox="0 0 24 24" fill="none"
-          stroke={active ? "#0d1b3e" : "rgba(255,255,255,0.65)"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          stroke={a ? "#0d1b3e" : "rgba(255,255,255,0.65)"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/>
           <path d="M1 1h4l2.68 13.39a2 2 0 002 1.61h9.72a2 2 0 001.95-1.57L23 6H6"/>
         </svg>
       ),
     },
     {
-      id: "wishlist",
-      href: "/wishlist",
-      label: "Wishlist",
-      icon: (active: boolean) => (
+      id: "wishlist", href: "/wishlist", label: "Wishlist",
+      icon: (a) => (
         <svg width="19" height="19" viewBox="0 0 24 24" fill="none"
-          stroke={active ? "#0d1b3e" : "rgba(255,255,255,0.65)"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          stroke={a ? "#0d1b3e" : "rgba(255,255,255,0.65)"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 000-7.78z"/>
         </svg>
       ),
     },
-    {
-      id: "journal",
-      href: "/blog",
-      label: "Journal",
-      icon: (active: boolean) => (
-        <svg width="19" height="19" viewBox="0 0 24 24" fill="none"
-          stroke={active ? "#0d1b3e" : "rgba(255,255,255,0.65)"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M2 3h6a4 4 0 014 4v14a3 3 0 00-3-3H2z"/><path d="M22 3h-6a4 4 0 00-4 4v14a3 3 0 013-3h7z"/>
-        </svg>
-      ),
-    },
-    {
-      id: "menu",
-      href: null,
-      label: "Menu",
-      icon: (active: boolean) => (
-        <svg width="19" height="19" viewBox="0 0 24 24" fill="none"
-          stroke={active ? "#0d1b3e" : "rgba(255,255,255,0.65)"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <line x1="3" y1="6" x2="21" y2="6"/>
-          <line x1="3" y1="12" x2="21" y2="12"/>
-          <line x1="3" y1="18" x2="21" y2="18"/>
-        </svg>
-      ),
-    },
-  ] as const;
+  ];
+
+  const ordersItem: NavEntry = {
+    id: "orders", href: "/my-orders", label: "My Orders",
+    icon: (a) => (
+      <svg width="19" height="19" viewBox="0 0 24 24" fill="none"
+        stroke={a ? "#0d1b3e" : "rgba(255,255,255,0.65)"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M16.5 9.4l-9-5.19M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/>
+        <polyline points="3.29 7 12 12 20.71 7"/><line x1="12" y1="22" x2="12" y2="12"/>
+      </svg>
+    ),
+  };
+
+  const journalItem: NavEntry = {
+    id: "journal", href: "/blog", label: "Journal",
+    icon: (a) => (
+      <svg width="19" height="19" viewBox="0 0 24 24" fill="none"
+        stroke={a ? "#0d1b3e" : "rgba(255,255,255,0.65)"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M2 3h6a4 4 0 014 4v14a3 3 0 00-3-3H2z"/><path d="M22 3h-6a4 4 0 00-4 4v14a3 3 0 013-3h7z"/>
+      </svg>
+    ),
+  };
+
+  const menuItem: NavEntry = {
+    id: "menu", href: null, label: "Menu",
+    icon: (a) => (
+      <svg width="19" height="19" viewBox="0 0 24 24" fill="none"
+        stroke={a ? "#0d1b3e" : "rgba(255,255,255,0.65)"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <line x1="3" y1="6" x2="21" y2="6"/>
+        <line x1="3" y1="12" x2="21" y2="12"/>
+        <line x1="3" y1="18" x2="21" y2="18"/>
+      </svg>
+    ),
+  };
+
+  /* When logged in: show My Orders in the pill; always keep Journal + Menu */
+  const navItems: NavEntry[] = isLoggedIn
+    ? [...baseItems, ordersItem, journalItem, menuItem]
+    : [...baseItems, journalItem, menuItem];
 
   return (
-    <div
-      className="fixed bottom-7 left-0 right-0 flex justify-center md:hidden"
-      style={{ zIndex: 60 }}
-    >
-      <div
-        className="flex items-center gap-1 px-2 py-2"
-        style={{
-          background: "rgba(255,255,255,0.10)",
-          backdropFilter: "blur(24px)",
-          WebkitBackdropFilter: "blur(24px)",
-          borderRadius: "999px",
-          border: "1px solid rgba(255,255,255,0.18)",
-          boxShadow: "0 8px 32px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.12)",
-        }}
-      >
+    <div className="fixed bottom-7 left-0 right-0 flex justify-center md:hidden" style={{ zIndex: 60 }}>
+      <div className="flex items-center gap-1 px-2 py-2" style={{
+        background: "rgba(255,255,255,0.10)",
+        backdropFilter: "blur(24px)",
+        WebkitBackdropFilter: "blur(24px)",
+        borderRadius: "999px",
+        border: "1px solid rgba(255,255,255,0.18)",
+        boxShadow: "0 8px 32px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.12)",
+      }}>
         {navItems.map(({ id, href, label, icon }) => {
           const isActive = href ? location === href : isMobileMenuOpen;
           const isPressed = pressed === id;
-
-          const inner = (
-            <>
-              {icon(isActive)}
-              {isActive && (
-                <span
-                  style={{
-                    fontSize: 12,
-                    fontWeight: 600,
-                    color: "#0d1b3e",
-                    whiteSpace: "nowrap",
-                    marginLeft: 6,
-                  }}
-                >
-                  {label}
-                </span>
-              )}
-              {id === "wishlist" && !isActive && wishlistCount > 0 && (
-                <span
-                  style={{
-                    position: "absolute",
-                    top: 6,
-                    right: 6,
-                    width: 14,
-                    height: 14,
-                    borderRadius: "50%",
-                    background: "#ef4444",
-                    color: "#fff",
-                    fontSize: 9,
-                    fontWeight: 700,
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                  }}
-                >
-                  {wishlistCount > 9 ? "9+" : wishlistCount}
-                </span>
-              )}
-            </>
-          );
 
           const btnStyle: React.CSSProperties = {
             position: "relative",
@@ -234,20 +206,35 @@ function FloatingPillNav({
             cursor: "pointer",
           };
 
+          const inner = (
+            <>
+              {icon(isActive)}
+              {isActive && (
+                <span style={{ fontSize: 12, fontWeight: 600, color: "#0d1b3e", whiteSpace: "nowrap", marginLeft: 6 }}>
+                  {label}
+                </span>
+              )}
+              {id === "wishlist" && !isActive && wishlistCount > 0 && (
+                <span style={{
+                  position: "absolute", top: 6, right: 6,
+                  width: 14, height: 14, borderRadius: "50%",
+                  background: "#ef4444", color: "#fff",
+                  fontSize: 9, fontWeight: 700,
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                }}>{wishlistCount > 9 ? "9+" : wishlistCount}</span>
+              )}
+            </>
+          );
+
           if (href) {
             return (
-              <Link key={id} href={href} onClick={() => press(id)} style={btnStyle}>
+              <Link key={id} href={href} onClick={() => press(id)} style={btnStyle as React.CSSProperties}>
                 {inner}
               </Link>
             );
           }
-
           return (
-            <button
-              key={id}
-              onClick={() => { setIsMobileMenuOpen(!isMobileMenuOpen); press(id); }}
-              style={btnStyle}
-            >
+            <button key={id} onClick={() => { setIsMobileMenuOpen(!isMobileMenuOpen); press(id); }} style={btnStyle}>
               {inner}
             </button>
           );
@@ -259,40 +246,24 @@ function FloatingPillNav({
           onClick={() => press("cart")}
           style={{
             position: "relative",
-            width: 44,
-            height: 44,
+            width: 44, height: 44,
             borderRadius: "50%",
             background: "rgba(255,255,255,0.92)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            marginLeft: 4,
-            flexShrink: 0,
+            display: "flex", alignItems: "center", justifyContent: "center",
+            marginLeft: 4, flexShrink: 0,
             transition: "transform 0.15s ease",
             transform: pressed === "cart" ? "scale(0.88)" : "scale(1)",
           }}
         >
           <ShoppingBag style={{ width: 19, height: 19, color: "#0d1b3e" }} />
           {totalItems > 0 && (
-            <span
-              style={{
-                position: "absolute",
-                top: 0,
-                right: -2,
-                width: 16,
-                height: 16,
-                borderRadius: "50%",
-                background: "#3b82f6",
-                color: "#fff",
-                fontSize: 9,
-                fontWeight: 700,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
-              {totalItems > 9 ? "9+" : totalItems}
-            </span>
+            <span style={{
+              position: "absolute", top: 0, right: -2,
+              width: 16, height: 16, borderRadius: "50%",
+              background: "#3b82f6", color: "#fff",
+              fontSize: 9, fontWeight: 700,
+              display: "flex", alignItems: "center", justifyContent: "center",
+            }}>{totalItems > 9 ? "9+" : totalItems}</span>
           )}
         </Link>
       </div>
@@ -358,30 +329,20 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen flex flex-col relative">
 
-      {/* Floating blue particle background */}
+      {/* Floating particles */}
       <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
         {PARTICLES.map(p => (
-          <div
-            key={p.id}
-            className="particle"
-            style={{
-              width: p.size,
-              height: p.size,
-              left: `${p.left}%`,
-              bottom: "-20px",
-              "--dur": `${p.dur}s`,
-              "--delay": `${p.delay}s`,
-            } as React.CSSProperties}
-          />
+          <div key={p.id} className="particle" style={{
+            width: p.size, height: p.size, left: `${p.left}%`, bottom: "-20px",
+            "--dur": `${p.dur}s`, "--delay": `${p.delay}s`,
+          } as React.CSSProperties} />
         ))}
       </div>
 
       {/* Announcement Banner */}
       {showBanner && (
-        <div
-          className="relative w-full overflow-hidden flex-shrink-0 flex items-center justify-center z-10"
-          style={{ minHeight: bannerMinHeight, background: hasMedia ? undefined : settings.bannerBgColor }}
-        >
+        <div className="relative w-full overflow-hidden flex-shrink-0 flex items-center justify-center z-10"
+          style={{ minHeight: bannerMinHeight, background: hasMedia ? undefined : settings.bannerBgColor }}>
           {settings.bannerMediaType === "video" && settings.bannerMediaUrl && (
             <video src={settings.bannerMediaUrl} className="absolute inset-0 w-full h-full object-cover" autoPlay loop muted playsInline />
           )}
@@ -395,12 +356,7 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
             )}
             {settings.bannerCountdownEnabled && countdown && (
               <div className="flex items-center gap-2 mt-1">
-                {[
-                  { v: countdown.d, label: "Days" },
-                  { v: countdown.h, label: "Hrs" },
-                  { v: countdown.m, label: "Min" },
-                  { v: countdown.s, label: "Sec" },
-                ].map(({ v, label }, i) => (
+                {[{ v: countdown.d, label: "Days" }, { v: countdown.h, label: "Hrs" }, { v: countdown.m, label: "Min" }, { v: countdown.s, label: "Sec" }].map(({ v, label }, i) => (
                   <div key={label} className="flex items-center gap-2">
                     <div className="flex flex-col items-center bg-black/30 backdrop-blur-sm rounded-lg px-3 py-1 min-w-[42px]">
                       <span className="text-white font-bold text-lg leading-none tabular-nums">{String(v).padStart(2, "0")}</span>
@@ -418,7 +374,8 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
         </div>
       )}
 
-      <header className="sticky top-0 z-50 glass-panel-heavy border-b border-white/10">
+      {/* ── Desktop header only ── */}
+      <header className="hidden md:block sticky top-0 z-50 glass-panel-heavy border-b border-white/10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center h-20 gap-6">
             <Link href="/" className="flex-shrink-0 flex items-center gap-2.5">
@@ -428,7 +385,7 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
               <span className="text-2xl font-serif text-sky-50 font-bold tracking-widest">{(settings.storeName || "Fume").toUpperCase()}</span>
             </Link>
 
-            <nav className="hidden md:flex items-center gap-5 flex-1">
+            <nav className="flex items-center gap-5 flex-1">
               {navLinks.map((link) => (
                 <Link key={link.href} href={link.href}
                   className={`text-sm font-medium uppercase tracking-wider transition-colors ${location === link.href ? "text-sky-50 font-semibold" : "text-sky-300/60 hover:text-sky-100"}`}>
@@ -437,22 +394,17 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
               ))}
             </nav>
 
-            {/* Desktop right icons */}
-            <div className="hidden md:flex items-center gap-2 ml-auto">
+            <div className="flex items-center gap-2 ml-auto">
               <select value={currency} onChange={(e) => setCurrency(e.target.value as Currency)} className="text-xs font-medium text-sky-300/70 bg-transparent border-0 focus:outline-none cursor-pointer hover:text-sky-100 pr-1">
                 {currencies.map((c) => <option key={c} value={c} className="bg-slate-900">{c}</option>)}
               </select>
 
-              {/* Theme toggle */}
-              <button
-                onClick={toggleTheme}
-                title={theme === "gold" ? "Switch to Blue theme" : "Switch to Gold theme"}
+              <button onClick={toggleTheme} title={theme === "gold" ? "Switch to Blue theme" : "Switch to Gold theme"}
                 className="flex items-center gap-1.5 text-[11px] font-medium px-2.5 py-1 rounded-full transition-all duration-300 border"
                 style={theme === "gold"
                   ? { background: "rgba(251,191,36,0.12)", borderColor: "rgba(251,191,36,0.3)", color: "rgb(251,191,36)" }
                   : { background: "rgba(125,211,252,0.08)", borderColor: "rgba(125,211,252,0.2)", color: "rgb(125,211,252)" }
-                }
-              >
+                }>
                 <span className="w-2 h-2 rounded-full inline-block transition-colors duration-300"
                   style={{ background: theme === "gold" ? "rgb(251,191,36)" : "rgb(125,211,252)" }} />
                 {theme === "gold" ? "Gold" : "Blue"}
@@ -486,67 +438,83 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
                 {totalItems > 0 && <span className="absolute -top-0.5 -right-0.5 flex items-center justify-center w-4 h-4 text-[10px] font-bold text-white bg-blue-500 rounded-full">{totalItems}</span>}
               </Link>
             </div>
-
-            {/* Mobile — logo only; pill nav handles navigation */}
-            <div className="md:hidden flex items-center gap-1 ml-auto">
-              {isMobileMenuOpen && (
-                <button
-                  onClick={() => setIsMobileMenuOpen(false)}
-                  className="p-2 text-sky-200"
-                  aria-label="Close menu"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              )}
-            </div>
           </div>
         </div>
+      </header>
 
-        {/* Mobile dropdown menu */}
-        {isMobileMenuOpen && (
-          <div className="md:hidden absolute w-full z-50 border-t border-white/10 bg-slate-900/95 backdrop-blur-xl shadow-xl">
-            <div className="px-4 pt-2 pb-4 space-y-1">
+      {/* ── Mobile menu overlay — triggered by pill Menu button ── */}
+      {isMobileMenuOpen && (
+        <div className="fixed inset-0 z-50 md:hidden" onClick={() => setIsMobileMenuOpen(false)}>
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+          <div
+            className="absolute top-0 left-0 right-0 border-b border-white/10 shadow-2xl"
+            style={{ background: "rgba(10,18,50,0.97)", backdropFilter: "blur(20px)" }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="px-4 pt-4 pb-5 space-y-1">
+              <div className="flex items-center justify-between mb-4">
+                <span className="text-sky-50 font-bold text-lg tracking-widest" style={{ fontFamily: "Georgia, serif" }}>
+                  {(settings.storeName || "LENZ").toUpperCase()}
+                </span>
+                <button onClick={() => setIsMobileMenuOpen(false)} className="p-2 text-sky-200 hover:text-white transition-colors">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
               {navLinks.map((link) => (
                 <Link key={link.href} href={link.href} onClick={() => setIsMobileMenuOpen(false)}
-                  className={`block px-3 py-2.5 text-sm font-medium rounded-xl uppercase tracking-wider transition-colors ${location === link.href ? "bg-white/10 text-sky-50 font-semibold" : "text-sky-200 hover:bg-white/8"}`}>{link.label}</Link>
+                  className={`block px-3 py-2.5 text-sm font-medium rounded-xl uppercase tracking-wider transition-colors ${location === link.href ? "bg-white/10 text-sky-50 font-semibold" : "text-sky-200 hover:bg-white/8"}`}>
+                  {link.label}
+                </Link>
               ))}
+
               <div className="px-3 py-2 flex items-center gap-2 border-t border-white/10 mt-2 pt-3">
                 <span className="text-xs text-sky-300/60 uppercase tracking-wide">Currency:</span>
                 <select value={currency} onChange={(e) => setCurrency(e.target.value as Currency)} className="text-sm text-sky-100 bg-transparent border-0 focus:outline-none">
                   {currencies.map((c) => <option key={c} value={c} className="bg-slate-900">{c}</option>)}
                 </select>
               </div>
+
               <div className="px-3 py-2 flex items-center gap-2">
                 <span className="text-xs text-sky-300/60 uppercase tracking-wide">Theme:</span>
-                <button
-                  onClick={toggleTheme}
+                <button onClick={toggleTheme}
                   className="flex items-center gap-1.5 text-xs font-medium px-3 py-1 rounded-full border transition-all duration-300"
                   style={theme === "gold"
                     ? { background: "rgba(251,191,36,0.12)", borderColor: "rgba(251,191,36,0.3)", color: "rgb(251,191,36)" }
                     : { background: "rgba(125,211,252,0.08)", borderColor: "rgba(125,211,252,0.2)", color: "rgb(125,211,252)" }
-                  }
-                >
+                  }>
                   <span className="w-2 h-2 rounded-full inline-block"
                     style={{ background: theme === "gold" ? "rgb(251,191,36)" : "rgb(125,211,252)" }} />
                   {theme === "gold" ? "Gold" : "Blue"}
                 </button>
               </div>
+
               {user ? (
                 <>
-                  <div className="px-3 py-2 text-sm text-sky-100 font-medium flex items-center gap-2 border-t border-white/10 mt-1 pt-3"><User className="w-4 h-4" /> {user.name}</div>
-                  <Link href="/my-orders" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center gap-2 px-3 py-2.5 text-sm font-medium text-sky-200 hover:bg-white/8 rounded-xl"><Package className="w-4 h-4" /> My Orders</Link>
-                  <button type="button" onClick={() => { setIsMobileMenuOpen(false); handleLogout(); }} className="flex items-center gap-2 w-full text-left px-3 py-2.5 text-sm font-medium text-red-400 hover:bg-red-500/10 rounded-xl"><LogOut className="w-4 h-4" /> Sign out</button>
+                  <div className="px-3 py-2 text-sm text-sky-100 font-medium flex items-center gap-2 border-t border-white/10 mt-1 pt-3">
+                    <User className="w-4 h-4" /> {user.name}
+                  </div>
+                  <Link href="/my-orders" onClick={() => setIsMobileMenuOpen(false)}
+                    className="flex items-center gap-2 px-3 py-2.5 text-sm font-medium text-sky-200 hover:bg-white/8 rounded-xl">
+                    <Package className="w-4 h-4" /> My Orders
+                  </Link>
+                  <button type="button" onClick={() => { setIsMobileMenuOpen(false); handleLogout(); }}
+                    className="flex items-center gap-2 w-full text-left px-3 py-2.5 text-sm font-medium text-red-400 hover:bg-red-500/10 rounded-xl">
+                    <LogOut className="w-4 h-4" /> Sign out
+                  </button>
                 </>
               ) : (
                 <div className="flex flex-col gap-2 border-t border-white/10 mt-1 pt-3">
-                  <Link href="/login" onClick={() => setIsMobileMenuOpen(false)} className="block px-3 py-2.5 text-sm font-medium text-sky-200 hover:bg-white/8 rounded-xl">Sign In</Link>
-                  <Link href="/signup" onClick={() => setIsMobileMenuOpen(false)} className="block px-3 py-2.5 text-sm font-medium text-white bg-blue-500 hover:bg-blue-400 rounded-xl text-center">Sign Up</Link>
+                  <Link href="/login" onClick={() => setIsMobileMenuOpen(false)}
+                    className="block px-3 py-2.5 text-sm font-medium text-sky-200 hover:bg-white/8 rounded-xl">Sign In</Link>
+                  <Link href="/signup" onClick={() => setIsMobileMenuOpen(false)}
+                    className="block px-3 py-2.5 text-sm font-medium text-white bg-blue-500 hover:bg-blue-400 rounded-xl text-center">Sign Up</Link>
                 </div>
               )}
             </div>
           </div>
-        )}
-      </header>
+        </div>
+      )}
 
       <main className="flex-1 w-full relative z-10 pb-28 md:pb-0">{children}</main>
 
@@ -593,13 +561,33 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
         setIsMobileMenuOpen={setIsMobileMenuOpen}
         wishlistCount={wishlistCount}
         totalItems={totalItems}
+        isLoggedIn={!!user}
       />
 
+      {/* WhatsApp FAB — glass style on mobile, original on desktop */}
       {whatsappUrl && (
-        <a href={whatsappUrl} target="_blank" rel="noopener noreferrer"
-          className="fixed bottom-24 right-6 z-50 bg-green-500 hover:bg-green-400 rounded-full shadow-lg shadow-green-500/30 flex items-center justify-center transition-all hover:scale-110 md:bottom-6"
-          style={{ width: 52, height: 52 }} title="Chat on WhatsApp">
-          <MessageCircle className="w-6 h-6 text-white fill-white" />
+        <a
+          href={whatsappUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          title="Chat on WhatsApp"
+          className="fixed right-5 z-50 flex items-center justify-center transition-all hover:scale-110 bottom-24 md:bottom-6"
+          style={{
+            width: 52, height: 52,
+            borderRadius: "50%",
+          }}
+        >
+          {/* Mobile: glass style */}
+          <span className="absolute inset-0 rounded-full md:hidden" style={{
+            background: "rgba(255,255,255,0.12)",
+            backdropFilter: "blur(16px)",
+            WebkitBackdropFilter: "blur(16px)",
+            border: "1px solid rgba(255,255,255,0.22)",
+            boxShadow: "0 4px 20px rgba(0,0,0,0.35)",
+          }} />
+          {/* Desktop: green */}
+          <span className="absolute inset-0 rounded-full hidden md:block bg-green-500 hover:bg-green-400 shadow-lg shadow-green-500/30" />
+          <MessageCircle className="relative z-10 w-6 h-6 text-white fill-white" />
         </a>
       )}
     </div>
