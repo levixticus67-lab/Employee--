@@ -92,7 +92,9 @@ function GuestPillNav({
   isMobileMenuOpen: boolean;
   setIsMobileMenuOpen: (v: boolean) => void;
   totalItems: number;
+  theme: "blue" | "gold";
 }) {
+  const guestBadge = theme === "gold" ? "#d97706" : "#3b82f6";
   const [pressed, setPressed] = useState<string | null>(null);
   const press = (id: string) => { setPressed(id); setTimeout(() => setPressed(null), 150); };
 
@@ -158,7 +160,7 @@ function GuestPillNav({
             <span style={{
               position: "absolute", top: 0, right: -2,
               width: 16, height: 16, borderRadius: "50%",
-              background: "#3b82f6", color: "#fff",
+              background: guestBadge, color: "#fff",
               fontSize: 9, fontWeight: 700,
               display: "flex", alignItems: "center", justifyContent: "center",
             }}>{totalItems > 9 ? "9+" : totalItems}</span>
@@ -184,15 +186,19 @@ function AuthBottomBar({
   isMobileMenuOpen: boolean;
   setIsMobileMenuOpen: (v: boolean) => void;
   totalItems: number;
+  theme: "blue" | "gold";
 }) {
+  const accentColor = theme === "gold" ? "rgb(251,191,36)" : "rgb(125,211,252)";
+  const accentFill  = theme === "gold" ? "rgba(251,191,36,0.9)" : "rgba(125,211,252,0.9)";
+  const badgeColor  = theme === "gold" ? "#d97706" : "#3b82f6";
   const tabs = [
     {
       id: "home", href: "/", label: "Home",
       icon: (active: boolean) => (
-        <svg width="22" height="22" viewBox="0 0 24 24" fill={active ? "rgba(125,211,252,0.9)" : "none"}
-          stroke={active ? "rgb(125,211,252)" : "rgba(255,255,255,0.45)"} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill={active ? accentFill : "none"}
+          stroke={active ? accentColor : "rgba(255,255,255,0.45)"} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
           <path d="M3 9.5L12 3l9 6.5V20a1 1 0 01-1 1H4a1 1 0 01-1-1V9.5z"/>
-          <path d="M9 21V12h6v9" stroke={active ? "rgb(125,211,252)" : "rgba(255,255,255,0.45)"}/>
+          <path d="M9 21V12h6v9" stroke={active ? accentColor : "rgba(255,255,255,0.45)"}/>
         </svg>
       ),
     },
@@ -200,7 +206,7 @@ function AuthBottomBar({
       id: "shop", href: "/shop", label: "Shop",
       icon: (active: boolean) => (
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none"
-          stroke={active ? "rgb(125,211,252)" : "rgba(255,255,255,0.45)"} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+          stroke={active ? accentColor : "rgba(255,255,255,0.45)"} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
           <circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/>
           <path d="M1 1h4l2.68 13.39a2 2 0 002 1.61h9.72a2 2 0 001.95-1.57L23 6H6"/>
         </svg>
@@ -210,7 +216,7 @@ function AuthBottomBar({
       id: "cart", href: "/cart", label: "Cart",
       icon: (active: boolean) => (
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none"
-          stroke={active ? "rgb(125,211,252)" : "rgba(255,255,255,0.45)"} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+          stroke={active ? accentColor : "rgba(255,255,255,0.45)"} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
           <path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/>
           <path d="M16 10a4 4 0 01-8 0"/>
         </svg>
@@ -220,7 +226,7 @@ function AuthBottomBar({
       id: "orders", href: "/my-orders", label: "My Orders",
       icon: (active: boolean) => (
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none"
-          stroke={active ? "rgb(125,211,252)" : "rgba(255,255,255,0.45)"} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+          stroke={active ? accentColor : "rgba(255,255,255,0.45)"} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
           <path d="M16.5 9.4l-9-5.19M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/>
           <polyline points="3.29 7 12 12 20.71 7"/><line x1="12" y1="22" x2="12" y2="12"/>
         </svg>
@@ -230,7 +236,7 @@ function AuthBottomBar({
       id: "menu", href: null as string | null, label: "Menu",
       icon: (active: boolean) => (
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none"
-          stroke={active ? "rgb(125,211,252)" : "rgba(255,255,255,0.45)"} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+          stroke={active ? accentColor : "rgba(255,255,255,0.45)"} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
           <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
         </svg>
       ),
@@ -261,7 +267,7 @@ function AuthBottomBar({
                   <span style={{
                     position: "absolute", top: -4, right: -6,
                     minWidth: 16, height: 16, borderRadius: "9999px",
-                    background: "#3b82f6", color: "#fff",
+                    background: badgeColor, color: "#fff",
                     fontSize: 9, fontWeight: 700, padding: "0 3px",
                     display: "flex", alignItems: "center", justifyContent: "center",
                   }}>{totalItems > 9 ? "9+" : totalItems}</span>
@@ -269,13 +275,13 @@ function AuthBottomBar({
               </div>
               <span style={{
                 fontSize: 10, fontWeight: 500, letterSpacing: "0.02em",
-                color: isActive ? "rgb(125,211,252)" : "rgba(255,255,255,0.4)",
+                color: isActive ? accentColor : "rgba(255,255,255,0.4)",
                 lineHeight: 1,
               }}>{label}</span>
               {isActive && (
                 <div style={{
                   width: 20, height: 2, borderRadius: 1,
-                  background: "rgb(125,211,252)",
+                  background: accentColor,
                   marginTop: 1,
                 }} />
               )}
@@ -595,6 +601,7 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
           isMobileMenuOpen={isMobileMenuOpen}
           setIsMobileMenuOpen={setIsMobileMenuOpen}
           totalItems={totalItems}
+          theme={theme}
         />
       )}
 
@@ -605,6 +612,7 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
           isMobileMenuOpen={isMobileMenuOpen}
           setIsMobileMenuOpen={setIsMobileMenuOpen}
           totalItems={totalItems}
+          theme={theme}
         />
       )}
 
