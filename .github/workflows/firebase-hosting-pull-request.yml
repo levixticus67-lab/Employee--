@@ -37,7 +37,7 @@ jobs:
         run: pnpm --filter jojo-collections run build
 
       - name: Install Functions dependencies
-        run: cd functions && npm install
+        run: cd functions && npm install --legacy-peer-deps
 
       - name: Build Functions
         run: cd functions && npm run build
