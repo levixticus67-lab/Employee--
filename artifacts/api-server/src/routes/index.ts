@@ -11,12 +11,14 @@ import settingsRouter from "./settings";
 import bundlesRouter from "./bundles";
 import blogRouter from "./blog";
 import receiptsRouter from "./receipts";
+import ogRouter from "./og";
 import { requireAdmin } from "../middlewares/requireAdmin";
 
 const router: IRouter = Router();
 
 router.use(healthRouter);
 router.use(authRouter);
+router.use(ogRouter);
 router.use(productsRouter);
 router.use(reviewsRouter);
 router.use(ordersRouter);
