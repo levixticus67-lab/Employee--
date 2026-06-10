@@ -1,4 +1,7 @@
 {
+  "functions": {
+    "source": "functions"
+  },
   "hosting": {
     "public": "artifacts/jojo-collections/dist/public",
     "ignore": [
@@ -7,6 +10,10 @@
       "**/node_modules/**"
     ],
     "rewrites": [
+      {
+        "source": "/product/**",
+        "function": "ogPreview"
+      },
       {
         "source": "**",
         "destination": "/index.html"
