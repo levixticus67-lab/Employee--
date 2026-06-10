@@ -36,6 +36,12 @@ jobs:
           VITE_FIREBASE_APP_ID: ${{ secrets.VITE_FIREBASE_APP_ID }}
         run: pnpm --filter jojo-collections run build
 
+      - name: Install Functions dependencies
+        run: cd functions && npm install
+
+      - name: Build Functions
+        run: cd functions && npm run build
+
       - uses: FirebaseExtended/action-hosting-deploy@v0
         with:
           repoToken: ${{ secrets.GITHUB_TOKEN }}
