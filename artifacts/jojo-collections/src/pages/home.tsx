@@ -36,6 +36,8 @@ export default function Home() {
   const { toggle, isWishlisted } = useWishlist();
   const [bundles, setBundles] = useState<Bundle[]>([]);
   const [heroImages, setHeroImages] = useState<string[]>([]);
+  const [storeName, setStoreName] = useState("");
+  const [logoUrl, setLogoUrl] = useState("");
 
   useEffect(() => {
     apiFetch("/api/bundles")
@@ -50,6 +52,8 @@ export default function Home() {
       .then((d) => {
         const imgs = [d.heroImage1, d.heroImage2, d.heroImage3].filter(Boolean);
         if (imgs.length > 0) setHeroImages(imgs);
+        if (d.storeName) setStoreName(d.storeName);
+        if (d.logoUrl) setLogoUrl(d.logoUrl);
       })
       .catch(() => {});
   }, []);
@@ -59,8 +63,34 @@ export default function Home() {
 
   return (
     <Layout>
-      {/* ── Hero — words breathe on the animated background ── */}
-      <section className="relative pt-16 pb-4 px-4 sm:px-6 lg:px-8 max-w-4xl mx-auto flex flex-col items-center text-center">
+      {/* ── Hero ── */}
+      <section className="relative pt-10 md:pt-16 pb-4 px-4 sm:px-6 lg:px-8 max-w-4xl mx-auto flex flex-col items-center text-center">
+
+        {/* Mobile-only: logo + store name above "Premium Fragrances" */}
+        <div className="md:hidden flex flex-col items-center mb-6">
+          {logoUrl ? (
+            <img
+              src={logoUrl}
+              alt="Logo"
+              className="rounded-full object-cover border-2 border-sky-400/30 shadow-lg mb-3"
+              style={{ width: 64, height: 64 }}
+            />
+          ) : (
+            <div
+              className="rounded-full border-2 border-sky-400/30 flex items-center justify-center mb-3 text-sky-200 font-bold text-xl"
+              style={{ width: 64, height: 64, background: "rgba(125,211,252,0.1)" }}
+            >
+              {(storeName || "L").charAt(0).toUpperCase()}
+            </div>
+          )}
+          <span
+            className="text-2xl font-bold tracking-widest text-sky-50"
+            style={{ fontFamily: "Georgia, serif" }}
+          >
+            {(storeName || "LENZ").toUpperCase()}
+          </span>
+        </div>
+
         <p className="text-sky-400 text-xs tracking-[0.35em] uppercase mb-7">Premium Fragrances</p>
 
         <h1 className="text-5xl sm:text-6xl md:text-7xl font-serif font-light text-sky-50 leading-[1.1] mb-1">
@@ -85,13 +115,17 @@ export default function Home() {
             </Button>
           </Link>
           <Link href="/bundles">
-            <Button size="lg" variant="outline" className="rounded-full px-9 border-sky-400/25 text-sky-200 hover:bg-white/8 hover:text-sky-50">
+            <Button
+              size="lg"
+              variant="outline"
+              className="rounded-full px-9 font-medium border-sky-400/50 text-sky-100 bg-white/10 hover:bg-white/18 hover:border-sky-400/80 hover:text-sky-50 transition-all"
+            >
               Gift Sets
             </Button>
           </Link>
         </div>
 
-        {/* Admin-controlled hero images — up to 3 perfume bottles */}
+        {/* Admin-controlled hero images */}
         {heroImages.length > 0 && (
           <div className="flex items-end justify-center gap-4 sm:gap-6">
             {heroImages.map((url, i) => {
