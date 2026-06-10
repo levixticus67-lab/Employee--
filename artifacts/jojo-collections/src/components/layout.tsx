@@ -335,6 +335,7 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
     { href: "/shop", label: "Shop" },
     { href: "/bundles", label: "Bundles" },
     { href: "/blog", label: "Journal" },
+    { href: "/wishlist", label: "Wishlist" },
   ];
 
   const currencies: Currency[] = ["USD", "UGX", "EUR", "GBP"];
