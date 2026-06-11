@@ -1,15 +1,9 @@
 /**
  * Cloudflare Worker — OG preview for Jojo Collections / LENZ
  *
- * KEY DESIGN:
- *   - Bots  → return OG HTML with og:url = THIS Worker URL (no redirect).
- *             Facebook/WhatsApp reads these tags and stops here.
- *   - Humans → 302 to the Firebase SPA product page.
- *
- * Why no redirect for bots: Facebook follows every redirect including
- * og:url, meta-refresh, and JS redirects. The Firebase SPA returns the
- * same generic index.html for all routes, so bots end up reading the
- * homepage OG tags instead of the product ones.
+ * Serves OG meta tags to ALL visitors (bots + humans).
+ * Humans are instantly redirected to the Firebase SPA via a JS redirect.
+ * Bots (WhatsApp, Facebook, etc.) don't execute JS so they read the OG tags.
  *
  * Env vars (wrangler.toml [vars]):
  *   FIREBASE_PROJECT_ID  — "jojo-collection"
@@ -26,15 +20,6 @@ function escapeHtml(str) {
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;");
-}
-
-function isBot(ua) {
-  if (!ua) return false;
-  const bots = [
-    "facebookexternalhit","Facebot","Twitterbot","WhatsApp","TelegramBot",
-    "LinkedInBot","Slackbot","Discordbot","bot","crawl","spider","preview",
-  ];
-  return bots.some((b) => ua.toLowerCase().includes(b.toLowerCase()));
 }
 
 function toOgImageUrl(url) {
@@ -72,8 +57,8 @@ function buildOgPage(product, workerUrl, productSpaUrl) {
   );
   const rawImage = toOgImageUrl(product.imageUrl);
   const image    = rawImage ? escapeHtml(rawImage) : "";
-  // og:url = the Worker URL itself — stops Facebook following on to the SPA
   const canonicalUrl = escapeHtml(workerUrl);
+  const spaUrl = escapeHtml(productSpaUrl);
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -81,10 +66,7 @@ function buildOgPage(product, workerUrl, productSpaUrl) {
     <meta charset="UTF-8" />
     <title>${title}</title>
 
-    <!-- Open Graph — og:url intentionally points here (Worker), NOT the SPA.
-         The SPA is a React app returning the same index.html for every route,
-         so its og:url resolves to the homepage with generic tags. Keeping
-         og:url here ensures Facebook/WhatsApp read the product-specific tags. -->
+    <!-- Open Graph -->
     <meta property="og:type"         content="product" />
     <meta property="og:site_name"    content="${SITE_NAME}" />
     <meta property="og:title"        content="${title}" />
@@ -102,12 +84,13 @@ function buildOgPage(product, workerUrl, productSpaUrl) {
     <meta name="twitter:title"       content="${title}" />
     <meta name="twitter:description" content="${desc}" />
     ${image ? `<meta name="twitter:image" content="${image}" />` : ""}
+
+    <!-- JS redirect for humans — bots don't run JS so they read the OG tags above -->
+    <script>window.location.replace("${spaUrl}");<\/script>
+    <noscript><meta http-equiv="refresh" content="0;url=${spaUrl}" /></noscript>
   </head>
   <body>
-    <!-- No meta-refresh or JS redirect here — bots must not be redirected
-         or they follow the chain and land on the generic SPA homepage.
-         Humans never see this page (they get a 302 before reaching here). -->
-    <p>View <a href="${escapeHtml(productSpaUrl)}">${title}</a> on ${SITE_NAME}.</p>
+    <p>Redirecting to <a href="${spaUrl}">${title}</a>…</p>
   </body>
 </html>`;
 }
@@ -120,15 +103,10 @@ export default {
 
     if (!match) return Response.redirect(frontendUrl, 302);
 
-    const productId    = match[1];
+    const productId     = match[1];
     const productSpaUrl = `${frontendUrl}/product/${productId}`;
-    const workerUrl    = `https://${url.host}/product/${productId}`;
-    const ua           = request.headers.get("User-Agent") ?? "";
+    const workerUrl     = `https://${url.host}/product/${productId}`;
 
-    // Humans: 302 straight to the SPA — they never see this Worker page
-    if (!isBot(ua)) return Response.redirect(productSpaUrl, 302);
-
-    // Bots: serve OG HTML and STOP — no redirects of any kind
     try {
       const product = await fetchProduct(env.FIREBASE_PROJECT_ID, productId);
       if (!product?.name) return Response.redirect(productSpaUrl, 302);
@@ -136,7 +114,8 @@ export default {
       return new Response(buildOgPage(product, workerUrl, productSpaUrl), {
         headers: {
           "Content-Type": "text/html;charset=UTF-8",
-          "Cache-Control": "public,max-age=300",
+          // Short cache so WhatsApp picks up product changes quickly
+          "Cache-Control": "public,max-age=300,s-maxage=300",
         },
       });
     } catch {
