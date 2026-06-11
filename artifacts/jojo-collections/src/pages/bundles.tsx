@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useLocation } from "wouter";
 import { createPortal } from "react-dom";
 import { Layout } from "@/components/layout";
 import { useCart, type BundleCartItem } from "@/components/cart-context";
@@ -22,6 +23,7 @@ export default function BundlesPage() {
   const { format } = useCurrency();
   const [viewingBundle, setViewingBundle] = useState<Bundle | null>(null);
   const { theme } = useTheme();
+  const [, navigate] = useLocation();
   const { data: allProducts } = useListProducts();
 
   useEffect(() => {
@@ -165,9 +167,9 @@ export default function BundlesPage() {
         const vProducts = getBundleProducts(viewingBundle);
         const vSavings  = calculateSavings(viewingBundle);
         const isGold      = theme === "gold";
-        const panelBg     = isGold ? "rgba(26,10,0,0.97)"    : "rgba(8,15,30,0.97)";
-        const panelBorder = isGold ? "rgba(251,191,36,0.18)"  : "rgba(255,255,255,0.15)";
-        const footerBg    = isGold ? "rgba(15,5,0,0.55)"      : "rgba(0,0,0,0.42)";
+        const panelBg     = isGold ? "rgba(52,22,3,0.97)"     : "rgba(8,15,30,0.97)";
+        const panelBorder = isGold ? "rgba(251,191,36,0.30)"  : "rgba(255,255,255,0.15)";
+        const footerBg    = isGold ? "rgba(35,12,0,0.65)"      : "rgba(0,0,0,0.42)";
         const divider     = isGold ? "rgba(251,191,36,0.12)"  : "rgba(255,255,255,0.10)";
         const modal = (
           <div
@@ -204,7 +206,11 @@ export default function BundlesPage() {
               {/* Product list */}
               <div className="overflow-y-auto flex-1 p-4 space-y-3">
                 {vProducts.map((p) => (
-                  <div key={(p as any).id} className="glass-card flex gap-3 rounded-2xl p-3">
+                  <div
+                    key={(p as any).id}
+                    className="glass-card flex gap-3 rounded-2xl p-3 cursor-pointer active:opacity-70 transition-opacity"
+                    onClick={() => { setViewingBundle(null); navigate(`/product/${(p as any).id}`); }}
+                  >
                     <div className="w-16 h-16 rounded-xl overflow-hidden bg-white/5 flex-shrink-0">
                       {(p as any).imageUrl
                         ? <img src={(p as any).imageUrl} alt={(p as any).name} className="w-full h-full object-cover" />
@@ -224,7 +230,10 @@ export default function BundlesPage() {
                           {(p as any).description}
                         </p>
                       )}
-                      <p className="text-sm font-semibold text-foreground/80 mt-1.5">{format((p as any).price)}</p>
+                      <div className="flex items-center justify-between mt-1.5">
+                        <p className="text-sm font-semibold text-foreground/80">{format((p as any).price)}</p>
+                        <span className="text-muted-foreground/50 text-xs">View →</span>
+                      </div>
                     </div>
                   </div>
                 ))}
