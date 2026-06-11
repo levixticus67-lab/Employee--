@@ -1,6 +1,16 @@
 /**
  * Cloudflare Worker — OG preview for Jojo Collections / LENZ
  *
+ * KEY DESIGN:
+ *   - Bots  → return OG HTML with og:url = THIS Worker URL (no redirect).
+ *             Facebook/WhatsApp reads these tags and stops here.
+ *   - Humans → 302 to the Firebase SPA product page.
+ *
+ * Why no redirect for bots: Facebook follows every redirect including
+ * og:url, meta-refresh, and JS redirects. The Firebase SPA returns the
+ * same generic index.html for all routes, so bots end up reading the
+ * homepage OG tags instead of the product ones.
+ *
  * Env vars (wrangler.toml [vars]):
  *   FIREBASE_PROJECT_ID  — "jojo-collection"
  *   FRONTEND_URL         — "https://jojo-collection.web.app"
@@ -27,20 +37,12 @@ function isBot(ua) {
   return bots.some((b) => ua.toLowerCase().includes(b.toLowerCase()));
 }
 
-/**
- * If the URL is a Cloudinary image, inject transformation params to produce
- * a 1200×630 JPEG — the ideal OG image size that WhatsApp requires.
- * Non-Cloudinary URLs pass through unchanged.
- */
 function toOgImageUrl(url) {
   if (!url) return url;
-  // Match: https://res.cloudinary.com/{cloud}/image/upload/{...existing_transforms?}/{public_id}
   const match = url.match(/^(https:\/\/res\.cloudinary\.com\/[^/]+\/image\/upload\/)(?:([^/]+)\/)?(.+)$/);
-  if (!match) return url; // not Cloudinary — pass through
+  if (!match) return url;
   const [, base, existingTransforms, publicId] = match;
-  // Force: 1200w × 630h, fill crop, JPEG, auto quality
   const ogTransform = `w_${OG_W},h_${OG_H},c_fill,f_jpg,q_auto`;
-  // Keep any existing transforms (e.g. watermarks) after ours
   const transforms = existingTransforms ? `${ogTransform}/${existingTransforms}` : ogTransform;
   return `${base}${transforms}/${publicId}`;
 }
@@ -63,14 +65,15 @@ async function fetchProduct(projectId, productId) {
   };
 }
 
-function buildOgPage(product, productUrl) {
+function buildOgPage(product, workerUrl, productSpaUrl) {
   const title = escapeHtml(`${product.name} — ${SITE_NAME}`);
   const desc  = escapeHtml(
     (product.description || `Shop ${product.name} at ${SITE_NAME}.`).slice(0, 200)
   );
   const rawImage = toOgImageUrl(product.imageUrl);
   const image    = rawImage ? escapeHtml(rawImage) : "";
-  const url      = escapeHtml(productUrl);
+  // og:url = the Worker URL itself — stops Facebook following on to the SPA
+  const canonicalUrl = escapeHtml(workerUrl);
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -78,14 +81,17 @@ function buildOgPage(product, productUrl) {
     <meta charset="UTF-8" />
     <title>${title}</title>
 
-    <!-- Open Graph -->
-    <meta property="og:type"        content="product" />
-    <meta property="og:site_name"   content="${SITE_NAME}" />
-    <meta property="og:title"       content="${title}" />
-    <meta property="og:description" content="${desc}" />
-    <meta property="og:url"         content="${url}" />
+    <!-- Open Graph — og:url intentionally points here (Worker), NOT the SPA.
+         The SPA is a React app returning the same index.html for every route,
+         so its og:url resolves to the homepage with generic tags. Keeping
+         og:url here ensures Facebook/WhatsApp read the product-specific tags. -->
+    <meta property="og:type"         content="product" />
+    <meta property="og:site_name"    content="${SITE_NAME}" />
+    <meta property="og:title"        content="${title}" />
+    <meta property="og:description"  content="${desc}" />
+    <meta property="og:url"          content="${canonicalUrl}" />
     ${image ? `
-    <meta property="og:image"       content="${image}" />
+    <meta property="og:image"        content="${image}" />
     <meta property="og:image:width"  content="${OG_W}" />
     <meta property="og:image:height" content="${OG_H}" />
     <meta property="og:image:type"   content="image/jpeg" />
@@ -96,12 +102,13 @@ function buildOgPage(product, productUrl) {
     <meta name="twitter:title"       content="${title}" />
     <meta name="twitter:description" content="${desc}" />
     ${image ? `<meta name="twitter:image" content="${image}" />` : ""}
-
-    <!-- Redirect humans immediately -->
-    <meta http-equiv="refresh" content="0; url=${url}" />
-    <script>window.location.replace(${JSON.stringify(productUrl)});</script>
   </head>
-  <body><p>Redirecting to <a href="${url}">${title}</a>…</p></body>
+  <body>
+    <!-- No meta-refresh or JS redirect here — bots must not be redirected
+         or they follow the chain and land on the generic SPA homepage.
+         Humans never see this page (they get a 302 before reaching here). -->
+    <p>View <a href="${escapeHtml(productSpaUrl)}">${title}</a> on ${SITE_NAME}.</p>
+  </body>
 </html>`;
 }
 
@@ -113,24 +120,27 @@ export default {
 
     if (!match) return Response.redirect(frontendUrl, 302);
 
-    const productId  = match[1];
-    const productUrl = `${frontendUrl}/product/${productId}`;
-    const ua         = request.headers.get("User-Agent") ?? "";
+    const productId    = match[1];
+    const productSpaUrl = `${frontendUrl}/product/${productId}`;
+    const workerUrl    = `https://${url.host}/product/${productId}`;
+    const ua           = request.headers.get("User-Agent") ?? "";
 
-    if (!isBot(ua)) return Response.redirect(productUrl, 302);
+    // Humans: 302 straight to the SPA — they never see this Worker page
+    if (!isBot(ua)) return Response.redirect(productSpaUrl, 302);
 
+    // Bots: serve OG HTML and STOP — no redirects of any kind
     try {
       const product = await fetchProduct(env.FIREBASE_PROJECT_ID, productId);
-      if (!product?.name) return Response.redirect(productUrl, 302);
+      if (!product?.name) return Response.redirect(productSpaUrl, 302);
 
-      return new Response(buildOgPage(product, productUrl), {
+      return new Response(buildOgPage(product, workerUrl, productSpaUrl), {
         headers: {
           "Content-Type": "text/html;charset=UTF-8",
           "Cache-Control": "public,max-age=300",
         },
       });
     } catch {
-      return Response.redirect(productUrl, 302);
+      return Response.redirect(productSpaUrl, 302);
     }
   },
 };
