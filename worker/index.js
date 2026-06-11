@@ -1,9 +1,11 @@
 /**
  * Cloudflare Worker — OG preview for Jojo Collections / LENZ
  *
- * Env vars (set as Worker secrets in CI):
+ * Reads products from Firestore REST API — no API key needed if
+ * Firestore rules allow public reads on the products collection.
+ *
+ * Env vars (set via wrangler.toml [vars] — no secrets needed):
  *   FIREBASE_PROJECT_ID  — "jojo-collection"
- *   FIREBASE_API_KEY     — Firebase Web API key (public, safe here)
  *   FRONTEND_URL         — "https://jojo-collection.web.app"
  */
 
@@ -26,26 +28,17 @@ function isBot(ua) {
   return bots.some((b) => ua.toLowerCase().includes(b.toLowerCase()));
 }
 
-async function fetchProduct(projectId, apiKey, productId) {
-  // Anonymous sign-in to get a Firestore-readable token
-  const authRes = await fetch(
-    `https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=${apiKey}`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ returnSecureToken: true }),
-    }
-  );
-  if (!authRes.ok) return null;
-  const { idToken } = await authRes.json();
-
-  const firestoreUrl =
+async function fetchProduct(projectId, productId) {
+  // Unauthenticated Firestore REST — works if rules allow: allow read: if true
+  // on the products collection (standard for a public storefront).
+  // No API key, no anonymous auth — nothing that can be domain-restricted.
+  const url =
     `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/products/${productId}`;
-  const docRes = await fetch(firestoreUrl, {
-    headers: { Authorization: `Bearer ${idToken}` },
-  });
-  if (!docRes.ok) return null;
-  const doc = await docRes.json();
+
+  const res = await fetch(url);
+  if (!res.ok) return null;
+
+  const doc = await res.json();
   if (!doc.fields) return null;
 
   const f = doc.fields;
@@ -104,17 +97,13 @@ export default {
     const productUrl = `${frontendUrl}/product/${productId}`;
     const ua = request.headers.get("User-Agent") ?? "";
 
-    // Humans: skip Firestore, redirect straight to the SPA
+    // Humans: skip Firestore entirely, redirect straight to the SPA
     if (!isBot(ua)) {
       return Response.redirect(productUrl, 302);
     }
 
     try {
-      const product = await fetchProduct(
-        env.FIREBASE_PROJECT_ID,
-        env.FIREBASE_API_KEY,
-        productId
-      );
+      const product = await fetchProduct(env.FIREBASE_PROJECT_ID, productId);
       if (!product?.name) return Response.redirect(productUrl, 302);
 
       return new Response(buildOgPage(product, productUrl), {
