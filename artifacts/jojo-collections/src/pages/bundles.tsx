@@ -199,7 +199,7 @@ export default function BundlesPage() {
                 <div className="flex items-center justify-between mb-4">
                   <div>
                     <p className="text-2xl font-bold text-sky-50">{format(viewingBundle.price)}</p>
-                    {vSavings > 0 && <p className="text-xs text-emerald-400 font-medium mt-0.5">Save {format(vSavings)} vs buying separately</p>}
+                    {vSavings > 0 && <p className="text-xs text-red-400 font-medium mt-0.5">Save {format(vSavings)} vs buying separately</p>}
                   </div>
                   {vSavings > 0 && (
                     <div className="flex items-center gap-1.5 bg-red-500/20 text-red-400 border border-red-500/30 px-3 py-1.5 rounded-full">
