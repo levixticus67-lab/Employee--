@@ -1,15 +1,14 @@
 /**
  * Cloudflare Worker — OG preview for Jojo Collections / LENZ
  *
- * Reads products from Firestore REST API — no API key needed if
- * Firestore rules allow public reads on the products collection.
- *
- * Env vars (set via wrangler.toml [vars] — no secrets needed):
+ * Env vars (wrangler.toml [vars]):
  *   FIREBASE_PROJECT_ID  — "jojo-collection"
  *   FRONTEND_URL         — "https://jojo-collection.web.app"
  */
 
 const SITE_NAME = "LENZ";
+const OG_W = 1200;
+const OG_H = 630;
 
 function escapeHtml(str) {
   return String(str)
@@ -28,19 +27,31 @@ function isBot(ua) {
   return bots.some((b) => ua.toLowerCase().includes(b.toLowerCase()));
 }
 
+/**
+ * If the URL is a Cloudinary image, inject transformation params to produce
+ * a 1200×630 JPEG — the ideal OG image size that WhatsApp requires.
+ * Non-Cloudinary URLs pass through unchanged.
+ */
+function toOgImageUrl(url) {
+  if (!url) return url;
+  // Match: https://res.cloudinary.com/{cloud}/image/upload/{...existing_transforms?}/{public_id}
+  const match = url.match(/^(https:\/\/res\.cloudinary\.com\/[^/]+\/image\/upload\/)(?:([^/]+)\/)?(.+)$/);
+  if (!match) return url; // not Cloudinary — pass through
+  const [, base, existingTransforms, publicId] = match;
+  // Force: 1200w × 630h, fill crop, JPEG, auto quality
+  const ogTransform = `w_${OG_W},h_${OG_H},c_fill,f_jpg,q_auto`;
+  // Keep any existing transforms (e.g. watermarks) after ours
+  const transforms = existingTransforms ? `${ogTransform}/${existingTransforms}` : ogTransform;
+  return `${base}${transforms}/${publicId}`;
+}
+
 async function fetchProduct(projectId, productId) {
-  // Unauthenticated Firestore REST — works if rules allow: allow read: if true
-  // on the products collection (standard for a public storefront).
-  // No API key, no anonymous auth — nothing that can be domain-restricted.
   const url =
     `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/products/${productId}`;
-
   const res = await fetch(url);
   if (!res.ok) return null;
-
   const doc = await res.json();
   if (!doc.fields) return null;
-
   const f = doc.fields;
   return {
     name: f.name?.stringValue ?? "",
@@ -54,28 +65,39 @@ async function fetchProduct(projectId, productId) {
 
 function buildOgPage(product, productUrl) {
   const title = escapeHtml(`${product.name} — ${SITE_NAME}`);
-  const desc = escapeHtml(
+  const desc  = escapeHtml(
     (product.description || `Shop ${product.name} at ${SITE_NAME}.`).slice(0, 200)
   );
-  const image = product.imageUrl ? escapeHtml(product.imageUrl) : "";
-  const url = escapeHtml(productUrl);
+  const rawImage = toOgImageUrl(product.imageUrl);
+  const image    = rawImage ? escapeHtml(rawImage) : "";
+  const url      = escapeHtml(productUrl);
 
   return `<!DOCTYPE html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
     <title>${title}</title>
-    <meta property="og:type" content="product" />
-    <meta property="og:site_name" content="${SITE_NAME}" />
-    <meta property="og:title" content="${title}" />
+
+    <!-- Open Graph -->
+    <meta property="og:type"        content="product" />
+    <meta property="og:site_name"   content="${SITE_NAME}" />
+    <meta property="og:title"       content="${title}" />
     <meta property="og:description" content="${desc}" />
-    ${image ? `<meta property="og:image" content="${image}" />
-    <meta property="og:image:alt" content="${title}" />
-    <meta name="twitter:image" content="${image}" />` : ""}
-    <meta property="og:url" content="${url}" />
-    <meta name="twitter:card" content="${image ? "summary_large_image" : "summary"}" />
-    <meta name="twitter:title" content="${title}" />
+    <meta property="og:url"         content="${url}" />
+    ${image ? `
+    <meta property="og:image"       content="${image}" />
+    <meta property="og:image:width"  content="${OG_W}" />
+    <meta property="og:image:height" content="${OG_H}" />
+    <meta property="og:image:type"   content="image/jpeg" />
+    <meta property="og:image:alt"    content="${title}" />` : ""}
+
+    <!-- Twitter / WhatsApp fallback -->
+    <meta name="twitter:card"        content="${image ? "summary_large_image" : "summary"}" />
+    <meta name="twitter:title"       content="${title}" />
     <meta name="twitter:description" content="${desc}" />
+    ${image ? `<meta name="twitter:image" content="${image}" />` : ""}
+
+    <!-- Redirect humans immediately -->
     <meta http-equiv="refresh" content="0; url=${url}" />
     <script>window.location.replace(${JSON.stringify(productUrl)});</script>
   </head>
@@ -89,18 +111,13 @@ export default {
     const match = url.pathname.match(/^\/product\/([^/?]+)/);
     const frontendUrl = (env.FRONTEND_URL ?? "https://jojo-collection.web.app").replace(/\/$/, "");
 
-    if (!match) {
-      return Response.redirect(frontendUrl, 302);
-    }
+    if (!match) return Response.redirect(frontendUrl, 302);
 
-    const productId = match[1];
+    const productId  = match[1];
     const productUrl = `${frontendUrl}/product/${productId}`;
-    const ua = request.headers.get("User-Agent") ?? "";
+    const ua         = request.headers.get("User-Agent") ?? "";
 
-    // Humans: skip Firestore entirely, redirect straight to the SPA
-    if (!isBot(ua)) {
-      return Response.redirect(productUrl, 302);
-    }
+    if (!isBot(ua)) return Response.redirect(productUrl, 302);
 
     try {
       const product = await fetchProduct(env.FIREBASE_PROJECT_ID, productId);
