@@ -264,7 +264,31 @@ export default function Home() {
                   )}
                   <div className="p-5">
                     <h3 className="font-serif text-lg text-sky-100 mb-1">{bundle.name}</h3>
-                    <p className="text-sm text-sky-300/50 truncate mb-2">{bundle.description}</p>
+                    <p className="text-sm text-sky-300/50 line-clamp-2 mb-3">{bundle.description}</p>
+                    {/* Product avatar strip */}
+                    {(() => {
+                      const prods = bundle.productIds.map(id => allProducts?.find((p: any) => p.id === id)).filter(Boolean) as any[];
+                      if (!prods.length) return null;
+                      return (
+                        <div className="flex items-center gap-2 mb-3">
+                          <div className="flex -space-x-2">
+                            {prods.slice(0, 5).map((p: any) => (
+                              p.imageUrl
+                                ? <img key={p.id} src={p.imageUrl} alt={p.name} title={p.name} className="w-7 h-7 rounded-full object-cover border-2 border-blue-900/60 bg-white/10 ring-1 ring-white/10" />
+                                : <div key={p.id} className="w-7 h-7 rounded-full bg-blue-800/50 border-2 border-blue-900/60 flex items-center justify-center"><Package className="w-3 h-3 text-blue-300/50" /></div>
+                            ))}
+                            {prods.length > 5 && (
+                              <div className="w-7 h-7 rounded-full bg-blue-700/40 border-2 border-blue-900/60 flex items-center justify-center">
+                                <span className="text-[9px] text-blue-200 font-bold">+{prods.length - 5}</span>
+                              </div>
+                            )}
+                          </div>
+                          <span className="text-xs text-sky-300/55 truncate">
+                            {prods.slice(0, 2).map((p: any) => p.name).join(' · ')}{prods.length > 2 ? ` +${prods.length - 2} more` : ''}
+                          </span>
+                        </div>
+                      );
+                    })()}
                     <span className="text-sky-200 font-semibold">{format(bundle.price)}</span>
                   </div>
                 </div>
