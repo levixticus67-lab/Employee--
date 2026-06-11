@@ -3,7 +3,7 @@ import { Layout } from "@/components/layout";
 import { useCart, type BundleCartItem } from "@/components/cart-context";
 import { useCurrency } from "@/components/currency-context";
 import { useListProducts } from "@workspace/api-client-react";
-import { ShoppingBag, Package, Tag, Star } from "lucide-react";
+import { ShoppingBag, Package, Tag, Star, Eye, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { apiFetch } from "@/lib/api";
@@ -18,6 +18,7 @@ export default function BundlesPage() {
   const [loading, setLoading] = useState(true);
   const { addBundleToCart } = useCart();
   const { format } = useCurrency();
+  const [viewingBundle, setViewingBundle] = useState<Bundle | null>(null);
   const { data: allProducts } = useListProducts();
 
   useEffect(() => {
@@ -105,23 +106,33 @@ export default function BundlesPage() {
                       <p className="text-muted-foreground text-sm leading-relaxed line-clamp-3">{bundle.description}</p>
                     </div>
 
-                    {/* Products included */}
+                    {/* Product avatar strip + View Items */}
                     {bundleProducts.length > 0 && (
-                      <div className="space-y-2">
-                        <p className="text-xs font-semibold text-foreground/50 uppercase tracking-wider">Includes</p>
-                        <div className="flex flex-wrap gap-2">
-                          {bundleProducts.slice(0, 4).map((p) => (
-                            <div key={(p as any).id} className="flex items-center gap-1.5 bg-white/15 backdrop-blur-sm rounded-full px-3 py-1 border border-white/25">
-                              {(p as any).imageUrl && <img src={(p as any).imageUrl} alt={(p as any).name} className="w-5 h-5 rounded-full object-cover" />}
-                              <span className="text-xs text-foreground font-medium">{(p as any).name}</span>
-                            </div>
-                          ))}
-                          {bundleProducts.length > 4 && (
-                            <div className="flex items-center bg-white/15 rounded-full px-3 py-1">
-                              <span className="text-xs text-foreground/70 font-medium">+{bundleProducts.length - 4} more</span>
-                            </div>
-                          )}
+                      <div className="flex items-center justify-between bg-white/5 rounded-2xl px-4 py-2.5 border border-white/10">
+                        <div className="flex items-center gap-2.5">
+                          <div className="flex -space-x-2.5">
+                            {bundleProducts.slice(0, 5).map((p) => (
+                              (p as any).imageUrl
+                                ? <img key={(p as any).id} src={(p as any).imageUrl} alt={(p as any).name} title={(p as any).name}
+                                    className="w-8 h-8 rounded-full object-cover border-2 border-blue-950/70 bg-white/10" />
+                                : <div key={(p as any).id} className="w-8 h-8 rounded-full bg-blue-800/50 border-2 border-blue-950/70 flex items-center justify-center">
+                                    <Package className="w-3.5 h-3.5 text-blue-300/50" />
+                                  </div>
+                            ))}
+                            {bundleProducts.length > 5 && (
+                              <div className="w-8 h-8 rounded-full bg-blue-700/40 border-2 border-blue-950/70 flex items-center justify-center">
+                                <span className="text-[10px] text-blue-200 font-bold">+{bundleProducts.length - 5}</span>
+                              </div>
+                            )}
+                          </div>
+                          <span className="text-xs text-foreground/50">{bundleProducts.length} item{bundleProducts.length !== 1 ? "s" : ""}</span>
                         </div>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); setViewingBundle(bundle); }}
+                          className="flex items-center gap-1.5 text-xs text-blue-400 hover:text-blue-200 font-semibold transition-colors"
+                        >
+                          <Eye className="w-3.5 h-3.5" /> View Items
+                        </button>
                       </div>
                     )}
 
@@ -145,6 +156,68 @@ export default function BundlesPage() {
           </div>
         )}
       </div>
+
+      {/* ── Bundle Items Modal ── */}
+      {viewingBundle && (() => {
+        const vProducts = getBundleProducts(viewingBundle);
+        const vSavings = calculateSavings(viewingBundle);
+        return (
+          <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center" onClick={() => setViewingBundle(null)}>
+            <div className="absolute inset-0 bg-black/65 backdrop-blur-sm" />
+            <div
+              className="relative w-full sm:max-w-lg bg-[#08111f] border border-white/15 rounded-t-3xl sm:rounded-3xl shadow-2xl flex flex-col overflow-hidden"
+              style={{ maxHeight: "88vh" }}
+              onClick={e => e.stopPropagation()}
+            >
+              <div className="flex items-start justify-between p-5 border-b border-white/10 flex-shrink-0">
+                <div>
+                  <h3 className="text-xl font-serif text-sky-50 leading-tight">{viewingBundle.name}</h3>
+                  <p className="text-xs text-sky-300/50 mt-1">{vProducts.length} item{vProducts.length !== 1 ? "s" : ""} in this bundle</p>
+                </div>
+                <button onClick={() => setViewingBundle(null)} className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-sky-300 transition-colors flex-shrink-0 ml-3">
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+              <div className="overflow-y-auto flex-1 p-4 space-y-3">
+                {vProducts.map((p) => (
+                  <div key={(p as any).id} className="flex gap-3 bg-white/5 rounded-2xl p-3 border border-white/10">
+                    <div className="w-16 h-16 rounded-xl overflow-hidden bg-white/5 flex-shrink-0">
+                      {(p as any).imageUrl
+                        ? <img src={(p as any).imageUrl} alt={(p as any).name} className="w-full h-full object-cover" />
+                        : <div className="w-full h-full flex items-center justify-center"><Package className="w-6 h-6 text-blue-300/30" /></div>}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      {(p as any).brand && <p className="text-[10px] text-blue-400 font-bold uppercase tracking-widest mb-0.5">{(p as any).brand}</p>}
+                      <h4 className="text-sm font-serif text-sky-100 leading-snug">{(p as any).name}</h4>
+                      {(p as any).description && <p className="text-xs text-sky-300/50 mt-0.5 line-clamp-2 leading-relaxed">{(p as any).description}</p>}
+                      <p className="text-sm font-semibold text-sky-200 mt-1.5">{format((p as any).price)}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className="flex-shrink-0 p-5 border-t border-white/10 bg-black/30">
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <p className="text-2xl font-bold text-sky-50">{format(viewingBundle.price)}</p>
+                    {vSavings > 0 && <p className="text-xs text-emerald-400 font-medium mt-0.5">Save {format(vSavings)} vs buying separately</p>}
+                  </div>
+                  {vSavings > 0 && (
+                    <div className="flex items-center gap-1.5 bg-red-500/20 text-red-400 border border-red-500/30 px-3 py-1.5 rounded-full">
+                      <Tag className="w-3 h-3" /><span className="text-xs font-bold">Bundle Deal</span>
+                    </div>
+                  )}
+                </div>
+                <Button
+                  onClick={() => { handleAddBundle(viewingBundle); setViewingBundle(null); }}
+                  className="w-full bg-blue-600 hover:bg-blue-700 text-white rounded-2xl py-3 h-auto flex items-center justify-center gap-2 text-base font-semibold shadow-lg hover:shadow-blue-500/30 transition-all"
+                >
+                  <ShoppingBag className="w-5 h-5" /> Add Bundle to Cart
+                </Button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </Layout>
   );
 }
