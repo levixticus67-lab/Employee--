@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Layout } from "@/components/layout";
 import { useCart, type BundleCartItem } from "@/components/cart-context";
+import { useTheme } from "@/components/theme-context";
 import { useCurrency } from "@/components/currency-context";
 import { useListProducts } from "@workspace/api-client-react";
 import { ShoppingBag, Package, Tag, Star, Eye, X } from "lucide-react";
@@ -19,6 +20,7 @@ export default function BundlesPage() {
   const { addBundleToCart } = useCart();
   const { format } = useCurrency();
   const [viewingBundle, setViewingBundle] = useState<Bundle | null>(null);
+  const { theme } = useTheme();
   const { data: allProducts } = useListProducts();
 
   useEffect(() => {
@@ -161,45 +163,67 @@ export default function BundlesPage() {
       {viewingBundle && (() => {
         const vProducts = getBundleProducts(viewingBundle);
         const vSavings = calculateSavings(viewingBundle);
+        const isGold = theme === "gold";
+        const panelBg      = isGold ? "rgba(26,10,0,0.97)"   : "rgba(8,15,30,0.97)";
+        const panelBorder  = isGold ? "rgba(251,191,36,0.15)" : "rgba(255,255,255,0.15)";
+        const footerBg     = isGold ? "rgba(15,5,0,0.55)"     : "rgba(0,0,0,0.40)";
+        const dividerColor = isGold ? "rgba(251,191,36,0.10)" : "rgba(255,255,255,0.10)";
         return (
-          <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center" onClick={() => setViewingBundle(null)}>
+          <div
+            className="fixed inset-0 flex items-end sm:items-center justify-center pb-16 sm:pb-0"
+            style={{ zIndex: 200 }}
+            onClick={() => setViewingBundle(null)}
+          >
             <div className="absolute inset-0 bg-black/65 backdrop-blur-sm" />
             <div
-              className="relative w-full sm:max-w-lg bg-[#08111f] border border-white/15 rounded-t-3xl sm:rounded-3xl shadow-2xl flex flex-col overflow-hidden"
-              style={{ maxHeight: "88vh" }}
+              className="relative w-full sm:max-w-lg rounded-t-3xl sm:rounded-3xl shadow-2xl flex flex-col overflow-hidden"
+              style={{ maxHeight: "88vh", background: panelBg, border: `1px solid ${panelBorder}` }}
               onClick={e => e.stopPropagation()}
             >
-              <div className="flex items-start justify-between p-5 border-b border-white/10 flex-shrink-0">
+              {/* Header */}
+              <div className="flex items-start justify-between p-5 flex-shrink-0"
+                style={{ borderBottom: `1px solid ${dividerColor}` }}>
                 <div>
-                  <h3 className="text-xl font-serif text-sky-50 leading-tight">{viewingBundle.name}</h3>
-                  <p className="text-xs text-sky-300/50 mt-1">{vProducts.length} item{vProducts.length !== 1 ? "s" : ""} in this bundle</p>
+                  <h3 className="text-xl font-serif text-foreground leading-tight">{viewingBundle.name}</h3>
+                  <p className="text-xs text-muted-foreground mt-1">{vProducts.length} item{vProducts.length !== 1 ? "s" : ""} in this bundle</p>
                 </div>
-                <button onClick={() => setViewingBundle(null)} className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-sky-300 transition-colors flex-shrink-0 ml-3">
+                <button onClick={() => setViewingBundle(null)}
+                  className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-muted-foreground transition-colors flex-shrink-0 ml-3">
                   <X className="w-4 h-4" />
                 </button>
               </div>
+
+              {/* Product list */}
               <div className="overflow-y-auto flex-1 p-4 space-y-3">
                 {vProducts.map((p) => (
-                  <div key={(p as any).id} className="flex gap-3 bg-white/5 rounded-2xl p-3 border border-white/10">
+                  <div key={(p as any).id} className="glass-card flex gap-3 rounded-2xl p-3">
                     <div className="w-16 h-16 rounded-xl overflow-hidden bg-white/5 flex-shrink-0">
                       {(p as any).imageUrl
                         ? <img src={(p as any).imageUrl} alt={(p as any).name} className="w-full h-full object-cover" />
-                        : <div className="w-full h-full flex items-center justify-center"><Package className="w-6 h-6 text-blue-300/30" /></div>}
+                        : <div className="w-full h-full flex items-center justify-center"><Package className="w-6 h-6 text-muted-foreground/40" /></div>}
                     </div>
                     <div className="flex-1 min-w-0">
-                      {(p as any).brand && <p className="text-[10px] text-blue-400 font-bold uppercase tracking-widest mb-0.5">{(p as any).brand}</p>}
-                      <h4 className="text-sm font-serif text-sky-100 leading-snug">{(p as any).name}</h4>
-                      {(p as any).description && <p className="text-xs text-sky-300/50 mt-0.5 line-clamp-2 leading-relaxed">{(p as any).description}</p>}
-                      <p className="text-sm font-semibold text-sky-200 mt-1.5">{format((p as any).price)}</p>
+                      {(p as any).brand && (
+                        <p className="text-[10px] text-primary font-bold uppercase tracking-widest mb-0.5">{(p as any).brand}</p>
+                      )}
+                      <h4 className="text-sm font-serif text-foreground leading-snug">{(p as any).name}</h4>
+                      {(p as any).description && (
+                        <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2 leading-relaxed">{(p as any).description}</p>
+                      )}
+                      <p className="text-sm font-semibold text-foreground/80 mt-1.5">{format((p as any).price)}</p>
                     </div>
                   </div>
                 ))}
               </div>
-              <div className="flex-shrink-0 p-5 border-t border-white/10 bg-black/30">
+
+              {/* Footer */}
+              <div className="flex-shrink-0 p-5" style={{ borderTop: `1px solid ${dividerColor}`, background: footerBg }}>
                 <div className="flex items-center justify-between mb-4">
                   <div>
-                    <p className="text-2xl font-bold text-sky-50">{format(viewingBundle.price)}</p>
-                    {vSavings > 0 && <p className="text-xs text-red-400 font-medium mt-0.5">Save {format(vSavings)} vs buying separately</p>}
+                    <p className="text-2xl font-bold text-foreground">{format(viewingBundle.price)}</p>
+                    {vSavings > 0 && (
+                      <p className="text-xs text-red-400 font-medium mt-0.5">Save {format(vSavings)} vs buying separately</p>
+                    )}
                   </div>
                   {vSavings > 0 && (
                     <div className="flex items-center gap-1.5 bg-red-500/20 text-red-400 border border-red-500/30 px-3 py-1.5 rounded-full">
@@ -209,7 +233,7 @@ export default function BundlesPage() {
                 </div>
                 <Button
                   onClick={() => { handleAddBundle(viewingBundle); setViewingBundle(null); }}
-                  className="w-full bg-blue-600 hover:bg-blue-700 text-white rounded-2xl py-3 h-auto flex items-center justify-center gap-2 text-base font-semibold shadow-lg hover:shadow-blue-500/30 transition-all"
+                  className="w-full bg-primary hover:bg-primary/90 text-primary-foreground rounded-2xl py-3 h-auto flex items-center justify-center gap-2 text-base font-semibold shadow-lg transition-all"
                 >
                   <ShoppingBag className="w-5 h-5" /> Add Bundle to Cart
                 </Button>
