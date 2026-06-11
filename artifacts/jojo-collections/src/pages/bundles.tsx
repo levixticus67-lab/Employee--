@@ -168,12 +168,12 @@ export default function BundlesPage() {
         const panelBorder  = isGold ? "rgba(251,191,36,0.15)" : "rgba(255,255,255,0.15)";
         const footerBg     = isGold ? "rgba(15,5,0,0.55)"     : "rgba(0,0,0,0.40)";
         const dividerColor = isGold ? "rgba(251,191,36,0.10)" : "rgba(255,255,255,0.10)";
-        return (
+        return createPortal(
           <div
             className="fixed inset-0 flex items-end sm:items-center justify-center pb-16 sm:pb-0"
             style={{ zIndex: 200 }}
             onClick={() => setViewingBundle(null)}
-          >
+          >,
             <div className="absolute inset-0 bg-black/65 backdrop-blur-sm" />
             <div
               className="relative w-full sm:max-w-lg rounded-t-3xl sm:rounded-3xl shadow-2xl flex flex-col overflow-hidden"
@@ -240,7 +240,7 @@ export default function BundlesPage() {
               </div>
             </div>
           </div>
-        );
+        , document.body);
       })()}
     </Layout>
   );
