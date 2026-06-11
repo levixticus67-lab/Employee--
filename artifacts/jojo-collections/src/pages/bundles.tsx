@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { Layout } from "@/components/layout";
 import { useCart, type BundleCartItem } from "@/components/cart-context";
 import { useTheme } from "@/components/theme-context";
@@ -162,19 +163,22 @@ export default function BundlesPage() {
       {/* ── Bundle Items Modal ── */}
       {viewingBundle && (() => {
         const vProducts = getBundleProducts(viewingBundle);
-        const vSavings = calculateSavings(viewingBundle);
-        const isGold = theme === "gold";
-        const panelBg      = isGold ? "rgba(26,10,0,0.97)"   : "rgba(8,15,30,0.97)";
-        const panelBorder  = isGold ? "rgba(251,191,36,0.15)" : "rgba(255,255,255,0.15)";
-        const footerBg     = isGold ? "rgba(15,5,0,0.55)"     : "rgba(0,0,0,0.40)";
-        const dividerColor = isGold ? "rgba(251,191,36,0.10)" : "rgba(255,255,255,0.10)";
-        return createPortal(
+        const vSavings  = calculateSavings(viewingBundle);
+        const isGold      = theme === "gold";
+        const panelBg     = isGold ? "rgba(26,10,0,0.97)"    : "rgba(8,15,30,0.97)";
+        const panelBorder = isGold ? "rgba(251,191,36,0.18)"  : "rgba(255,255,255,0.15)";
+        const footerBg    = isGold ? "rgba(15,5,0,0.55)"      : "rgba(0,0,0,0.42)";
+        const divider     = isGold ? "rgba(251,191,36,0.12)"  : "rgba(255,255,255,0.10)";
+        const modal = (
           <div
             className="fixed inset-0 flex items-end sm:items-center justify-center pb-16 sm:pb-0"
-            style={{ zIndex: 200 }}
+            style={{ zIndex: 9999 }}
             onClick={() => setViewingBundle(null)}
-          >,
-            <div className="absolute inset-0 bg-black/65 backdrop-blur-sm" />
+          >
+            {/* Backdrop */}
+            <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
+
+            {/* Sheet */}
             <div
               className="relative w-full sm:max-w-lg rounded-t-3xl sm:rounded-3xl shadow-2xl flex flex-col overflow-hidden"
               style={{ maxHeight: "88vh", background: panelBg, border: `1px solid ${panelBorder}` }}
@@ -182,13 +186,17 @@ export default function BundlesPage() {
             >
               {/* Header */}
               <div className="flex items-start justify-between p-5 flex-shrink-0"
-                style={{ borderBottom: `1px solid ${dividerColor}` }}>
+                style={{ borderBottom: `1px solid ${divider}` }}>
                 <div>
                   <h3 className="text-xl font-serif text-foreground leading-tight">{viewingBundle.name}</h3>
-                  <p className="text-xs text-muted-foreground mt-1">{vProducts.length} item{vProducts.length !== 1 ? "s" : ""} in this bundle</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {vProducts.length} item{vProducts.length !== 1 ? "s" : ""} in this bundle
+                  </p>
                 </div>
-                <button onClick={() => setViewingBundle(null)}
-                  className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-muted-foreground transition-colors flex-shrink-0 ml-3">
+                <button
+                  onClick={() => setViewingBundle(null)}
+                  className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-muted-foreground transition-colors flex-shrink-0 ml-3"
+                >
                   <X className="w-4 h-4" />
                 </button>
               </div>
@@ -200,15 +208,21 @@ export default function BundlesPage() {
                     <div className="w-16 h-16 rounded-xl overflow-hidden bg-white/5 flex-shrink-0">
                       {(p as any).imageUrl
                         ? <img src={(p as any).imageUrl} alt={(p as any).name} className="w-full h-full object-cover" />
-                        : <div className="w-full h-full flex items-center justify-center"><Package className="w-6 h-6 text-muted-foreground/40" /></div>}
+                        : <div className="w-full h-full flex items-center justify-center">
+                            <Package className="w-6 h-6 text-muted-foreground/40" />
+                          </div>}
                     </div>
                     <div className="flex-1 min-w-0">
                       {(p as any).brand && (
-                        <p className="text-[10px] text-primary font-bold uppercase tracking-widest mb-0.5">{(p as any).brand}</p>
+                        <p className="text-[10px] text-primary font-bold uppercase tracking-widest mb-0.5">
+                          {(p as any).brand}
+                        </p>
                       )}
                       <h4 className="text-sm font-serif text-foreground leading-snug">{(p as any).name}</h4>
                       {(p as any).description && (
-                        <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2 leading-relaxed">{(p as any).description}</p>
+                        <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2 leading-relaxed">
+                          {(p as any).description}
+                        </p>
                       )}
                       <p className="text-sm font-semibold text-foreground/80 mt-1.5">{format((p as any).price)}</p>
                     </div>
@@ -217,17 +231,23 @@ export default function BundlesPage() {
               </div>
 
               {/* Footer */}
-              <div className="flex-shrink-0 p-5" style={{ borderTop: `1px solid ${dividerColor}`, background: footerBg }}>
+              <div
+                className="flex-shrink-0 p-5"
+                style={{ borderTop: `1px solid ${divider}`, background: footerBg }}
+              >
                 <div className="flex items-center justify-between mb-4">
                   <div>
                     <p className="text-2xl font-bold text-foreground">{format(viewingBundle.price)}</p>
                     {vSavings > 0 && (
-                      <p className="text-xs text-red-400 font-medium mt-0.5">Save {format(vSavings)} vs buying separately</p>
+                      <p className="text-xs text-red-400 font-medium mt-0.5">
+                        Save {format(vSavings)} vs buying separately
+                      </p>
                     )}
                   </div>
                   {vSavings > 0 && (
                     <div className="flex items-center gap-1.5 bg-red-500/20 text-red-400 border border-red-500/30 px-3 py-1.5 rounded-full">
-                      <Tag className="w-3 h-3" /><span className="text-xs font-bold">Bundle Deal</span>
+                      <Tag className="w-3 h-3" />
+                      <span className="text-xs font-bold">Bundle Deal</span>
                     </div>
                   )}
                 </div>
@@ -240,7 +260,8 @@ export default function BundlesPage() {
               </div>
             </div>
           </div>
-        , document.body);
+        );
+        return createPortal(modal, document.body);
       })()}
     </Layout>
   );
