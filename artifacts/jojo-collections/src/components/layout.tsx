@@ -589,6 +589,12 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
                 <Link href="/signup" className="block text-sky-300/60 hover:text-sky-100 text-sm">Create Account</Link>
               </div>
             </div>
+            <div>
+              <p className="font-medium text-sky-100 mb-3 uppercase tracking-wider text-xs">Legal</p>
+              <div className="space-y-2">
+                <Link href="/privacy-policy" className="block text-sky-300/60 hover:text-sky-100 text-sm">Privacy Policy</Link>
+              </div>
+            </div>
           </div>
           <div className="border-t border-white/10 pt-6 text-center">
             <p className="text-xs text-sky-300/40 uppercase tracking-widest">&copy; {new Date().getFullYear()} {settings.storeName || "Fume"}. All rights reserved.</p>
