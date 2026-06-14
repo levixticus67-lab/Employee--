@@ -21,7 +21,7 @@ class FirestoreSessionStore extends session.Store {
         this.collection().doc(sid).delete().finally(() => callback(null, null)); return;
       }
       try { callback(null, JSON.parse(data.data) as session.SessionData); } catch (e) { callback(e); }
-    }).catch((err) => callback(err));
+    }).catch((err) => { console.error('[FirestoreSession.get] ERROR:', err?.code, err?.message); callback(err); });
   }
 
   set(sid: string, sessionData: session.SessionData, callback?: (err?: unknown) => void): void {
@@ -29,7 +29,7 @@ class FirestoreSessionStore extends session.Store {
       ? new Date(sessionData.cookie.expires).getTime()
       : Date.now() + 1000 * 60 * 60 * 24 * 30;
     const payload = { data: JSON.stringify(sessionData), expiresAt: Timestamp.fromMillis(expiryMs) };
-    this.collection().doc(sid).set(payload).then(() => callback?.()).catch((err) => callback?.(err));
+    this.collection().doc(sid).set(payload).then(() => callback?.()).catch((err) => { console.error('[FirestoreSession.set] ERROR:', err?.code, err?.message); callback?.(err); });
   }
 
   destroy(sid: string, callback?: (err?: unknown) => void): void {
