@@ -17,7 +17,7 @@ if (firebaseConfig.apiKey && firebaseConfig.authDomain && firebaseConfig.project
   _auth = getAuth(app);
 } else {
   console.warn(
-    "[Jojo Firebase] Client SDK not initialised — set VITE_FIREBASE_API_KEY, " +
+    "[Lenz Firebase] Client SDK not initialised — set VITE_FIREBASE_API_KEY, " +
     "VITE_FIREBASE_AUTH_DOMAIN, VITE_FIREBASE_PROJECT_ID to enable auth."
   );
 }
