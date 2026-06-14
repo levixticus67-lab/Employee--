@@ -10,20 +10,36 @@ router.get("/healthz", (_req, res) => {
   res.json(data);
 });
 
-router.get("/healthz/deep", async (req, res) => {
+router.get("/healthz/deep", async (_req, res) => {
   const results: Record<string, { ok: boolean; error?: string; detail?: string }> = {};
 
-  // 1 — Firestore write test
+  // 0 — Show which project the service account points to (project_id is NOT a secret)
+  const raw = process.env["FIREBASE_SERVICE_ACCOUNT_JSON"] ?? process.env["FIREBASE_SERVICE_ACCOUNT"] ?? "";
+  let projectId = "(could not parse)";
+  let clientEmail = "(could not parse)";
+  try {
+    const parsed = JSON.parse(raw) as Record<string, string>;
+    projectId = parsed["project_id"] ?? "(missing)";
+    clientEmail = parsed["client_email"] ?? "(missing)";
+  } catch {
+    projectId = "(invalid JSON)";
+  }
+  results["service_account"] = {
+    ok: true,
+    detail: `project_id=${projectId} | client_email=${clientEmail} | json_length=${raw.length}`,
+  };
+
+  // 1 — Firestore write/read test
   try {
     const ref = firestore.collection("_healthz").doc("ping");
     await ref.set({ ts: Date.now() });
     await ref.delete();
-    results["firestore"] = { ok: true };
+    results["firestore"] = { ok: true, detail: `database=(default) project=${projectId}` };
   } catch (err: unknown) {
-    const e = err as { code?: string; message?: string };
+    const e = err as { code?: string | number; message?: string };
     results["firestore"] = {
       ok: false,
-      error: e.code ?? "unknown",
+      error: String(e.code ?? "unknown"),
       detail: e.message ?? String(err),
     };
   }
@@ -41,14 +57,12 @@ router.get("/healthz/deep", async (req, res) => {
     };
   }
 
-  // 3 — env var presence check (values hidden)
+  // 3 — Env presence check
   results["env"] = {
     ok: true,
     detail: [
-      `FIREBASE_SERVICE_ACCOUNT_JSON=${process.env["FIREBASE_SERVICE_ACCOUNT_JSON"] ? "SET("+process.env["FIREBASE_SERVICE_ACCOUNT_JSON"].length+"chars)" : "MISSING"}`,
-      `FIREBASE_SERVICE_ACCOUNT=${process.env["FIREBASE_SERVICE_ACCOUNT"] ? "SET" : "MISSING"}`,
       `SESSION_SECRET=${process.env["SESSION_SECRET"] ? "SET" : "MISSING"}`,
-      `ADMIN_EMAIL=${process.env["ADMIN_EMAIL"] ? "SET" : "MISSING"}`,
+      `ADMIN_EMAIL=${process.env["ADMIN_EMAIL"] ?? "MISSING"}`,
       `CORS_ORIGINS=${process.env["CORS_ORIGINS"] || "EMPTY"}`,
       `FRONTEND_URL=${process.env["FRONTEND_URL"] || "EMPTY"}`,
       `NODE_ENV=${process.env["NODE_ENV"] || "EMPTY"}`,
@@ -56,7 +70,10 @@ router.get("/healthz/deep", async (req, res) => {
   };
 
   const allOk = Object.values(results).every((r) => r.ok);
-  res.status(allOk ? 200 : 503).json({ status: allOk ? "ok" : "degraded", checks: results });
+  res.status(allOk ? 200 : 503).json({
+    status: allOk ? "ok" : "degraded",
+    checks: results,
+  });
 });
 
 export default router;
