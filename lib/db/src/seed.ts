@@ -9,7 +9,7 @@ const SEED_PRODUCTS: SeedProduct[] = [
     id: "77d49667-5193-44ef-85fe-94fdbcadbcf1",
     ...SEED_DEFAULTS,
     name: "Rose Eclipse",
-    brand: "Jojo Maison",
+    brand: "Lenz Maison",
     description:
       "A romantic floral bouquet capturing the essence of dawn-kissed roses with a modern twist. Velvety petals and warm musk make this a daily indulgence.",
     category: "Eau de Parfum",
@@ -28,7 +28,7 @@ const SEED_PRODUCTS: SeedProduct[] = [
     id: "bba4483f-f170-4b39-9936-9dec82459a98",
     ...SEED_DEFAULTS,
     name: "Midnight Oud",
-    brand: "Jojo Noir",
+    brand: "Lenz Noir",
     description:
       "A deep, smoky oud crafted for evenings to remember. Rich woods are softened by sweet amber for an unmistakable signature.",
     category: "Eau de Parfum",
@@ -47,7 +47,7 @@ const SEED_PRODUCTS: SeedProduct[] = [
     id: "f24be5fc-59f4-4b7d-9971-3ee5098e05f0",
     ...SEED_DEFAULTS,
     name: "Jasmine Veil",
-    brand: "Jojo Maison",
+    brand: "Lenz Maison",
     description:
       "An airy, luminous jasmine that drifts like a soft veil through your day. Bright, clean and unmistakably feminine.",
     category: "Eau de Toilette",
@@ -66,7 +66,7 @@ const SEED_PRODUCTS: SeedProduct[] = [
     id: "6d4208ac-cfc0-4c10-b400-33fb1866bfcf",
     ...SEED_DEFAULTS,
     name: "Azure Bloom",
-    brand: "Jojo Atelier",
+    brand: "Lenz Atelier",
     description:
       "A bracing aquatic floral that opens with sea breeze and settles into clean musks. Effortlessly modern.",
     category: "Eau de Parfum",
@@ -85,7 +85,7 @@ const SEED_PRODUCTS: SeedProduct[] = [
     id: "d60dec35-c0c8-4b90-bb71-d99835981972",
     ...SEED_DEFAULTS,
     name: "Golden Amber",
-    brand: "Jojo Noir",
+    brand: "Lenz Noir",
     description:
       "Warm, resinous amber wrapped in honeyed vanilla. A cozy companion for the cooler months.",
     category: "Eau de Parfum",
@@ -104,7 +104,7 @@ const SEED_PRODUCTS: SeedProduct[] = [
     id: "721f4e93-c5a6-4baf-9af6-32852769c079",
     ...SEED_DEFAULTS,
     name: "Violet Mist",
-    brand: "Jojo Atelier",
+    brand: "Lenz Atelier",
     description:
       "Powdery violets dance with iris and a whisper of soft musks for an ethereal, dreamlike trail.",
     category: "Body Mist",
