@@ -41,7 +41,8 @@ import AdminSettings from "@/pages/admin/settings";
 import AdminStorage  from "@/pages/admin/storage";
 import BulkImport       from "@/pages/admin/bulk-import";
 import AdminExchangeRates from "@/pages/admin/exchange-rates";
-import PrivacyPolicy    from "@/pages/privacy-policy";
+import PrivacyPolicy       from "@/pages/privacy-policy";
+import TermsAndConditions from "@/pages/terms-and-conditions";
 
 const queryClient = new QueryClient();
 
@@ -111,6 +112,7 @@ function Router() {
       <Route path="/signup"          component={SignupPage} />
       <Route path="/forgot-password" component={ForgotPasswordPage} />
       <Route path="/privacy-policy"   component={PrivacyPolicy} />
+      <Route path="/terms"              component={TermsAndConditions} />
 
       {/* ── Protected storefront (login + verified email required) ── */}
       <Route path="/shop">           <ProtectedRoute><Shop /></ProtectedRoute></Route>
