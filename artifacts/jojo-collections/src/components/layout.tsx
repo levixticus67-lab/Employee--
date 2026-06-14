@@ -4,6 +4,7 @@ import { useAuth } from "./auth-context";
 import { useWishlist } from "./wishlist-context";
 import { useCurrency, type Currency } from "./currency-context";
 import { useTheme, ThemeProvider } from "./theme-context";
+import { STORE_NAME, STORE_NAME_SHORT } from "@/lib/use-store-name";
 import { ShoppingBag, User, LogOut, Heart, MessageCircle, Package, X } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import { toast } from "sonner";
@@ -421,7 +422,7 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
               {settings.logoUrl && (
                 <img src={settings.logoUrl} alt="Logo" className="w-9 h-9 rounded-full object-cover border-2 border-sky-400/30 shadow-sm flex-shrink-0" />
               )}
-              <span className="text-2xl font-serif text-sky-50 font-bold tracking-widest">{(settings.storeName || "Fume").toUpperCase()}</span>
+              <span className="text-2xl font-serif text-sky-50 font-bold tracking-widest">{STORE_NAME.toUpperCase()}</span>
             </Link>
 
             <nav className="flex items-center gap-5 flex-1">
@@ -495,7 +496,7 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
             <div className="px-4 pt-4 pb-5 space-y-1">
               <div className="flex items-center justify-between mb-4">
                 <span className="text-sky-50 font-bold text-lg tracking-widest" style={{ fontFamily: "Georgia, serif" }}>
-                  {(settings.storeName || "LENZ").toUpperCase()}
+                  {(STORE_NAME).toUpperCase()}
                 </span>
                 <button onClick={() => setIsMobileMenuOpen(false)} className="p-2 text-sky-200 hover:text-white transition-colors">
                   <X className="w-5 h-5" />
@@ -564,7 +565,7 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
         <div className="max-w-7xl mx-auto px-4">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-8 text-sm">
             <div>
-              <p className="font-serif text-sky-50 font-bold mb-3 tracking-widest">{(settings.storeName || "Fume").toUpperCase()}</p>
+              <p className="font-serif text-sky-50 font-bold mb-3 tracking-widest">{STORE_NAME.toUpperCase()}</p>
               <p className="text-sky-300/60 text-xs leading-relaxed">Premium fragrances for the modern connoisseur.</p>
             </div>
             <div>
@@ -593,11 +594,12 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
               <p className="font-medium text-sky-100 mb-3 uppercase tracking-wider text-xs">Legal</p>
               <div className="space-y-2">
                 <Link href="/privacy-policy" className="block text-sky-300/60 hover:text-sky-100 text-sm">Privacy Policy</Link>
+                <Link href="/terms" className="block text-sky-300/60 hover:text-sky-100 text-sm">Terms & Conditions</Link>
               </div>
             </div>
           </div>
           <div className="border-t border-white/10 pt-6 text-center">
-            <p className="text-xs text-sky-300/40 uppercase tracking-widest">&copy; {new Date().getFullYear()} {settings.storeName || "Fume"}. All rights reserved.</p>
+            <p className="text-xs text-sky-300/40 uppercase tracking-widest">&copy; {new Date().getFullYear()} {STORE_NAME}. All rights reserved.</p>
           </div>
         </div>
       </footer>
