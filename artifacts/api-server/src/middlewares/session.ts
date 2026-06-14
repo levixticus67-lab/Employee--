@@ -47,7 +47,7 @@ const isProduction = process.env.NODE_ENV === "production";
 
 export const sessionMiddleware: RequestHandler = session({
   store: new FirestoreSessionStore(),
-  name: "jojo.sid",
+  name: "lenz.sid",
   secret: sessionSecret,
   resave: false,
   saveUninitialized: false,
