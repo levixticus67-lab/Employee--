@@ -142,7 +142,7 @@ import { getUsdToUgxRate } from "../lib/exchangeRate";
     const productRefs   = body.items.map((i) => firestore.collection(COLLECTIONS.products).doc(i.productId));
     const newOrderRef   = firestore.collection(COLLECTIONS.orders).doc();
     const orderId = newOrderRef.id;
-    const txRef   = `jojo_${orderId}`;
+    const txRef   = `lenz_${orderId}`;
     let finalTotal = 0;
     let discount   = 0;
     let couponCode: string | null = null;
