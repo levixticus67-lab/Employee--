@@ -1,10 +1,13 @@
 import { initializeApp, cert, getApps, type App } from "firebase-admin/app";
 import { getFirestore, Timestamp, type Firestore } from "firebase-admin/firestore";
 
-const serviceAccountJson = process.env["FIREBASE_SERVICE_ACCOUNT_JSON"];
+const serviceAccountJson =
+  process.env["FIREBASE_SERVICE_ACCOUNT_JSON"] ??
+  process.env["FIREBASE_SERVICE_ACCOUNT"] ??
+  null;
 if (!serviceAccountJson) {
   throw new Error(
-    "FIREBASE_SERVICE_ACCOUNT_JSON must be set. Paste the JSON file contents from Firebase Console > Project Settings > Service Accounts > Generate new private key.",
+    "FIREBASE_SERVICE_ACCOUNT (or FIREBASE_SERVICE_ACCOUNT_JSON) must be set. Paste the JSON file contents from Firebase Console > Project Settings > Service Accounts > Generate new private key.",
   );
 }
 
@@ -12,7 +15,7 @@ let parsedServiceAccount: Record<string, string>;
 try {
   parsedServiceAccount = JSON.parse(serviceAccountJson);
 } catch {
-  throw new Error("FIREBASE_SERVICE_ACCOUNT_JSON is not valid JSON. Paste the entire .json file contents.");
+  throw new Error("FIREBASE_SERVICE_ACCOUNT is not valid JSON. Paste the entire service account .json file contents.");
 }
 
 if (parsedServiceAccount["private_key"]) {
