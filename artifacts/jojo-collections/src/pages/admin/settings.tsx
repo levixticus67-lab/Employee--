@@ -4,7 +4,6 @@ import { Button } from "@/components/ui/button";
 import { Settings, MessageCircle, DollarSign, AlertTriangle, Smartphone, Info, Truck, ImageIcon, Upload, X, Megaphone, Video, Eye, EyeOff, Timer } from "lucide-react";
 import { toast } from "sonner";
 import { apiFetch } from "@/lib/api";
-import { invalidateStoreName } from "@/lib/use-store-name";
 
 type BannerMediaType = "none" | "image" | "video";
 
@@ -17,7 +16,6 @@ type SettingsData = {
   airtelNumber: string;
   freeDeliveryThreshold: number;
   locationDeliveryThreshold: number;
-  storeName: string;
   logoUrl: string;
   bannerEnabled: boolean;
   bannerText: string;
@@ -40,7 +38,6 @@ const defaults: SettingsData = {
   airtelNumber: "",
   freeDeliveryThreshold: 0,
   locationDeliveryThreshold: 0,
-  storeName: "",
   logoUrl: "",
   bannerEnabled: false,
   bannerText: "",
