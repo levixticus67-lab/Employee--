@@ -13,7 +13,7 @@ export default function PrivacyPolicy() {
           </div>
 
           <p className="text-blue-900/70 leading-relaxed">
-            Jojo Collections ("we", "us", or "our") is committed to protecting your personal
+            Lenz Fragrances ("we", "us", or "our") is committed to protecting your personal
             information. This Privacy Policy explains what data we collect, how we use it, and
             your rights under Uganda's <strong>Data Protection and Privacy Act 2019 (DIPA)</strong>.
           </p>
@@ -21,7 +21,7 @@ export default function PrivacyPolicy() {
           <section className="space-y-3">
             <h2 className="text-lg font-semibold text-blue-950">1. Who We Are</h2>
             <p className="text-blue-900/70 leading-relaxed">
-              Jojo Collections is an online perfume store based in Uganda. For any
+              Lenz Fragrances is an online perfume store based in Uganda. For any
               privacy-related questions or requests, contact us at{" "}
               <a href="mailto:levixticus67@gmail.com" className="text-amber-600 hover:underline">
                 levixticus67@gmail.com
