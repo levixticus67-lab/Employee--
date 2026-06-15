@@ -35,7 +35,13 @@ if (getApps().length) {
   });
 }
 
-export const firestore: Firestore = getFirestore(app);
+// Support named Firestore databases (non-default).
+// If your Firebase project's Firestore database is NOT named "(default)",
+// set FIREBASE_DATABASE_ID to the actual database name on your hosting service.
+const databaseId = process.env["FIREBASE_DATABASE_ID"];
+export const firestore: Firestore = databaseId
+  ? getFirestore(app, databaseId)
+  : getFirestore(app);
 firestore.settings({ ignoreUndefinedProperties: true });
 
 export const COLLECTIONS = {
@@ -92,7 +98,7 @@ export type OrderDoc = {
   status: OrderStatus; statusHistory: OrderStatusHistoryEntry[];
   paymentMethod: string; paymentNumber: string | null;
   couponCode: string | null; discount: number; archived: boolean;
-  /** Our merchant reference sent to Pesapal (format: jojo_{orderId}) */
+  /** Our merchant reference sent to Pesapal (format: lenz_{orderId}) */
   txRef: string | null;
   /** Pesapal's order_tracking_id from SubmitOrderRequest response */
   pesapalTrackingId: string | null;
