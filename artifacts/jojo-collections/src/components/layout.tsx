@@ -422,7 +422,7 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
               {settings.logoUrl && (
                 <img src={settings.logoUrl} alt="Logo" className="w-9 h-9 rounded-full object-cover border-2 border-sky-400/30 shadow-sm flex-shrink-0" />
               )}
-              <span className="text-2xl font-serif text-sky-50 font-bold tracking-widest">{STORE_NAME.toUpperCase()}</span>
+              <span className="text-2xl font-serif text-sky-50 font-bold tracking-widest">{STORE_NAME_SHORT.toUpperCase()}</span>
             </Link>
 
             <nav className="flex items-center gap-5 flex-1">
