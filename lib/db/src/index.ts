@@ -42,7 +42,7 @@ const databaseId = process.env["FIREBASE_DATABASE_ID"];
 export const firestore: Firestore = databaseId
   ? getFirestore(app, databaseId)
   : getFirestore(app);
-firestore.settings({ ignoreUndefinedProperties: true });
+firestore.settings({ ignoreUndefinedProperties: true, preferRest: true });
 
 export const COLLECTIONS = {
   products: "products",
