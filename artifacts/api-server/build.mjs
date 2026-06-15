@@ -67,6 +67,14 @@ async function buildAll() {
       "googleapis",
       "firebase-admin",
       "@parcel/watcher",
+      // Sentry and OpenTelemetry MUST be external — they work by monkey-patching
+      // Node's module loader at runtime. Bundling them breaks their gRPC/Firestore
+      // instrumentation and causes every Firestore call to fail with NOT_FOUND.
+      "@sentry/node",
+      "@sentry/*",
+      "@opentelemetry/*",
+      "import-in-the-middle",
+      "require-in-the-middle",
       "@sentry/profiling-node",
       "@tree-sitter/*",
       "aws-sdk",
