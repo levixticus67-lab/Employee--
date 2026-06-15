@@ -4,6 +4,7 @@ import express, { type Express } from "express";
   import pinoHttp from "pino-http";
   import { seedProductsIfEmpty } from "@workspace/db";
   import router from "./routes";
+  import healthRouter from "./routes/health";
   import { logger } from "./lib/logger";
   import { sessionMiddleware } from "./middlewares/session";
 import { setupExpressErrorHandler } from "@sentry/node";
@@ -57,6 +58,11 @@ import { setupExpressErrorHandler } from "@sentry/node";
   // oversized payloads sent to any route.
   app.use(express.json({ limit: "100kb" }));
   app.use(express.urlencoded({ extended: true, limit: "100kb" }));
+
+  // Mount health routes BEFORE session middleware so /api/healthz and
+  // /api/healthz/deep are always reachable even when Firestore is down.
+  app.use("/api", healthRouter);
+
   app.use(sessionMiddleware);
 
   app.use("/api", router);
@@ -69,4 +75,3 @@ import { setupExpressErrorHandler } from "@sentry/node";
     .catch((err) => logger.error({ err }, "Failed to seed Firestore products"));
 
   export default app;
-  
