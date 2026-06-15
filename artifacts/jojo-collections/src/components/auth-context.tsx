@@ -135,7 +135,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       try {
         const credential = await createUserWithEmailAndPassword(a, email, password);
         firebaseIdToken = await credential.user.getIdToken();
-        await sendEmailVerification(credential.user);
+        await sendEmailVerification(credential.user, { url: window.location.origin + "/login?verified=1" });
         await firebaseSignOut(a);
       } catch (fbErr: unknown) {
         const code = (fbErr as { code?: string }).code ?? "";
@@ -210,7 +210,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       requireFirebase();
       const a = auth!;
 
-      const accessToken = await gisGoogleSignIn();
+      let accessToken: string;
+      try {
+        accessToken = await gisGoogleSignIn();
+      } catch (gisErr: unknown) {
+        const msg = gisErr instanceof Error ? gisErr.message : "Google sign-in failed";
+        throw Object.assign(new Error(msg), { data: { error: msg } });
+      }
 
       const firebaseCredential = GoogleAuthProvider.credential(null, accessToken);
       const result = await signInWithCredential(a, firebaseCredential);
