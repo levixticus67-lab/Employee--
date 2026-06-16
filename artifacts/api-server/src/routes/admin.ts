@@ -773,27 +773,51 @@ router.put("/admin/settings", async (req, res) => {
 });
 
 // ─── Analytics ────────────────────────────────────────────────────────────────
+// Reads from BOTH active orders (orders collection) AND archived orders
+// (storageItems where type=="order_log") so the chart stays accurate after
+// orders are moved to storage on delivery/cancellation.
 router.get("/admin/analytics", async (_req, res) => {
-  const [ordersSnap, productsSnap] = await Promise.all([
+  const [ordersSnap, storageSnap] = await Promise.all([
     firestore.collection(COLLECTIONS.orders).get(),
-    firestore.collection(COLLECTIONS.products).get(),
+    firestore.collection(COLLECTIONS.storageItems).where("type", "==", "order_log").get(),
   ]);
+
   const revenueByDay = new Map<string, number>();
-  const ordersByDay = new Map<string, number>();
+  const ordersByDay  = new Map<string, number>();
   const salesByProduct = new Map<string, { name: string; quantity: number; revenue: number }>();
-  for (const d of ordersSnap.docs) {
-    const o = d.data() as OrderDoc;
-    const day = o.createdAt instanceof Timestamp ? o.createdAt.toDate().toISOString().slice(0, 10) : new Date().toISOString().slice(0, 10);
-    revenueByDay.set(day, (revenueByDay.get(day) ?? 0) + Number(o.total ?? 0));
+
+  function resolveDay(createdAt: unknown): string {
+    if (createdAt instanceof Timestamp) return createdAt.toDate().toISOString().slice(0, 10);
+    if (typeof createdAt === "string")  return createdAt.slice(0, 10);
+    // Serialised Timestamp stored inside a map field: { _seconds, _nanoseconds }
+    const t = createdAt as Record<string, unknown>;
+    if (typeof t["_seconds"] === "number") return new Date(t["_seconds"] * 1000).toISOString().slice(0, 10);
+    return new Date().toISOString().slice(0, 10);
+  }
+
+  function tally(total: unknown, createdAt: unknown, items: OrderItemDoc[]): void {
+    const day = resolveDay(createdAt);
+    revenueByDay.set(day, (revenueByDay.get(day) ?? 0) + Number(total ?? 0));
     ordersByDay.set(day, (ordersByDay.get(day) ?? 0) + 1);
-    for (const item of o.items ?? []) {
+    for (const item of items ?? []) {
       const cur = salesByProduct.get(item.productId) ?? { name: item.name, quantity: 0, revenue: 0 };
       cur.quantity += item.quantity; cur.revenue += item.price * item.quantity;
       salesByProduct.set(item.productId, cur);
     }
   }
-  const productMap = new Map<string, number>();
-  for (const d of productsSnap.docs) productMap.set(d.id, (d.data() as ProductDoc).stock);
+
+  // Active orders (pending / processing / shipped — not yet archived)
+  for (const d of ordersSnap.docs) {
+    const o = d.data() as OrderDoc;
+    tally(o.total, o.createdAt, o.items ?? []);
+  }
+
+  // Archived orders (delivered + cancelled — stored as order_log in storageItems)
+  for (const d of storageSnap.docs) {
+    const snap = (d.data() as StorageItemDoc).snapshot as Record<string, unknown>;
+    tally(snap["total"], snap["createdAt"], (snap["items"] as OrderItemDoc[]) ?? []);
+  }
+
   const revenueChart = Array.from(revenueByDay.entries()).sort((a, b) => a[0].localeCompare(b[0])).slice(-30)
     .map(([date, revenue]) => ({ date, revenue, orders: ordersByDay.get(date) ?? 0 }));
   const topSelling = Array.from(salesByProduct.entries()).map(([productId, v]) => ({ productId, ...v }))
