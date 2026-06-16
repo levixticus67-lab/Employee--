@@ -143,7 +143,7 @@ export type BlogPostDoc = {
   title: string; summary: string; content: string; imageUrl: string | null;
   author: string; published: boolean; storedInFolder: string | null; createdAt: Timestamp;
 };
-export type StockAlertDoc = { email: string; productId: string; productName: string; createdAt: Timestamp };
+export type StockAlertDoc = { phone: string; productId: string; productName: string; createdAt: Timestamp };
 export type StorageFolderDoc = { name: string; description: string; isSystem: boolean; createdAt: Timestamp };
 export type StorageItemDoc = {
   folderId: string; type: "order_log" | "blog_post"; referenceId: string;

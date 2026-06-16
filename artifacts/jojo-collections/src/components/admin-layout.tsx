@@ -6,7 +6,7 @@ import { useStoreName, STORE_NAME_SHORT } from "@/lib/use-store-name";
   import { useState, useEffect, useRef } from "react";
   import { apiFetch } from "@/lib/api";
   import {
-    LayoutDashboard, Package, ShoppingCart, MessageSquare,
+    LayoutDashboard, Package, ShoppingCart, MessageSquare, Bell,
     Tag, Gift, BookOpen, Upload, Settings, Home, LogOut, BarChart2, Archive, TrendingUp,
   } from "lucide-react";
 
@@ -129,6 +129,7 @@ import { useStoreName, STORE_NAME_SHORT } from "@/lib/use-store-name";
       { href: "/admin/blog", label: "Journal", icon: BookOpen },
       { href: "/admin/storage", label: "Storage", icon: Archive },
       { href: "/admin/bulk-import", label: "Bulk Import", icon: Upload },
+      { href: "/admin/stock-alerts", label: "Stock Alerts", icon: Bell },
       { href: "/admin/settings", label: "Settings", icon: Settings },
     ];
 

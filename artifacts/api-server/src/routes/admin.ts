@@ -728,17 +728,22 @@ router.delete("/admin/blog/:id", async (req, res) => {
 
 // ─── Stock Alerts ─────────────────────────────────────────────────────────────
 router.post("/stock-alerts", async (req, res) => {
-  const { email, productId, productName } = req.body as { email: string; productId: string; productName: string };
-  if (!email || !productId) { res.status(400).json({ error: "email and productId required" }); return; }
-  const existing = await firestore.collection(COLLECTIONS.stockAlerts).where("email", "==", email).where("productId", "==", productId).get();
+  const { phone, productId, productName } = req.body as { phone: string; productId: string; productName: string };
+  if (!phone || !productId) { res.status(400).json({ error: "phone and productId required" }); return; }
+  const existing = await firestore.collection(COLLECTIONS.stockAlerts).where("phone", "==", phone).where("productId", "==", productId).get();
   if (!existing.empty) { res.json({ message: "Already registered" }); return; }
-  await firestore.collection(COLLECTIONS.stockAlerts).add({ email, productId, productName, createdAt: Timestamp.now() });
+  await firestore.collection(COLLECTIONS.stockAlerts).add({ phone, productId, productName, createdAt: Timestamp.now() });
   res.status(201).json({ message: "Alert registered" });
 });
 
 router.get("/admin/stock-alerts", async (_req, res) => {
   const snap = await firestore.collection(COLLECTIONS.stockAlerts).get();
   res.json(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
+});
+
+router.delete("/admin/stock-alerts/:id", async (req, res) => {
+  await firestore.collection(COLLECTIONS.stockAlerts).doc(req.params.id).delete();
+  res.status(204).send();
 });
 
 router.get("/admin/low-stock", async (_req, res) => {

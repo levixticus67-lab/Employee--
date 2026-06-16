@@ -223,7 +223,7 @@ export default function ProductDetail() {
   const [selectedSize, setSelectedSize] = useState<number | null>(null);
   const [reviewForm, setReviewForm] = useState({ customerName: "", rating: 5, comment: "" });
   const [relatedProducts, setRelatedProducts] = useState<RelatedProduct[]>([]);
-  const [alertEmail, setAlertEmail] = useState("");
+  const [alertPhone, setAlertPhone] = useState("");
   const [alertSent, setAlertSent] = useState(false);
 
   useEffect(() => {
@@ -270,12 +270,12 @@ export default function ProductDetail() {
 
   const handleStockAlert = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!alertEmail) return;
+    if (!alertPhone) return;
     try {
       await apiFetch("/api/stock-alerts", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: alertEmail, productId, productName: product?.name }),
+        body: JSON.stringify({ phone: alertPhone, productId, productName: product?.name }),
       });
       setAlertSent(true);
       toast.success("We'll notify you when it's back in stock!");
@@ -422,8 +422,8 @@ export default function ProductDetail() {
                 </div>
                 {!alertSent ? (
                   <form onSubmit={handleStockAlert} className="flex gap-2">
-                    <input type="email" required value={alertEmail} onChange={(e) => setAlertEmail(e.target.value)}
-                      placeholder="Email for restock notification"
+                    <input type="tel" required value={alertPhone} onChange={(e) => setAlertPhone(e.target.value)}
+                      placeholder="WhatsApp number (e.g. +2567...)"
                       className="flex-1 glass-card rounded-full px-4 py-2 text-sm border-white/15 focus:ring-2 focus:ring-blue-400 focus:outline-none" />
                     <Button type="submit" className="rounded-full bg-blue-500 hover:bg-blue-400 text-white px-4 text-sm flex-shrink-0">
                       <Bell className="w-4 h-4" />
