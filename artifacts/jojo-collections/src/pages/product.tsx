@@ -431,7 +431,7 @@ export default function ProductDetail() {
                   </form>
                 ) : (
                   <p className="text-center text-sm text-green-400 glass-panel rounded-xl p-3">
-                    ✓ We'll email you when it's back in stock!
+                    ✓ We'll message you on WhatsApp when it's back in stock!
                   </p>
                 )}
               </div>
