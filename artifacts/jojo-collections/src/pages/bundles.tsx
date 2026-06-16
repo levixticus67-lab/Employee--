@@ -209,7 +209,7 @@ export default function BundlesPage() {
                   <div
                     key={(p as any).id}
                     className="glass-card flex gap-3 rounded-2xl p-3 cursor-pointer active:opacity-70 transition-opacity"
-                    onClick={() => { setViewingBundle(null); navigate(`/product/${(p as any).id}`); }}
+                    onClick={() => { if ((p as any).id) { setViewingBundle(null); navigate(`/product/${(p as any).id}`); } }}
                   >
                     <div className="w-16 h-16 rounded-xl overflow-hidden bg-white/5 flex-shrink-0">
                       {(p as any).imageUrl

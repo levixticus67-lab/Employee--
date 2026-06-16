@@ -8,10 +8,6 @@
     ],
     "rewrites": [
       {
-        "source": "/product/**",
-        "function": "ogPreview"
-      },
-      {
         "source": "**",
         "destination": "/index.html"
       }
