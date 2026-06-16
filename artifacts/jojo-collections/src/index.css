@@ -87,6 +87,12 @@
   --app-font-mono: Menlo, monospace;
 }
 
+/* Prevents mobile browser white-flash on overscroll by matching the page bg colour */
+html {
+  background-color: #0f2340;
+  overscroll-behavior-y: none;
+}
+
 body {
   @apply font-sans text-foreground antialiased min-h-screen;
   background: linear-gradient(170deg, #0f2340 0%, #1b3a5c 35%, #1e4976 65%, #14305a 100%);
@@ -166,6 +172,7 @@ input::placeholder, textarea::placeholder { color: rgb(125 211 252 / 0.45); }
 
 /* ── CSS token overrides ─────────────────────────────────────────── */
 html[data-theme="gold"] {
+  background-color: #0a0508; /* overscroll flash fix — gold theme */
   --background: 20 15% 5%;
   --foreground: 38 70% 92%;
   --card: 20 20% 8% / 0.65;
