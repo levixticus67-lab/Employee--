@@ -1,7 +1,0 @@
-name = "jojo-og-preview"
-main = "worker/index.js"
-compatibility_date = "2024-09-23"
-
-[vars]
-FIREBASE_PROJECT_ID = "jojo-collection"
-FRONTEND_URL = "https://jojo-collection.web.app"

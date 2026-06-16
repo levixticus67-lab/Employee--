@@ -259,7 +259,7 @@ export default function ProductDetail() {
   };
 
   const handleShare = async () => {
-    const url = `https://jojo-og-preview.levixticus67.workers.dev/product/${productId}`;
+    const url = `https://lenz-fragrances.web.app/product/${productId}`;
     const text = `Check out ${product?.name} on ${storeName}!`;
     if (navigator.share) {
       try { await navigator.share({ title: product?.name, text, url }); return; } catch {}
