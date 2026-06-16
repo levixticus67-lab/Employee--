@@ -159,12 +159,7 @@ import { getUsdToUgxRate } from "../lib/exchangeRate";
           if (!snap.exists) throw new Error(`Product ${ri.productId} not found`);
           const p     = snap.data() as ProductDoc;
           if (p.stock < ri.quantity) throw new Error(`Insufficient stock for "${p.name}"`);
-          const rawItemsArr = (rawBody["items"] as Record<string, unknown>[] | undefined) ?? [];
-          const rawItemEntry = rawItemsArr[i] ?? {};
-          const priceOverrideVal = typeof rawItemEntry["priceOverride"] === "number" && rawItemEntry["priceOverride"] >= 0
-            ? rawItemEntry["priceOverride"]
-            : null;
-          const price = priceOverrideVal !== null ? priceOverrideVal : Number(p.salePrice ?? p.price ?? 0);
+          const price = Number(p.salePrice ?? p.price ?? 0);
           items.push({ productId: snap.id, name: p.name ?? "", brand: p.brand ?? "", price, quantity: ri.quantity, imageUrl: p.imageUrl ?? null });
           subtotal += price * ri.quantity;
         }
@@ -218,6 +213,13 @@ import { getUsdToUgxRate } from "../lib/exchangeRate";
         const uSnap = await uRef.get();
         if (uSnap.exists) { const u = uSnap.data() as UserDoc; if (!u.phoneNumber) await uRef.update({ phoneNumber: paymentNumber }); }
       } catch (err) { req.log.warn({ err }, "Could not bind phone to user"); }
+    }
+
+    // Store order ID in session so the customer can retrieve their own order without re-auth
+    if (req.session) {
+      const ids = req.session.createdOrderIds ?? [];
+      req.session.createdOrderIds = [...ids.slice(-19), orderId];
+      req.session.save(() => {});
     }
 
     if (!isOnline) { res.status(201).json(await loadOrderById(orderId)); return; }
@@ -394,6 +396,12 @@ import { getUsdToUgxRate } from "../lib/exchangeRate";
     const orderRef  = firestore.collection(COLLECTIONS.orders).doc(req.params.orderId);
     const orderSnap = await orderRef.get();
     if (!orderSnap.exists) { res.status(404).json({ error: "Order not found" }); return; }
+    const isAdmin2   = req.session?.isAdmin;
+    const isLoggedIn2 = Boolean(req.session?.userId);
+    const isOwnOrder2 = (req.session?.createdOrderIds ?? []).includes(req.params.orderId);
+    if (!isAdmin2 && !isLoggedIn2 && !isOwnOrder2) {
+      res.status(403).json({ error: "Not authorized to view this order" }); return;
+    }
     const order = orderSnap.data() as OrderDoc;
     const raw   = order as Record<string, unknown>;
     if (order.paymentStatus !== "pending" || !raw["pesapalTrackingId"]) {

@@ -8,6 +8,7 @@ declare module "express-session" {
     userId?: string;
     firebaseUid?: string;
     isAdmin?: boolean;
+    createdOrderIds?: string[];
   }
 }
 

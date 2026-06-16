@@ -1,6 +1,7 @@
 import express, { type Express } from "express";
   import cors from "cors";
   import helmet from "helmet";
+  import rateLimit from "express-rate-limit";
   import pinoHttp from "pino-http";
   import { seedProductsIfEmpty } from "@workspace/db";
   import router from "./routes";
@@ -53,6 +54,17 @@ import { setupExpressErrorHandler } from "@sentry/node";
       credentials: true,
     }),
   );
+
+  // Global rate limiter — 200 req/min per IP across all endpoints.
+  // Auth routes have their own tighter limits (10 req/15 min) applied in auth.ts.
+  app.use(rateLimit({
+    windowMs: 60 * 1000,
+    max: 200,
+    standardHeaders: "draft-7",
+    legacyHeaders: false,
+    message: { error: "Too many requests. Please slow down." },
+    skip: (req) => req.path === "/api/healthz" || req.path === "/api/healthz/deep",
+  }));
 
   // Cap request bodies at 100 kb to prevent resource exhaustion from
   // oversized payloads sent to any route.

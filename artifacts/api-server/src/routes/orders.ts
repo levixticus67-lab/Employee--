@@ -243,6 +243,12 @@ router.post("/orders", async (req, res) => {
       } catch (err) { req.log.warn({ err }, "Could not bind phone to user"); }
     }
 
+    // Store order ID in session so the customer can retrieve their own order without re-auth
+    if (req.session) {
+      const ids = req.session.createdOrderIds ?? [];
+      req.session.createdOrderIds = [...ids.slice(-19), newOrderRef.id];
+      req.session.save(() => {});
+    }
     res.status(201).json(await loadOrderById(newOrderRef.id));
   } catch (err) {
     res.status(400).json({ error: err instanceof Error ? err.message : "Failed to place order" });
@@ -252,6 +258,12 @@ router.post("/orders", async (req, res) => {
 router.get("/orders/:id", async (req, res) => {
   const order = await loadOrderById(req.params.id);
   if (!order) { res.status(404).json({ error: "Order not found" }); return; }
+  const isAdmin = req.session?.isAdmin;
+  const isLoggedIn = Boolean(req.session?.userId);
+  const isOwnOrder = (req.session?.createdOrderIds ?? []).includes(req.params.id);
+  if (!isAdmin && !isLoggedIn && !isOwnOrder) {
+    res.status(403).json({ error: "Not authorized to view this order" }); return;
+  }
   res.json(order);
 });
 
