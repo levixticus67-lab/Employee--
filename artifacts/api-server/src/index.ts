@@ -1,6 +1,7 @@
 import "./instrument.js";
 import app from "./app";
 import { logger } from "./lib/logger";
+import { startSessionCleanup } from "./middlewares/session";
 
 const rawPort = process.env["PORT"];
 
@@ -23,6 +24,10 @@ app.listen(port, (err) => {
   }
 
   logger.info({ port }, "Server listening");
+
+  // Session cleanup: purge expired Firestore session docs every 6 hours
+  startSessionCleanup();
+  logger.info("Session cleanup job started (6h interval)");
 
   // Keep-alive: ping own health endpoint every 5 minutes to prevent
   // Render free tier from sleeping after inactivity.
