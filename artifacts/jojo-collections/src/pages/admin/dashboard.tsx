@@ -33,6 +33,7 @@ function saveSeenIds(key: string, ids: Set<string>) {
 type ChartPoint = { date: string; revenue: number; orders: number };
 type HistoryPt = { date: string; UGX: number; EUR: number; GBP: number };
 type CurrencyChartPt = { label: string; UGX: number; EUR: number; GBP: number };
+type StockAlertGroup = { productId: string; productName: string; count: number };
 
 const CURRENCIES = [
   { key: "UGX" as const, label: "UGX", color: "#3b82f6", grad: "dash_ugxGrad" },
@@ -202,6 +203,26 @@ export default function Dashboard() {
     apiFetch("/api/admin/exchange-rates/history?days=7").then((r) => r.json()).then(setCurrencyHistory).catch(() => {});
   }, []);
 
+  // Stock alerts summary
+  const [stockAlertGroups, setStockAlertGroups] = useState<StockAlertGroup[]>([]);
+  const [stockAlertTotal, setStockAlertTotal] = useState(0);
+  useEffect(() => {
+    apiFetch("/api/admin/stock-alerts")
+      .then((r) => r.json())
+      .then((alerts: { productId: string; productName: string }[]) => {
+        if (!Array.isArray(alerts)) return;
+        const map: Record<string, StockAlertGroup> = {};
+        for (const a of alerts) {
+          if (!map[a.productId]) map[a.productId] = { productId: a.productId, productName: a.productName, count: 0 };
+          map[a.productId]!.count++;
+        }
+        const sorted = Object.values(map).sort((a, b) => b.count - a.count);
+        setStockAlertGroups(sorted.slice(0, 4));
+        setStockAlertTotal(alerts.length);
+      })
+      .catch(() => {});
+  }, []);
+
   const revenueChartData = (analyticsData?.revenueChart ?? []).map((d) => ({
     date: d.date.slice(5),
     revenue: d.revenue,
@@ -302,6 +323,41 @@ export default function Dashboard() {
             </div>
           </div>
         ))}
+      </div>
+
+      {/* Pending Stock Alerts */}
+      <div className="glass-panel-heavy rounded-3xl p-5 border-orange-300/25 mb-8">
+        <div className="flex justify-between items-center mb-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-orange-400/20 flex items-center justify-center flex-shrink-0">
+              <Bell className="w-5 h-5 text-orange-400" />
+            </div>
+            <div>
+              <h2 className="text-lg font-serif text-blue-950">Pending Stock Alerts</h2>
+              <p className="text-xs text-blue-800/60">
+                {stockAlertTotal === 0
+                  ? "No pending alerts — all customers notified"
+                  : `${stockAlertTotal} customer${stockAlertTotal !== 1 ? "s" : ""} waiting to be notified`}
+              </p>
+            </div>
+          </div>
+          <Link href="/admin/stock-alerts" className="text-sm text-blue-600 hover:text-blue-800 font-medium flex-shrink-0">
+            View All
+          </Link>
+        </div>
+        {stockAlertTotal === 0 ? (
+          <p className="text-sm text-blue-800/40 italic px-1">No customers are currently waiting for restock notifications.</p>
+        ) : (
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            {stockAlertGroups.map((g) => (
+              <div key={g.productId} className="glass-card rounded-xl p-3 border-orange-300/20">
+                <p className="text-[11px] text-blue-800/70 truncate mb-1 leading-tight">{g.productName}</p>
+                <p className="text-2xl font-serif text-orange-400">{g.count}</p>
+                <p className="text-[10px] text-blue-800/50 mt-0.5">{g.count === 1 ? "customer" : "customers"}</p>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
