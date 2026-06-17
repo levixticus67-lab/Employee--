@@ -3,6 +3,7 @@ import { Layout } from "@/components/layout";
 import { Link } from "wouter";
 import { BookOpen, Calendar, User } from "lucide-react";
 import { apiFetch } from "@/lib/api";
+import { CldImg } from "@/components/cld-img";
 
 type BlogPost = {
   id: string;
@@ -50,7 +51,7 @@ export default function BlogPage() {
                 <div className="glass-card rounded-2xl overflow-hidden group cursor-pointer hover:shadow-xl transition-shadow">
                   {post.imageUrl ? (
                     <div className="aspect-[16/9] overflow-hidden">
-                      <img src={post.imageUrl} alt={post.title} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
+                      <CldImg src={post.imageUrl} w={600} alt={post.title} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
                     </div>
                   ) : (
                     <div className="aspect-[16/9] bg-gradient-to-br from-blue-900/40 to-blue-800/30 flex items-center justify-center">

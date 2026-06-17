@@ -9,6 +9,7 @@ import { ShoppingBag, User, LogOut, Heart, MessageCircle, Package, X } from "luc
 import { useState, useEffect, useRef } from "react";
 import { toast } from "sonner";
 import { apiFetch } from "@/lib/api";
+import { CldImg } from "@/components/cld-img";
 
 type BannerMediaType = "none" | "image" | "video";
 
@@ -386,7 +387,7 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
             <video src={settings.bannerMediaUrl} className="absolute inset-0 w-full h-full object-cover" autoPlay loop muted playsInline />
           )}
           {settings.bannerMediaType === "image" && settings.bannerMediaUrl && (
-            <img src={settings.bannerMediaUrl} alt="" className="absolute inset-0 w-full h-full object-cover" />
+            <CldImg src={settings.bannerMediaUrl} w={1200} eager alt="" className="absolute inset-0 w-full h-full object-cover" />
           )}
           <div className="absolute inset-0" style={{ background: hasMedia ? `${settings.bannerBgColor}99` : settings.bannerBgColor }} />
           <div className="relative z-10 flex flex-col items-center justify-center gap-2 px-10 py-4 text-center w-full">
@@ -420,7 +421,7 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
           <div className="flex items-center h-20 gap-6">
             <Link href="/" className="flex-shrink-0 flex items-center gap-2.5">
               {settings.logoUrl && (
-                <img src={settings.logoUrl} alt="Logo" className="w-9 h-9 rounded-full object-cover border-2 border-sky-400/30 shadow-sm flex-shrink-0" />
+                <CldImg src={settings.logoUrl} w={80} eager alt="Logo" className="w-9 h-9 rounded-full object-cover border-2 border-sky-400/30 shadow-sm flex-shrink-0" />
               )}
               <span className="text-2xl font-serif text-sky-50 font-bold tracking-widest">{STORE_NAME_SHORT.toUpperCase()}</span>
             </Link>

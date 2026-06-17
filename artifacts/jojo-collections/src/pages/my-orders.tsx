@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { apiFetch } from "@/lib/api";
+import { CldImg } from "@/components/cld-img";
 
 type OrderItem = { productId: string; name: string; brand: string; price: number; quantity: number; imageUrl: string | null };
 type StatusEntry = { status: string; timestamp: string };
@@ -135,7 +136,7 @@ function ReceiptCard({ receipt }: { receipt: ReceiptData }) {
                 <div key={item.productId} className="flex items-center gap-3">
                   <div className="w-12 h-12 glass-card rounded-lg p-1 flex-shrink-0 bg-white/40 overflow-hidden">
                     {item.imageUrl
-                      ? <img src={item.imageUrl} alt={item.name} className="w-full h-full object-contain" />
+                      ? <CldImg src={item.imageUrl} w={200} alt={item.name} className="w-full h-full object-contain" />
                       : <div className="w-full h-full flex items-center justify-center text-[8px] text-blue-400">Img</div>}
                   </div>
                   <div className="flex-1 min-w-0">
@@ -306,7 +307,7 @@ function OrderCard({ order, email, onRefresh }: { order: Order; email: string; o
               {order.items.map((item) => (
                 <div key={item.productId} className="flex items-center gap-3">
                   <div className="w-12 h-12 glass-card rounded-lg p-1 flex-shrink-0 bg-white/40 overflow-hidden">
-                    {item.imageUrl ? <img src={item.imageUrl} alt={item.name} className="w-full h-full object-contain" /> : <div className="w-full h-full flex items-center justify-center text-[8px] text-blue-400">Img</div>}
+                    {item.imageUrl ? <CldImg src={item.imageUrl} w={200} alt={item.name} className="w-full h-full object-contain" /> : <div className="w-full h-full flex items-center justify-center text-[8px] text-blue-400">Img</div>}
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-blue-950 truncate">{item.name}</p>

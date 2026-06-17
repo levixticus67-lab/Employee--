@@ -6,6 +6,7 @@ import { useWishlist } from "@/components/wishlist-context";
 import { useCurrency } from "@/components/currency-context";
 import { Search, Filter, Heart, Flame, Tag } from "lucide-react";
 import { apiFetch } from "@/lib/api";
+import { CldImg } from "@/components/cld-img";
 
 const CATEGORIES = ["All", "Eau de Parfum", "Eau de Toilette", "Body Mist"];
 
@@ -78,7 +79,7 @@ export default function Shop() {
                   <div className="flex-shrink-0 w-32 glass-card rounded-xl p-2 cursor-pointer hover:bg-white/10 transition-colors">
                     {p.imageUrl && (
                       <div className="aspect-square bg-white/5 rounded-lg mb-2 overflow-hidden relative">
-                        <img src={p.imageUrl} alt={p.name} className="absolute inset-0 w-full h-full object-contain p-1" />
+                        <CldImg src={p.imageUrl} w={120} alt={p.name} className="absolute inset-0 w-full h-full object-contain p-1" />
                       </div>
                     )}
                     <p className="text-xs font-serif text-sky-100 truncate">{p.name}</p>
@@ -204,8 +205,8 @@ export default function Shop() {
                     {/* Square image — full width, aspect-square, object-contain, nothing cropped */}
                     <div className="aspect-square bg-white/5 overflow-hidden relative">
                       {product.imageUrl ? (
-                        <img
-                          src={product.imageUrl}
+                        <CldImg
+                          src={product.imageUrl} w={400}
                           alt={product.name}
                           className="absolute inset-0 w-full h-full object-contain p-2 sm:p-3 drop-shadow-lg transition-transform duration-700 group-hover:scale-105"
                         />

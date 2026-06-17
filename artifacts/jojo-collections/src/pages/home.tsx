@@ -7,6 +7,7 @@ import { useCurrency } from "@/components/currency-context";
 import { useWishlist } from "@/components/wishlist-context";
 import { Flame, Package, Heart, Tag } from "lucide-react";
 import { apiFetch } from "@/lib/api";
+import { CldImg } from "@/components/cld-img";
 
 type Bundle = { id: string; name: string; description: string; productIds: string[]; price: number; imageUrl: string | null; active: boolean };
 
@@ -69,8 +70,8 @@ export default function Home() {
         {/* Mobile-only: logo + store name above "Premium Fragrances" */}
         <div className="md:hidden flex flex-col items-center mb-6">
           {logoUrl ? (
-            <img
-              src={logoUrl}
+            <CldImg
+              src={logoUrl} w={80} eager
               alt="Logo"
               className="rounded-full object-cover border-2 border-sky-400/30 shadow-lg mb-3"
               style={{ width: 64, height: 64 }}
@@ -175,7 +176,7 @@ export default function Home() {
                   </button>
                   <div className="aspect-square rounded-xl bg-white/5 mb-3 overflow-hidden relative">
                     {product.imageUrl ? (
-                      <img src={product.imageUrl} alt={product.name} className="absolute inset-0 w-full h-full object-contain p-2 drop-shadow-lg transition-transform duration-500 group-hover:scale-105" />
+                      <CldImg src={product.imageUrl} w={400} alt={product.name} className="absolute inset-0 w-full h-full object-contain p-2 drop-shadow-lg transition-transform duration-500 group-hover:scale-105" />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center"><span className="text-sky-400/40 font-serif italic">No image</span></div>
                     )}
@@ -214,7 +215,7 @@ export default function Home() {
                   </button>
                   <div className="aspect-square rounded-xl bg-white/5 mb-3 sm:mb-5 overflow-hidden relative">
                     {product.imageUrl ? (
-                      <img src={product.imageUrl} alt={product.name} className="absolute inset-0 w-full h-full object-contain p-2 sm:p-4 drop-shadow-xl transition-transform duration-700 group-hover:scale-105" />
+                      <CldImg src={product.imageUrl} w={400} alt={product.name} className="absolute inset-0 w-full h-full object-contain p-2 sm:p-4 drop-shadow-xl transition-transform duration-700 group-hover:scale-105" />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center"><span className="text-sky-400/40 font-serif italic text-lg">No image</span></div>
                     )}
@@ -255,7 +256,7 @@ export default function Home() {
                 <div className="glass-card rounded-2xl overflow-hidden group cursor-pointer hover:shadow-xl transition-shadow">
                   {bundle.imageUrl ? (
                     <div className="aspect-[16/9] overflow-hidden">
-                      <img src={bundle.imageUrl} alt={bundle.name} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
+                      <CldImg src={bundle.imageUrl} w={400} alt={bundle.name} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
                     </div>
                   ) : (
                     <div className="aspect-[16/9] bg-gradient-to-br from-blue-900/40 to-blue-800/20 flex items-center justify-center">
@@ -274,7 +275,7 @@ export default function Home() {
                           <div className="flex -space-x-2">
                             {prods.slice(0, 5).map((p: any) => (
                               p.imageUrl
-                                ? <img key={p.id} src={p.imageUrl} alt={p.name} title={p.name} className="w-7 h-7 rounded-full object-cover border-2 border-blue-900/60 bg-white/10 ring-1 ring-white/10" />
+                                ? <CldImg key={p.id} src={p.imageUrl} w={80} alt={p.name} title={p.name} className="w-7 h-7 rounded-full object-cover border-2 border-blue-900/60 bg-white/10 ring-1 ring-white/10" />
                                 : <div key={p.id} className="w-7 h-7 rounded-full bg-blue-800/50 border-2 border-blue-900/60 flex items-center justify-center"><Package className="w-3 h-3 text-blue-300/50" /></div>
                             ))}
                             {prods.length > 5 && (
@@ -307,7 +308,7 @@ export default function Home() {
               <div className="glass-card rounded-2xl p-3 sm:p-4 group cursor-pointer hover:bg-white/10 transition-colors h-full flex flex-col">
                 <div className="aspect-square rounded-xl bg-white/5 mb-3 overflow-hidden relative">
                   {product.imageUrl ? (
-                    <img src={product.imageUrl} alt={product.name} className="absolute inset-0 w-full h-full object-contain p-2 drop-shadow-lg transition-transform duration-500 group-hover:scale-105" />
+                    <CldImg src={product.imageUrl} w={400} alt={product.name} className="absolute inset-0 w-full h-full object-contain p-2 drop-shadow-lg transition-transform duration-500 group-hover:scale-105" />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center"><span className="text-sky-400/40 font-serif italic">Glass</span></div>
                   )}

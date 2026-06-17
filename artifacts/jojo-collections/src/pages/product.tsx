@@ -12,6 +12,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { getListProductReviewsQueryKey } from "@workspace/api-client-react";
 import { apiFetch } from "@/lib/api";
 import { useStoreName } from "@/lib/use-store-name";
+import { CldImg } from "@/components/cld-img";
 
 type RelatedProduct = { id: string; name: string; brand: string; price: number; salePrice?: number | null; imageUrl: string | null };
 
@@ -69,7 +70,7 @@ function ImageSlider({ images, name }: { images: string[]; name: string }) {
     return (
       <div className="relative aspect-square rounded-2xl overflow-hidden" style={{ background: "#06101e" }}>
         {images[0] && (
-          <img src={images[0]} alt={name} className="w-full h-full object-contain p-6 drop-shadow-2xl" draggable={false} />
+          <CldImg src={images[0]} w={800} eager alt={name} className="w-full h-full object-contain p-6 drop-shadow-2xl" draggable={false} />
         )}
         <div className="absolute inset-0 rounded-2xl ring-1 ring-sky-400/10 pointer-events-none" />
       </div>
@@ -101,8 +102,8 @@ function ImageSlider({ images, name }: { images: string[]; name: string }) {
           transition: "opacity 0.5s ease, transform 0.5s ease",
         }}
       >
-        <img
-          src={images[current]}
+        <CldImg
+          src={images[current]} w={800} eager
           alt={name}
           className="w-full h-full object-contain drop-shadow-2xl"
           draggable={false}
@@ -120,8 +121,8 @@ function ImageSlider({ images, name }: { images: string[]; name: string }) {
               : "sliderFadeIn 0.55s ease forwards",
           }}
         >
-          <img
-            src={images[incomingIdx]}
+          <CldImg
+            src={images[incomingIdx]} w={800} eager
             alt={name}
             className="w-full h-full object-contain drop-shadow-2xl"
             draggable={false}
@@ -174,8 +175,8 @@ function ImageSlider({ images, name }: { images: string[]; name: string }) {
                     className="rounded-xl overflow-hidden border border-white/15 cursor-pointer hover:border-sky-400/50 transition-colors"
                     onClick={() => go("next")}
                   >
-                    <img
-                      src={images[idx]}
+                    <CldImg
+                      src={images[idx]} w={200}
                       alt=""
                       className="w-full h-full object-contain p-0.5"
                       style={{ background: "rgba(255,255,255,0.04)" }}
@@ -468,7 +469,7 @@ export default function ProductDetail() {
                   <div className="glass-panel rounded-2xl p-4 group cursor-pointer hover:bg-white/8 transition-colors">
                     <div className="aspect-square rounded-xl bg-white/5 mb-3 overflow-hidden relative">
                       {rp.imageUrl ? (
-                        <img src={rp.imageUrl} alt={rp.name} className="absolute inset-0 w-full h-full object-contain p-2 drop-shadow-md transition-transform duration-500 group-hover:scale-105" />
+                        <CldImg src={rp.imageUrl} w={300} alt={rp.name} className="absolute inset-0 w-full h-full object-contain p-2 drop-shadow-md transition-transform duration-500 group-hover:scale-105" />
                       ) : (
                         <div className="w-full h-full glass-panel rounded-lg" />
                       )}

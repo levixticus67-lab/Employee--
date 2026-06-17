@@ -7,6 +7,7 @@ import { Link } from "wouter";
 import { Heart, ShoppingBag, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import { CldImg } from "@/components/cld-img";
 
 export default function WishlistPage() {
   const { wishlist, toggle } = useWishlist();
@@ -43,7 +44,7 @@ export default function WishlistPage() {
                   <div className="aspect-[4/3] rounded-xl bg-white/40 mb-4 overflow-hidden flex items-center justify-center p-4 relative cursor-pointer">
                     <div className="absolute inset-0 bg-gradient-to-tr from-blue-100/50 to-white/20" />
                     {product.imageUrl ? (
-                      <img src={product.imageUrl} alt={product.name} className="object-contain w-full h-full drop-shadow-lg z-10" />
+                      <CldImg src={product.imageUrl} w={400} alt={product.name} className="object-contain w-full h-full drop-shadow-lg z-10" />
                     ) : (
                       <span className="text-blue-300 font-serif italic z-10">No image</span>
                     )}

@@ -10,6 +10,7 @@ import { ShoppingBag, Package, Tag, Star, Eye, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { apiFetch } from "@/lib/api";
+import { CldImg } from "@/components/cld-img";
 
 type Bundle = {
   id: string; name: string; description: string; productIds: string[];
@@ -88,7 +89,7 @@ export default function BundlesPage() {
                   {/* Image area */}
                   <div className="relative h-56 bg-gradient-to-br from-blue-900/40 to-indigo-900/30 overflow-hidden">
                     {bundle.imageUrl ? (
-                      <img src={bundle.imageUrl} alt={bundle.name} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
+                      <CldImg src={bundle.imageUrl} w={400} alt={bundle.name} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center">
                         <Package className="w-20 h-20 text-blue-200" />
@@ -118,7 +119,7 @@ export default function BundlesPage() {
                           <div className="flex -space-x-2.5">
                             {bundleProducts.slice(0, 5).map((p) => (
                               (p as any).imageUrl
-                                ? <img key={(p as any).id} src={(p as any).imageUrl} alt={(p as any).name} title={(p as any).name}
+                                ? <CldImg key={(p as any).id} src={(p as any).imageUrl} alt={(p as any).name} title={(p as any).name}
                                     className="w-8 h-8 rounded-full object-cover border-2 border-blue-950/70 bg-white/10" />
                                 : <div key={(p as any).id} className="w-8 h-8 rounded-full bg-blue-800/50 border-2 border-blue-950/70 flex items-center justify-center">
                                     <Package className="w-3.5 h-3.5 text-blue-300/50" />
@@ -213,7 +214,7 @@ export default function BundlesPage() {
                   >
                     <div className="w-16 h-16 rounded-xl overflow-hidden bg-white/5 flex-shrink-0">
                       {(p as any).imageUrl
-                        ? <img src={(p as any).imageUrl} alt={(p as any).name} className="w-full h-full object-cover" />
+                        ? <CldImg src={(p as any).imageUrl} w={200} alt={(p as any).name} className="w-full h-full object-cover" />
                         : <div className="w-full h-full flex items-center justify-center">
                             <Package className="w-6 h-6 text-muted-foreground/40" />
                           </div>}

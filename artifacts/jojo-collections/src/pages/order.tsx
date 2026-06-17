@@ -254,7 +254,7 @@ export default function OrderConfirmation() {
               <div key={item.productId} className="flex items-center gap-4">
                 <div className="w-16 h-16 glass-card rounded-lg p-1 flex-shrink-0">
                   {item.imageUrl
-                    ? <img src={item.imageUrl} alt={item.name} className="w-full h-full object-contain" />
+                    ? <CldImg src={item.imageUrl} w={200} alt={item.name} className="w-full h-full object-contain" />
                     : <div className="w-full h-full bg-white/20 rounded flex items-center justify-center text-[10px] text-blue-400">Img</div>}
                 </div>
                 <div className="flex-1">

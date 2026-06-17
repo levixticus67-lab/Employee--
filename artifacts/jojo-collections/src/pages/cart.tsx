@@ -5,6 +5,7 @@ import { useCart } from "@/components/cart-context";
 import { Button } from "@/components/ui/button";
 import { Minus, Plus, Trash2, ShoppingBag, Truck, Gift, MapPin, Package } from "lucide-react";
 import { apiFetch } from "@/lib/api";
+import { CldImg } from "@/components/cld-img";
 
 export default function Cart() {
   const { items, bundles, updateQuantity, removeFromCart, removeBundleFromCart, subtotal, totalItems } = useCart();
@@ -88,7 +89,7 @@ export default function Cart() {
                   <div key={item.product.id} className="glass-panel rounded-2xl p-4 flex gap-4 items-center border-white/40 relative">
                     <div className="w-24 h-24 glass-card rounded-xl overflow-hidden flex-shrink-0 p-2">
                       {item.product.imageUrl ? (
-                        <img src={item.product.imageUrl} alt={item.product.name} className="w-full h-full object-contain" />
+                        <CldImg src={item.product.imageUrl} w={200} alt={item.product.name} className="w-full h-full object-contain" />
                       ) : (
                         <div className="w-full h-full bg-blue-50/50 rounded flex items-center justify-center text-xs text-blue-400">No Img</div>
                       )}
@@ -121,7 +122,7 @@ export default function Cart() {
                     <div className="flex gap-4 items-start">
                       <div className="w-24 h-24 glass-card rounded-xl overflow-hidden flex-shrink-0 p-2 bg-gradient-to-br from-blue-50 to-indigo-100">
                         {bundle.imageUrl ? (
-                          <img src={bundle.imageUrl} alt={bundle.bundleName} className="w-full h-full object-contain" />
+                          <CldImg src={bundle.imageUrl} w={200} alt={bundle.bundleName} className="w-full h-full object-contain" />
                         ) : (
                           <div className="w-full h-full flex items-center justify-center">
                             <Package className="w-10 h-10 text-blue-300" />
