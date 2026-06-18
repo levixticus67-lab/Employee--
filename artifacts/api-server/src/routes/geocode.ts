@@ -44,4 +44,19 @@ router.get("/geocode/reverse", async (req, res) => {
   }
 });
 
+router.get("/geocode/ip", async (req, res) => {
+  const forwarded = req.headers["x-forwarded-for"];
+  const ip = (Array.isArray(forwarded) ? forwarded[0] : forwarded?.split(",")[0]) ?? req.ip ?? "";
+  try {
+    const r = await fetch(`https://ipapi.co/${ip}/json/`, {
+      headers: { "User-Agent": "LenzFragrances/1.0 (lenz-fragrances.web.app)", Accept: "application/json" },
+    });
+    const data = (await r.json()) as Record<string, string>;
+    const parts = [data["city"], data["region"], data["country_name"]].filter(Boolean);
+    res.json({ location: parts.join(", ") || null });
+  } catch {
+    res.json({ location: null });
+  }
+});
+
 export default router;
