@@ -100,18 +100,29 @@ import { useStoreName } from "@/lib/use-store-name";
       finally   { setValidatingCoupon(false); }
     };
 
-    const handleGetGPS = () => {
+    const handleGetGPS = async () => {
       if (!navigator.geolocation) {
         toast.error("Your browser doesn't support location access");
         return;
+      }
+      if (navigator.permissions) {
+        try {
+          const perm = await navigator.permissions.query({ name: "geolocation" });
+          if (perm.state === "denied") {
+            toast.error(
+              "Location is blocked. Click the padlock 🔒 in your browser's address bar, set Location to Allow, then try again.",
+              { duration: 9000 }
+            );
+            return;
+          }
+        } catch {}
       }
       setGpsLoading(true);
       navigator.geolocation.getCurrentPosition(
         async (pos) => {
           try {
-            const res = await fetch(
-              "https://nominatim.openstreetmap.org/reverse?format=json&lat=" + pos.coords.latitude + "&lon=" + pos.coords.longitude,
-              { headers: { Accept: "application/json" } }
+            const res = await apiFetch(
+              `/api/geocode/reverse?lat=${pos.coords.latitude}&lon=${pos.coords.longitude}`
             );
             const data = await res.json();
             if (data.display_name) {
@@ -126,8 +137,14 @@ import { useStoreName } from "@/lib/use-store-name";
         },
         (err) => {
           setGpsLoading(false);
-          if (err.code === 1) toast.error("Location access denied. Please type your address.");
-          else toast.error("Couldn't get your location. Please type your address.");
+          if (err.code === 1) {
+            toast.error(
+              "Location blocked. Click the padlock 🔒 in your address bar → set Location to Allow → try again.",
+              { duration: 9000 }
+            );
+          } else {
+            toast.error("Couldn't get your location. Please type your address.");
+          }
         },
         { timeout: 10000, maximumAge: 60000 }
       );
@@ -142,12 +159,8 @@ import { useStoreName } from "@/lib/use-store-name";
       debounceRef.current = setTimeout(async () => {
         setFetchingSuggestions(true);
         try {
-          const res = await fetch(
-            "https://nominatim.openstreetmap.org/search?format=json&q=" + encodeURIComponent(value) + "&limit=5",
-            { headers: { Accept: "application/json" } }
-          );
-          const results = await res.json();
-          const suggestions = results.map((r) => r.display_name);
+          const res = await apiFetch(`/api/geocode/search?q=${encodeURIComponent(value)}`);
+          const suggestions: string[] = await res.json();
           setAddressSuggestions(suggestions);
           if (suggestions.length > 0) setShowSuggestions(true);
         } catch { /* silently ignore suggestion errors */ }
