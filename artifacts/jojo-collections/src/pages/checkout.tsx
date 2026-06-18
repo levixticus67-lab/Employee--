@@ -49,7 +49,6 @@ import { useStoreName } from "@/lib/use-store-name";
     const [addressSuggestions, setAddressSuggestions] = useState([]);
     const [fetchingSuggestions, setFetchingSuggestions] = useState(false);
     const [gpsLoading, setGpsLoading]             = useState(false);
-    const [locationDenied, setLocationDenied]       = useState(false);
     const [showSuggestions, setShowSuggestions]   = useState(false);
     const debounceRef = useRef(null);
 
@@ -124,13 +123,25 @@ import { useStoreName } from "@/lib/use-store-name";
             toast.error("Location lookup failed. Please type your address.");
           } finally { setGpsLoading(false); }
         },
-        (err) => {
-          setGpsLoading(false);
+        async (err) => {
           if (err.code === 1) {
-            setLocationDenied(true);
+            toast("GPS blocked — detecting approximate location…", { duration: 3000 });
+            try {
+              const r = await apiFetch("/api/geocode/ip");
+              const d = await r.json();
+              if (d.location) {
+                setForm((p) => ({ ...p, shippingAddress: d.location }));
+                toast.success("City filled in from your network — add your street/area details");
+              } else {
+                toast.error("Couldn't detect location. Please type your address.");
+              }
+            } catch {
+              toast.error("Couldn't detect location. Please type your address.");
+            }
           } else {
             toast.error("Couldn't get your location. Please type your address.");
           }
+          setGpsLoading(false);
         },
         { timeout: 10000, maximumAge: 0 }
       );
@@ -286,22 +297,6 @@ import { useStoreName } from "@/lib/use-store-name";
                         {gpsLoading ? "Detecting\u2026" : "Use my location"}
                       </button>
                     </div>
-
-                    {locationDenied && (
-                      <div className="mb-2 rounded-xl border border-amber-300/60 bg-amber-50/20 px-4 py-3 text-xs text-amber-900 space-y-1.5">
-                        <p className="font-semibold text-amber-800 flex items-center gap-1.5">
-                          <span>📍</span> Location is blocked for this site
-                        </p>
-                        <p>To fix it on <strong>Android Chrome</strong>:</p>
-                        <ol className="list-decimal list-inside space-y-1 pl-1">
-                          <li>Tap the <strong>⋮ menu</strong> (top-right of Chrome) → <strong>Settings</strong></li>
-                          <li>Tap <strong>Site Settings</strong> → <strong>Location</strong></li>
-                          <li>Under <strong>Blocked</strong>, tap this site's address</li>
-                          <li>Tap <strong>Clear &amp; reset</strong>, then try the button again</li>
-                        </ol>
-                        <p className="text-amber-700/70">Or tap the <strong>padlock 🔒</strong> in the address bar → <strong>Permissions</strong> → Location → Allow.</p>
-                      </div>
-                    )}
 
                     <div className="relative">
                       <textarea required rows={3} maxLength={300}
