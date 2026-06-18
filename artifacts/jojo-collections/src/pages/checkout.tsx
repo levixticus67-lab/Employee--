@@ -139,7 +139,6 @@ import { useStoreName } from "@/lib/use-store-name";
         }
 
         if (paymentMethod === "cash_on_delivery") {
-          clearCart();
           // Show a WhatsApp CTA so the customer can confirm delivery details
           const waClean = whatsappNumber.replace(/\D/g, "");
           const orderId = (data["id"] as string | undefined) ?? "";
@@ -157,7 +156,10 @@ import { useStoreName } from "@/lib/use-store-name";
             } : undefined,
             duration: 12000,
           });
+          // Navigate FIRST, then clear cart — clearing first triggers the
+          // empty-cart guard which calls setLocation("/cart") and returns null (blank screen)
           setLocation(`/order/${orderId}`);
+          clearCart();
         } else {
           if (!data["redirectUrl"]) {
             toast.error("Could not get payment link. Please try again.");

@@ -1,4 +1,4 @@
-import { Switch, Route, Router as WouterRouter, Redirect } from "wouter";
+import { Switch, Route, Router as WouterRouter, Redirect, useLocation } from "wouter";
 import { useEffect } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "sonner";
@@ -46,6 +46,16 @@ import PrivacyPolicy       from "@/pages/privacy-policy";
 import TermsAndConditions from "@/pages/terms-and-conditions";
 
 const queryClient = new QueryClient();
+
+// Resets scroll position to the top on every route change.
+// Wouter does not do this automatically — without it users land mid-page.
+function ScrollToTop() {
+  const [location] = useLocation();
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: "instant" });
+  }, [location]);
+  return null;
+}
 
 // ── Email verification gate (shown in-place, not a redirect) ─────────────────
 function VerifyEmailGate() {
@@ -168,6 +178,7 @@ function App() {
             <WishlistProvider>
               <CartProvider>
                 <WouterRouter base="/">
+                  <ScrollToTop />
                   <Router />
                 </WouterRouter>
                 <Toaster position="bottom-right" className="glass-panel" />
