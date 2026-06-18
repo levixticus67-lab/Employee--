@@ -25,6 +25,8 @@ type ReceiptData = {
   items: ReceiptItem[]; total: number; subtotal: number; shipping: number;
   discount: number; couponCode: string | null; paymentMethod: string;
   createdAt: string; deliveredAt: string; expiresAt: string; collapsed: boolean;
+  type?: "delivered" | "cancelled";
+  cancellationReason?: string;
 };
 
 const STATUS_STEPS = ["pending", "processing", "shipped", "delivered"];
@@ -67,6 +69,77 @@ function ReceiptCard({ receipt, onDelete }: { receipt: ReceiptData; onDelete?: (
   const deliveredDate = new Date(receipt.deliveredAt).toLocaleDateString("en-GB", {
     day: "numeric", month: "short", year: "numeric",
   });
+
+  // Cancellation notice card
+  if (receipt.type === "cancelled") {
+    return (
+      <div className="glass-panel-heavy rounded-2xl border-red-400/30 overflow-hidden ring-1 ring-red-400/20">
+        <button onClick={() => setExpanded(!expanded)}
+          className="w-full flex items-center gap-4 p-5 text-left hover:bg-white/10 transition-colors">
+          <div className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 text-red-200 bg-red-500/20 border border-red-400/40">
+            <XCircle className="w-5 h-5" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <p className="font-mono text-sm font-medium text-blue-950">Order #{receipt.orderId.slice(0, 8).toUpperCase()}</p>
+              <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-red-500/20 text-red-200 border border-red-400/40">Cancelled</span>
+            </div>
+            <p className="text-xs text-blue-800/50 mt-0.5">
+              Ordered {new Date(receipt.createdAt).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })}
+              {" · "}{receipt.items.length} item{receipt.items.length !== 1 ? "s" : ""}
+            </p>
+          </div>
+          <div className="flex-shrink-0">
+            {expanded ? <ChevronUp className="w-4 h-4 text-blue-400" /> : <ChevronDown className="w-4 h-4 text-blue-400" />}
+          </div>
+        </button>
+
+        {expanded && (
+          <div className="border-t border-red-400/20 p-5 space-y-4">
+            <div className="flex items-start gap-3 bg-red-500/10 border border-red-400/25 rounded-xl p-3.5">
+              <XCircle className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />
+              <div>
+                <p className="text-sm font-medium text-red-200">Your order was cancelled</p>
+                {receipt.cancellationReason && (
+                  <p className="text-xs text-blue-800/70 mt-1 leading-relaxed">
+                    Reason: <span className="italic">{receipt.cancellationReason}</span>
+                  </p>
+                )}
+              </div>
+            </div>
+
+            <div>
+              <p className="text-xs font-medium text-blue-900/60 uppercase tracking-wider mb-3">Items</p>
+              <div className="space-y-3">
+                {receipt.items.map((item) => (
+                  <div key={item.productId} className="flex items-center gap-3">
+                    <div className="w-12 h-12 glass-card rounded-lg p-1 flex-shrink-0 bg-white/40 overflow-hidden">
+                      {item.imageUrl
+                        ? <CldImg src={item.imageUrl} w={200} alt={item.name} className="w-full h-full object-contain" />
+                        : <div className="w-full h-full flex items-center justify-center text-[8px] text-blue-400">Img</div>}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-blue-950 truncate">{item.name}</p>
+                      <p className="text-xs text-blue-800/60">{item.brand} · Qty {item.quantity}</p>
+                    </div>
+                    <p className="text-sm font-medium text-blue-900 flex-shrink-0">{format(item.price * item.quantity)}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex justify-end pt-1">
+              <button onClick={handleDeleteReceipt} disabled={deleting}
+                className="flex items-center gap-1.5 text-xs text-red-500/70 hover:text-red-600 transition-colors">
+                <Trash2 className="w-3.5 h-3.5" />
+                {deleting ? "Removing..." : "Dismiss"}
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
 
   // Tombstone — 1 compact line
   if (isExpired) {

@@ -18,6 +18,12 @@ router.get("/receipts/by-email/:email", async (req, res) => {
   const receipts = snap.docs.map((doc) => {
     const data = doc.data() as ReceiptDoc;
 
+    // Auto-delete expired cancellation notices (2-day window)
+    if (data.type === "cancelled" && data.expiresAt < now) {
+      collapsePromises.push(doc.ref.delete().catch(() => {}));
+      return null;
+    }
+
     // Auto-collapse expired full receipts to tombstone
     if (!data.collapsed && data.expiresAt < now) {
       collapsePromises.push(
@@ -51,7 +57,7 @@ router.get("/receipts/by-email/:email", async (req, res) => {
     }
 
     return { id: doc.id, ...data };
-  });
+  }).filter((x) => x !== null) as Array<{ id: string; deliveredAt: string; [key: string]: unknown }>;
 
   // Fire-and-forget — don't block the response
   Promise.all(collapsePromises).catch(() => {});

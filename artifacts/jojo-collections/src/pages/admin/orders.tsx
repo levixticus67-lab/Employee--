@@ -81,6 +81,9 @@ export default function AdminOrders() {
   const [recordingPayment,setRecordingPayment]= useState(false);
   const [shippingInput,   setShippingInput]   = useState("");
   const [settingShipping, setSettingShipping] = useState(false);
+  const [cancelDialog,    setCancelDialog]    = useState<string | null>(null);
+  const [cancelReason,    setCancelReason]    = useState("");
+  const [cancellingOrder, setCancellingOrder] = useState(false);
 
   const { format, symbol, convert, rates, currency } = useCurrency();
   const queryStatus    = !["active","all"].includes(filterMode) ? filterMode : undefined;
@@ -160,6 +163,30 @@ export default function AdminOrders() {
       toast.success(amount === 0 ? "Free delivery confirmed!" : `Delivery fee set to ${format(amount)}`);
       setSelectedOrder(updated); setShippingInput(""); refetch();
     } catch { toast.error("Failed to set delivery fee"); } finally { setSettingShipping(false); }
+  };
+
+  const handleStatusChange = (id: string, newStatus: string) => {
+    if (newStatus === "cancelled") {
+      setCancelDialog(id);
+      setCancelReason("");
+    } else {
+      handleStatusUpdate(id, newStatus);
+    }
+  };
+
+  const handleConfirmCancellation = async () => {
+    if (!cancelDialog || !cancelReason.trim()) return;
+    setCancellingOrder(true);
+    try {
+      const res = await apiFetch(`/api/admin/orders/${cancelDialog}/status`, {
+        method: "PUT", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "cancelled", reason: cancelReason.trim() }),
+      });
+      if (!res.ok) throw new Error();
+      toast.success("Order cancelled");
+      if (selectedOrder?.id === cancelDialog) setSelectedOrder(null);
+      setCancelDialog(null); setCancelReason(""); refetch();
+    } catch { toast.error("Failed to cancel order"); } finally { setCancellingOrder(false); }
   };
 
   const canDelete         = (o: any) => ["cancelled","delivered","received"].includes(o?.status);
@@ -257,7 +284,7 @@ export default function AdminOrders() {
                     </Button>
                   )}
                   <select value={selectedOrder.status}
-                    onChange={(e) => handleStatusUpdate(selectedOrder.id, e.target.value)}
+                    onChange={(e) => handleStatusChange(selectedOrder.id, e.target.value)}
                     disabled={updatingStatus}
                     className={`text-sm px-3 py-1.5 rounded-full border capitalize font-medium outline-none ${STATUS_COLORS[selectedOrder.status] ?? "bg-gray-100 text-gray-800 border-gray-200"}`}>
                     {ADMIN_SET_STATUSES.map((s) => (
@@ -466,6 +493,36 @@ export default function AdminOrders() {
             </div>
           </DialogContent>
         )}
+      </Dialog>
+
+      {/* Cancellation reason dialog */}
+      <Dialog open={!!cancelDialog} onOpenChange={(open) => !open && setCancelDialog(null)}>
+        <DialogContent className="max-w-md glass-panel-heavy border-white/50 shadow-2xl">
+          <DialogHeader className="mb-2">
+            <DialogTitle className="text-xl font-serif text-blue-950">Cancel Order</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-blue-800/70">The customer will see a cancellation notice with this reason for 48 hours.</p>
+            <div>
+              <label className="block text-sm font-medium text-blue-950 mb-1.5">
+                Reason <span className="text-red-500">*</span>
+              </label>
+              <textarea value={cancelReason} onChange={(e) => setCancelReason(e.target.value)}
+                placeholder="e.g. Item is currently out of stock, unable to deliver to your area..."
+                rows={3}
+                className="w-full glass-card rounded-xl px-4 py-2.5 text-blue-950 text-sm border-white/40 focus:outline-none focus:ring-2 focus:ring-red-400 resize-none" />
+            </div>
+            <div className="flex gap-3 justify-end">
+              <Button variant="outline" onClick={() => setCancelDialog(null)}
+                className="glass-card border-white/40 rounded-xl text-blue-900">Go Back</Button>
+              <Button onClick={handleConfirmCancellation}
+                disabled={cancellingOrder || !cancelReason.trim()}
+                className="bg-red-600 hover:bg-red-700 text-white rounded-xl">
+                {cancellingOrder ? "Cancelling..." : "Confirm Cancellation"}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
       </Dialog>
     </AdminLayout>
   );

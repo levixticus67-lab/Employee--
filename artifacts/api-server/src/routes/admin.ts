@@ -55,6 +55,37 @@ async function createReceiptForOrder(orderId: string, order: OrderDoc, amountPai
   await firestore.collection(COLLECTIONS.receipts).add(receipt as unknown as Record<string, unknown>);
 }
 
+async function createCancellationNoticeForOrder(orderId: string, order: OrderDoc, reason: string): Promise<void> {
+  const alreadyExists = await firestore.collection(COLLECTIONS.receipts)
+    .where("orderId", "==", orderId).where("type", "==", "cancelled").limit(1).get();
+  if (!alreadyExists.empty) return;
+
+  const cancelledAt    = new Date().toISOString();
+  const expiresAt      = new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString();
+  const orderCreatedAt = order.createdAt instanceof Timestamp
+    ? order.createdAt.toDate().toISOString()
+    : String(order.createdAt);
+
+  await firestore.collection(COLLECTIONS.receipts).add({
+    orderId,
+    customerEmail:      order.customerEmail,
+    customerName:       order.customerName,
+    items:              (order.items ?? []) as ReceiptDoc["items"],
+    total:              Number(order.total),
+    subtotal:           Number(order.subtotal ?? order.total),
+    shipping:           Number(order.shipping ?? 0),
+    discount:           Number(order.discount ?? 0),
+    couponCode:         order.couponCode ?? null,
+    paymentMethod:      order.paymentMethod,
+    createdAt:          orderCreatedAt,
+    deliveredAt:        cancelledAt,
+    expiresAt,
+    collapsed:          false,
+    type:               "cancelled" as const,
+    cancellationReason: reason,
+  } as unknown as Record<string, unknown>);
+}
+
 const router: IRouter = Router();
 
 // ─── Storage helpers ──────────────────────────────────────────────────────────
@@ -225,10 +256,13 @@ router.get("/admin/orders", async (req, res) => {
 });
 
 router.put("/admin/orders/:id/status", async (req, res) => {
-  const { status } = req.body as { status?: string };
+  const { status, reason } = req.body as { status?: string; reason?: string };
   const validStatuses = ["pending", "processing", "shipped", "delivered", "cancelled"];
   if (!status || !validStatuses.includes(status)) {
     res.status(400).json({ error: "Invalid status" }); return;
+  }
+  if (status === "cancelled" && (!reason || !reason.trim())) {
+    res.status(400).json({ error: "A cancellation reason is required" }); return;
   }
   const ref = firestore.collection(COLLECTIONS.orders).doc(req.params.id);
   const snap = await ref.get();
@@ -282,9 +316,13 @@ router.put("/admin/orders/:id/status", async (req, res) => {
           archivedAt: Timestamp.now(),
         } satisfies StorageItemDoc);
       }
-      // Only create a receipt for delivered orders — cancelled orders must not get one
+      // Only create a receipt for delivered orders
       if (status === "delivered") {
         await createReceiptForOrder(req.params.id, existing).catch(() => {});
+      }
+      // Create a 2-day cancellation notice so the customer knows why
+      if (status === "cancelled") {
+        await createCancellationNoticeForOrder(req.params.id, existing, reason!).catch(() => {});
       }
       // Move entirely to storage: delete from the orders collection
       await ref.delete();

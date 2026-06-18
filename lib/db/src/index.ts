@@ -166,6 +166,8 @@ export type ReceiptDoc = {
   deliveredAt: string;
   expiresAt: string;
   collapsed: boolean;
+  type?: "delivered" | "cancelled";
+  cancellationReason?: string;
 };
 
 export { seedProductsIfEmpty } from "./seed";
