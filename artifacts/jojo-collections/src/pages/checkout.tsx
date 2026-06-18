@@ -49,6 +49,7 @@ import { useStoreName } from "@/lib/use-store-name";
     const [addressSuggestions, setAddressSuggestions] = useState([]);
     const [fetchingSuggestions, setFetchingSuggestions] = useState(false);
     const [gpsLoading, setGpsLoading]             = useState(false);
+    const [locationDenied, setLocationDenied]       = useState(false);
     const [showSuggestions, setShowSuggestions]   = useState(false);
     const debounceRef = useRef(null);
 
@@ -126,10 +127,7 @@ import { useStoreName } from "@/lib/use-store-name";
         (err) => {
           setGpsLoading(false);
           if (err.code === 1) {
-            toast.error(
-              "Location access denied. Go to your browser Settings → Site Settings → Location → find this site and set it to Allow.",
-              { duration: 10000 }
-            );
+            setLocationDenied(true);
           } else {
             toast.error("Couldn't get your location. Please type your address.");
           }
@@ -288,6 +286,23 @@ import { useStoreName } from "@/lib/use-store-name";
                         {gpsLoading ? "Detecting\u2026" : "Use my location"}
                       </button>
                     </div>
+
+                    {locationDenied && (
+                      <div className="mb-2 rounded-xl border border-amber-300/60 bg-amber-50/20 px-4 py-3 text-xs text-amber-900 space-y-1.5">
+                        <p className="font-semibold text-amber-800 flex items-center gap-1.5">
+                          <span>📍</span> Location is blocked for this site
+                        </p>
+                        <p>To fix it on <strong>Android Chrome</strong>:</p>
+                        <ol className="list-decimal list-inside space-y-1 pl-1">
+                          <li>Tap the <strong>⋮ menu</strong> (top-right of Chrome) → <strong>Settings</strong></li>
+                          <li>Tap <strong>Site Settings</strong> → <strong>Location</strong></li>
+                          <li>Under <strong>Blocked</strong>, tap this site's address</li>
+                          <li>Tap <strong>Clear &amp; reset</strong>, then try the button again</li>
+                        </ol>
+                        <p className="text-amber-700/70">Or tap the <strong>padlock 🔒</strong> in the address bar → <strong>Permissions</strong> → Location → Allow.</p>
+                      </div>
+                    )}
+
                     <div className="relative">
                       <textarea required rows={3} maxLength={300}
                         placeholder="e.g. Ntinda, Kampala, Uganda"
