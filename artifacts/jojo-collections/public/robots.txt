@@ -1,6 +1,7 @@
 User-agent: *
 Allow: /
-Disallow: /admin/
-Disallow: /admin
 
-Sitemap: https://jojo-collection.web.app/sitemap.xml
+Disallow: /admin
+Disallow: /admin/
+
+Sitemap: https://lenz-fragrances.web.app/sitemap.xml
