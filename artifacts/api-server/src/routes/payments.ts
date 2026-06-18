@@ -219,7 +219,7 @@ import { getUsdToUgxRate } from "../lib/exchangeRate";
     if (req.session) {
       const ids = req.session.createdOrderIds ?? [];
       req.session.createdOrderIds = [...ids.slice(-19), orderId];
-      req.session.save(() => {});
+      await new Promise<void>((resolve) => { req.session.save(() => resolve()); });
     }
 
     if (!isOnline) { res.status(201).json(await loadOrderById(orderId)); return; }

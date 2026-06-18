@@ -247,7 +247,7 @@ router.post("/orders", async (req, res) => {
     if (req.session) {
       const ids = req.session.createdOrderIds ?? [];
       req.session.createdOrderIds = [...ids.slice(-19), newOrderRef.id];
-      req.session.save(() => {});
+      await new Promise<void>((resolve) => { req.session.save(() => resolve()); });
     }
     res.status(201).json(await loadOrderById(newOrderRef.id));
   } catch (err) {
