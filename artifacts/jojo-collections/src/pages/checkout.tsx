@@ -123,25 +123,13 @@ import { useStoreName } from "@/lib/use-store-name";
             toast.error("Location lookup failed. Please type your address.");
           } finally { setGpsLoading(false); }
         },
-        async (err) => {
+        (err) => {
+          setGpsLoading(false);
           if (err.code === 1) {
-            toast("GPS blocked — detecting approximate location…", { duration: 3000 });
-            try {
-              const r = await apiFetch("/api/geocode/ip");
-              const d = await r.json();
-              if (d.location) {
-                setForm((p) => ({ ...p, shippingAddress: d.location }));
-                toast.success("City filled in from your network — add your street/area details");
-              } else {
-                toast.error("Couldn't detect location. Please type your address.");
-              }
-            } catch {
-              toast.error("Couldn't detect location. Please type your address.");
-            }
+            toast.error("GPS is blocked for this site — type your area in the box and use the suggestions that appear.");
           } else {
             toast.error("Couldn't get your location. Please type your address.");
           }
-          setGpsLoading(false);
         },
         { timeout: 10000, maximumAge: 0 }
       );
