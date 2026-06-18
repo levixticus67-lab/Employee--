@@ -43,10 +43,22 @@ const STATUS_COLORS: Record<string, string> = {
 const PAYMENT_LABELS: Record<string, string> = { online: "Credit/Debit Card", mtn_momo: "MTN Mobile Money", airtel_money: "Airtel Money" };
 
 // ─── Receipt Card ─────────────────────────────────────────────────────────────
-function ReceiptCard({ receipt }: { receipt: ReceiptData }) {
+function ReceiptCard({ receipt, onDelete }: { receipt: ReceiptData; onDelete?: () => void }) {
   const { format } = useCurrency();
   const [expanded, setExpanded] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const isExpired = receipt.collapsed || new Date(receipt.expiresAt) < new Date();
+
+  const handleDeleteReceipt = async () => {
+    if (!confirm("Remove this receipt from your history?")) return;
+    setDeleting(true);
+    try {
+      const res = await apiFetch(`/api/receipts/${receipt.id}?email=${encodeURIComponent(receipt.customerEmail)}`, { method: "DELETE" });
+      if (!res.ok) throw new Error();
+      toast.success("Receipt removed");
+      onDelete?.();
+    } catch { toast.error("Could not remove receipt"); } finally { setDeleting(false); }
+  };
 
   const primaryProductName = receipt.items.length > 0
     ? receipt.items[0]!.name + (receipt.items.length > 1 ? ` +${receipt.items.length - 1} more` : "")
@@ -61,9 +73,13 @@ function ReceiptCard({ receipt }: { receipt: ReceiptData }) {
     return (
       <div className="glass-panel-heavy rounded-2xl border-white/30 overflow-hidden px-5 py-3.5 flex items-center gap-3 opacity-60">
         <Receipt className="w-4 h-4 text-emerald-400/60 flex-shrink-0" />
-        <p className="text-xs text-blue-900/60 font-mono truncate">
+        <p className="text-xs text-blue-900/60 font-mono truncate flex-1">
           {primaryProductName} &middot; {deliveredDate} &middot; Order #{receipt.orderId.slice(0, 8).toUpperCase()}
         </p>
+        <button onClick={handleDeleteReceipt} disabled={deleting}
+          className="flex-shrink-0 text-red-400/50 hover:text-red-500 transition-colors ml-1" title="Remove receipt">
+          <Trash2 className="w-3.5 h-3.5" />
+        </button>
       </div>
     );
   }
@@ -166,6 +182,15 @@ function ReceiptCard({ receipt }: { receipt: ReceiptData }) {
           <p className="text-center text-[11px] text-blue-800/40 italic">
             Full receipt visible for {daysLeft} more day{daysLeft !== 1 ? "s" : ""}.
           </p>
+
+          {/* Delete */}
+          <div className="flex justify-end">
+            <button onClick={handleDeleteReceipt} disabled={deleting}
+              className="flex items-center gap-1.5 text-xs text-red-500/70 hover:text-red-600 transition-colors">
+              <Trash2 className="w-3.5 h-3.5" />
+              {deleting ? "Removing..." : "Remove receipt"}
+            </button>
+          </div>
         </div>
       )}
     </div>
@@ -460,7 +485,7 @@ export default function MyOrders() {
               </div>
             )}
             {receipts.map((receipt) => (
-              <ReceiptCard key={receipt.id} receipt={receipt} />
+              <ReceiptCard key={receipt.id} receipt={receipt} onDelete={() => loadAll(session.user!.email, true)} />
             ))}
           </div>
         )}

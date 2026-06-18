@@ -282,8 +282,10 @@ router.put("/admin/orders/:id/status", async (req, res) => {
           archivedAt: Timestamp.now(),
         } satisfies StorageItemDoc);
       }
-      // Create customer receipt before deleting the order
-      await createReceiptForOrder(req.params.id, existing).catch(() => {});
+      // Only create a receipt for delivered orders — cancelled orders must not get one
+      if (status === "delivered") {
+        await createReceiptForOrder(req.params.id, existing).catch(() => {});
+      }
       // Move entirely to storage: delete from the orders collection
       await ref.delete();
     } catch { /* non-critical */ }

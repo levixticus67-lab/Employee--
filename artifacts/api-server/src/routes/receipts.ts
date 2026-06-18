@@ -62,4 +62,18 @@ router.get("/receipts/by-email/:email", async (req, res) => {
   res.json(receipts);
 });
 
+router.delete("/receipts/:id", async (req, res) => {
+  const ref  = firestore.collection(COLLECTIONS.receipts).doc(req.params.id);
+  const snap = await ref.get();
+  if (!snap.exists) { res.status(404).json({ error: "Receipt not found" }); return; }
+  const data    = snap.data() as ReceiptDoc;
+  const isAdmin = (req as any).session?.isAdmin;
+  const email   = typeof req.query["email"] === "string" ? req.query["email"].toLowerCase().trim() : "";
+  if (!isAdmin && email !== data.customerEmail.toLowerCase()) {
+    res.status(403).json({ error: "Not authorised to delete this receipt" }); return;
+  }
+  await ref.delete();
+  res.status(204).send();
+});
+
 export default router;
