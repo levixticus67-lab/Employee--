@@ -8,6 +8,7 @@ import {
   CheckCircle2, Package, MapPin, CreditCard, Clock, Truck, PackageCheck,
   XCircle, Tag, Smartphone, Loader2, ShieldCheck, ExternalLink,
 } from "lucide-react";
+import { CldImg } from "@/components/cld-img";
 
 const STATUS_CONFIG: Record<string, { label: string; icon: typeof Clock; color: string }> = {
   pending:   { label: "Order Placed",  icon: Clock,        color: "text-yellow-600" },
