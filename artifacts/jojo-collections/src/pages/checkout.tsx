@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useStoreName } from "@/lib/use-store-name";
   import { useLocation } from "wouter";
   import { useGetCurrentUser } from "@workspace/api-client-react";
@@ -9,7 +9,7 @@ import { useStoreName } from "@/lib/use-store-name";
   import { toast } from "sonner";
   import {
     Tag, CheckCircle, Truck, Info, Loader2, ShieldCheck, Smartphone, CreditCard,
-    MessageCircle, Gift, Package,
+    MessageCircle, Gift, Package, MapPin, Navigation,
   } from "lucide-react";
   import { apiFetch } from "@/lib/api";
 
@@ -44,6 +44,13 @@ import { useStoreName } from "@/lib/use-store-name";
     const [partialAmount, setPartialAmount]       = useState(0); // in USD (same units as product prices)
     const [giftWrapping, setGiftWrapping]         = useState(false);
     const [giftNote, setGiftNote]                 = useState("");
+
+    // Location field state
+    const [addressSuggestions, setAddressSuggestions] = useState([]);
+    const [fetchingSuggestions, setFetchingSuggestions] = useState(false);
+    const [gpsLoading, setGpsLoading]             = useState(false);
+    const [showSuggestions, setShowSuggestions]   = useState(false);
+    const debounceRef = useRef(null);
 
     useEffect(() => {
       if (session?.user) {
@@ -91,6 +98,61 @@ import { useStoreName } from "@/lib/use-store-name";
         }
       } catch { setCouponError("Could not validate coupon"); }
       finally   { setValidatingCoupon(false); }
+    };
+
+    const handleGetGPS = () => {
+      if (!navigator.geolocation) {
+        toast.error("Your browser doesn't support location access");
+        return;
+      }
+      setGpsLoading(true);
+      navigator.geolocation.getCurrentPosition(
+        async (pos) => {
+          try {
+            const res = await fetch(
+              "https://nominatim.openstreetmap.org/reverse?format=json&lat=" + pos.coords.latitude + "&lon=" + pos.coords.longitude,
+              { headers: { Accept: "application/json" } }
+            );
+            const data = await res.json();
+            if (data.display_name) {
+              setForm((p) => ({ ...p, shippingAddress: data.display_name.slice(0, 300) }));
+              toast.success("Location filled in — please verify it looks correct");
+            } else {
+              toast.error("Couldn't read your location. Please type it in.");
+            }
+          } catch {
+            toast.error("Location lookup failed. Please type your address.");
+          } finally { setGpsLoading(false); }
+        },
+        (err) => {
+          setGpsLoading(false);
+          if (err.code === 1) toast.error("Location access denied. Please type your address.");
+          else toast.error("Couldn't get your location. Please type your address.");
+        },
+        { timeout: 10000, maximumAge: 60000 }
+      );
+    };
+
+    const handleAddressChange = (value) => {
+      if (value.length > 300) return;
+      setForm((p) => ({ ...p, shippingAddress: value }));
+      setShowSuggestions(false);
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+      if (value.trim().length < 3) { setAddressSuggestions([]); return; }
+      debounceRef.current = setTimeout(async () => {
+        setFetchingSuggestions(true);
+        try {
+          const res = await fetch(
+            "https://nominatim.openstreetmap.org/search?format=json&q=" + encodeURIComponent(value) + "&limit=5",
+            { headers: { Accept: "application/json" } }
+          );
+          const results = await res.json();
+          const suggestions = results.map((r) => r.display_name);
+          setAddressSuggestions(suggestions);
+          if (suggestions.length > 0) setShowSuggestions(true);
+        } catch { /* silently ignore suggestion errors */ }
+        finally { setFetchingSuggestions(false); }
+      }, 600);
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -215,11 +277,52 @@ import { useStoreName } from "@/lib/use-store-name";
                       className="w-full glass-card rounded-xl px-4 py-2.5 text-blue-950 focus:outline-none focus:ring-2 focus:ring-blue-400 border-white/40" />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-blue-900/80 mb-1">Shipping Address</label>
-                    <textarea required rows={3} placeholder="Street, building, city, country"
-                      value={form.shippingAddress}
-                      onChange={(e) => setForm((p) => ({ ...p, shippingAddress: e.target.value }))}
-                      className="w-full glass-card rounded-xl px-4 py-2.5 text-blue-950 focus:outline-none focus:ring-2 focus:ring-blue-400 border-white/40 resize-none" />
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="block text-sm font-medium text-blue-900/80">Shipping Address</label>
+                      <button type="button" onClick={handleGetGPS} disabled={gpsLoading}
+                        className="flex items-center gap-1.5 text-xs text-blue-600 hover:text-blue-700 font-medium disabled:opacity-50 transition-colors">
+                        {gpsLoading
+                          ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          : <Navigation className="w-3.5 h-3.5" />}
+                        {gpsLoading ? "Detecting\u2026" : "Use my location"}
+                      </button>
+                    </div>
+                    <div className="relative">
+                      <textarea required rows={3} maxLength={300}
+                        placeholder="Street, building, city, country \u2014 or tap \u2018Use my location\u2019 above"
+                        value={form.shippingAddress}
+                        onChange={(e) => handleAddressChange(e.target.value)}
+                        onFocus={() => addressSuggestions.length > 0 && setShowSuggestions(true)}
+                        onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
+                        className="w-full glass-card rounded-xl px-4 py-2.5 text-blue-950 focus:outline-none focus:ring-2 focus:ring-blue-400 border-white/40 resize-none" />
+                      <div className="flex items-center justify-between mt-0.5 px-1">
+                        <span className="text-[10px] text-blue-800/40 h-3">
+                          {fetchingSuggestions ? "Searching\u2026" : ""}
+                        </span>
+                        <span className={`text-[10px] ${form.shippingAddress.length >= 280 ? "text-amber-600 font-medium" : "text-blue-800/40"}`}>
+                          {form.shippingAddress.length}/300
+                        </span>
+                      </div>
+
+                      {/* Autocomplete suggestions dropdown */}
+                      {showSuggestions && addressSuggestions.length > 0 && (
+                        <div className="absolute z-50 left-0 right-0 top-full glass-panel-heavy border border-white/50 rounded-xl shadow-2xl overflow-hidden">
+                          {addressSuggestions.map((suggestion, i) => (
+                            <button key={i} type="button"
+                              onMouseDown={(e) => {
+                                e.preventDefault();
+                                setForm((p) => ({ ...p, shippingAddress: suggestion.slice(0, 300) }));
+                                setAddressSuggestions([]);
+                                setShowSuggestions(false);
+                              }}
+                              className="w-full text-left px-4 py-3 text-sm text-blue-950 hover:bg-blue-50/30 transition-colors border-b border-white/20 last:border-0 flex items-start gap-2.5">
+                              <MapPin className="w-3.5 h-3.5 text-blue-400 flex-shrink-0 mt-0.5" />
+                              <span className="line-clamp-2 leading-snug">{suggestion}</span>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </form>
               </div>
