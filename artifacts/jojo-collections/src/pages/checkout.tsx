@@ -100,22 +100,10 @@ import { useStoreName } from "@/lib/use-store-name";
       finally   { setValidatingCoupon(false); }
     };
 
-    const handleGetGPS = async () => {
+    const handleGetGPS = () => {
       if (!navigator.geolocation) {
         toast.error("Your browser doesn't support location access");
         return;
-      }
-      if (navigator.permissions) {
-        try {
-          const perm = await navigator.permissions.query({ name: "geolocation" });
-          if (perm.state === "denied") {
-            toast.error(
-              "Location is blocked. Click the padlock 🔒 in your browser's address bar, set Location to Allow, then try again.",
-              { duration: 9000 }
-            );
-            return;
-          }
-        } catch {}
       }
       setGpsLoading(true);
       navigator.geolocation.getCurrentPosition(
@@ -139,14 +127,14 @@ import { useStoreName } from "@/lib/use-store-name";
           setGpsLoading(false);
           if (err.code === 1) {
             toast.error(
-              "Location blocked. Click the padlock 🔒 in your address bar → set Location to Allow → try again.",
-              { duration: 9000 }
+              "Location access denied. Go to your browser Settings → Site Settings → Location → find this site and set it to Allow.",
+              { duration: 10000 }
             );
           } else {
             toast.error("Couldn't get your location. Please type your address.");
           }
         },
-        { timeout: 10000, maximumAge: 60000 }
+        { timeout: 10000, maximumAge: 0 }
       );
     };
 
@@ -302,7 +290,7 @@ import { useStoreName } from "@/lib/use-store-name";
                     </div>
                     <div className="relative">
                       <textarea required rows={3} maxLength={300}
-                        placeholder="Street, building, city, country \u2014 or tap \u2018Use my location\u2019 above"
+                        placeholder="e.g. Ntinda, Kampala, Uganda"
                         value={form.shippingAddress}
                         onChange={(e) => handleAddressChange(e.target.value)}
                         onFocus={() => addressSuggestions.length > 0 && setShowSuggestions(true)}
