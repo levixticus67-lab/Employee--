@@ -6,9 +6,10 @@ import { useCurrency } from "@/components/currency-context";
 import { Button } from "@/components/ui/button";
 import {
   CheckCircle2, Package, MapPin, CreditCard, Clock, Truck, PackageCheck,
-  XCircle, Tag, Smartphone, Loader2, ShieldCheck, ExternalLink, MessageCircle,
+  XCircle, Tag, Smartphone, Loader2, ShieldCheck, ExternalLink, MessageCircle, UserPlus,
 } from "lucide-react";
-import { isGuestMode } from "@/lib/guest-mode";
+import { isGuestMode, setGuestMode } from "@/lib/guest-mode";
+import { useAuth, EmailVerificationSentError } from "@/components/auth-context";
 import { useEffect, useState } from "react";
 import { CldImg } from "@/components/cld-img";
 
@@ -32,8 +33,14 @@ export default function OrderConfirmation() {
   const [, params] = useRoute("/order/:id");
   const orderId = params?.id || "";
   const { format } = useCurrency();
+  const { signup } = useAuth();
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [whatsappNumber, setWhatsappNumber] = useState("");
+  const [convName, setConvName] = useState("");
+  const [convPassword, setConvPassword] = useState("");
+  const [convSubmitting, setConvSubmitting] = useState(false);
+  const [convSent, setConvSent] = useState(false);
+  const [convError, setConvError] = useState("");
 
   useEffect(() => {
     if (!isGuestMode()) return;
@@ -61,6 +68,28 @@ export default function OrderConfirmation() {
     pollRef.current = setInterval(() => refetch(), 4000);
     return () => { if (pollRef.current) clearInterval(pollRef.current); };
   }, [paymentPending, refetch]);
+
+  async function handleCreateAccount(e: FormEvent) {
+    e.preventDefault();
+    if (convPassword.length < 6) { setConvError("Password must be at least 6 characters"); return; }
+    setConvSubmitting(true);
+    setConvError("");
+    try {
+      await signup(convName, (o as any)?.customerEmail ?? "", convPassword);
+    } catch (err) {
+      if (err instanceof EmailVerificationSentError) {
+        setConvSent(true);
+        setGuestMode(false);
+        return;
+      }
+      const msg = err && typeof err === "object" && "data" in err
+        ? ((err as any).data?.error ?? "Could not create account")
+        : err instanceof Error ? err.message : "Could not create account";
+      setConvError(msg);
+    } finally {
+      setConvSubmitting(false);
+    }
+  }
 
   if (isLoading) {
     return (
@@ -305,6 +334,85 @@ export default function OrderConfirmation() {
                     Message us on WhatsApp
                   </a>
                 )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {isGuestMode() && !convSent && (
+          <div className="glass-panel-heavy rounded-2xl p-6 border-white/40 text-left mb-8 bg-blue-500/5 border-blue-300/20">
+            <div className="flex items-start gap-3 mb-4">
+              <div className="w-10 h-10 rounded-full bg-blue-500/15 flex items-center justify-center flex-shrink-0">
+                <UserPlus className="w-5 h-5 text-blue-600" />
+              </div>
+              <div>
+                <h3 className="font-medium text-blue-950 mb-0.5">Save your order history</h3>
+                <p className="text-sm text-blue-800/70">Create a free account — no re-entering your email needed.</p>
+              </div>
+            </div>
+            {convError && (
+              <div className="text-xs text-red-600 bg-red-50/60 border border-red-200/50 rounded-xl px-3 py-2 mb-3">
+                {convError === "An account with that email already exists"
+                  ? <span>{convError}. <Link href="/login" className="underline font-medium">Sign in instead →</Link></span>
+                  : convError}
+              </div>
+            )}
+            <form onSubmit={handleCreateAccount} className="space-y-3">
+              <div>
+                <label className="block text-xs font-medium text-blue-900 mb-1">Your name</label>
+                <input
+                  type="text"
+                  required
+                  value={convName}
+                  onChange={(e) => setConvName(e.target.value)}
+                  placeholder="Jane Doe"
+                  className="w-full px-3 py-2.5 rounded-xl bg-white/40 border border-white/40 text-blue-950 placeholder-blue-800/40 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/40"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-blue-900 mb-1">Email</label>
+                <input
+                  type="email"
+                  readOnly
+                  value={(o as any)?.customerEmail ?? ""}
+                  className="w-full px-3 py-2.5 rounded-xl bg-white/20 border border-white/30 text-blue-800/70 text-sm cursor-not-allowed"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-blue-900 mb-1">Choose a password</label>
+                <input
+                  type="password"
+                  required
+                  minLength={6}
+                  value={convPassword}
+                  onChange={(e) => setConvPassword(e.target.value)}
+                  placeholder="At least 6 characters"
+                  className="w-full px-3 py-2.5 rounded-xl bg-white/40 border border-white/40 text-blue-950 placeholder-blue-800/40 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/40"
+                />
+              </div>
+              <button
+                type="submit"
+                disabled={convSubmitting}
+                className="w-full py-2.5 rounded-full bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 disabled:opacity-60 transition-colors"
+              >
+                {convSubmitting ? "Creating account…" : "Create Account & Verify Email"}
+              </button>
+            </form>
+          </div>
+        )}
+
+        {convSent && (
+          <div className="glass-panel-heavy rounded-2xl p-6 border-white/40 text-left mb-8 bg-green-500/5 border-green-300/30">
+            <div className="flex items-start gap-3">
+              <CheckCircle2 className="w-6 h-6 text-green-600 flex-shrink-0 mt-0.5" />
+              <div>
+                <h3 className="font-medium text-blue-950 mb-1">Verification email sent!</h3>
+                <p className="text-sm text-blue-800/70 mb-3">
+                  Check your inbox, click the link to verify, and you'll be brought straight to the sign-in page.
+                </p>
+                <Link href="/login" className="inline-flex items-center gap-1.5 text-sm font-medium text-blue-700 underline underline-offset-2 hover:no-underline">
+                  Go to sign in now
+                </Link>
               </div>
             </div>
           </div>
