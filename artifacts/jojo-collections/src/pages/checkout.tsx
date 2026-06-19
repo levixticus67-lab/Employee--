@@ -12,6 +12,7 @@ import { useStoreName } from "@/lib/use-store-name";
     MessageCircle, Gift, Package, MapPin, Navigation,
   } from "lucide-react";
   import { apiFetch } from "@/lib/api";
+  import { isGuestMode } from "@/lib/guest-mode";
 
   type CouponResult = { id: string; code: string; type: string; value: number; discount: number };
   type PaymentMethod = "pesapal" | "cash_on_delivery";
@@ -25,6 +26,7 @@ import { useStoreName } from "@/lib/use-store-name";
     const { items, bundles, subtotal, clearCart } = useCart();
     const { data: session } = useGetCurrentUser();
     const { format } = useCurrency();
+    const guest = isGuestMode();
 
     const [form, setForm] = useState({
       customerName: "", customerEmail: "", shippingAddress: "", buyerPhone: "",
@@ -496,6 +498,7 @@ import { useStoreName } from "@/lib/use-store-name";
                     </div>
                   </label>
 
+                  {!guest && (<>
                   {/* Cash on delivery */}
                   <label className={`flex items-start gap-3 glass-card rounded-xl px-4 py-3.5 border-2 cursor-pointer transition-all ${paymentMethod === "cash_on_delivery" ? "border-blue-400 bg-blue-50/20" : "border-white/30 hover:border-blue-200"}`}>
                     <input type="radio" name="paymentMethod" value="cash_on_delivery"
@@ -532,6 +535,7 @@ import { useStoreName } from "@/lib/use-store-name";
                       )}
                     </div>
                   )}
+                  </>)}
                 </div>
               </div>
 
