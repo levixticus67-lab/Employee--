@@ -3,8 +3,9 @@ import { Link, useLocation } from "wouter";
 import { toast } from "sonner";
 import { Layout } from "@/components/layout";
 import { useAuth, EmailNotVerifiedError } from "@/components/auth-context";
-import { Mail } from "lucide-react";
+import { Mail, UserX } from "lucide-react";
 import { FcGoogle } from "react-icons/fc";
+import { setGuestMode } from "@/lib/guest-mode";
 
 export default function LoginPage() {
   const { login, googleSignIn } = useAuth();
@@ -14,6 +15,7 @@ export default function LoginPage() {
   const [submitting, setSubmitting] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [unverified, setUnverified] = useState(false);
+  const [showGuestWarning, setShowGuestWarning] = useState(false);
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
@@ -21,6 +23,7 @@ export default function LoginPage() {
     setUnverified(false);
     try {
       await login(email, password);
+      setGuestMode(false);
       toast.success("Welcome back!");
       setLocation("/");
     } catch (err) {
@@ -46,6 +49,7 @@ export default function LoginPage() {
     setGoogleLoading(true);
     try {
       await googleSignIn();
+      setGuestMode(false);
       toast.success("Welcome back!");
       setLocation("/");
     } catch {
@@ -55,8 +59,57 @@ export default function LoginPage() {
     }
   }
 
+  function handleContinueAsGuest() {
+    setGuestMode(true);
+    setLocation("/shop");
+  }
+
   return (
     <Layout>
+      {showGuestWarning && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+          <div className="glass-panel-heavy rounded-3xl p-6 max-w-sm w-full border border-white/30 space-y-4 shadow-2xl">
+            <h2 className="text-xl font-serif text-blue-950">Before you continue</h2>
+            <ul className="space-y-2.5 text-sm text-blue-800/80">
+              <li className="flex items-start gap-2.5">
+                <span className="text-green-600 font-bold mt-0.5 flex-shrink-0">✓</span>
+                Browse the shop, journals &amp; bundles
+              </li>
+              <li className="flex items-start gap-2.5">
+                <span className="text-green-600 font-bold mt-0.5 flex-shrink-0">✓</span>
+                Add to cart and wishlist
+              </li>
+              <li className="flex items-start gap-2.5">
+                <span className="text-green-600 font-bold mt-0.5 flex-shrink-0">✓</span>
+                Place orders — online payment only (Pesapal)
+              </li>
+              <li className="flex items-start gap-2.5">
+                <span className="text-red-500 font-bold mt-0.5 flex-shrink-0">✗</span>
+                No order history — contact us on WhatsApp with your order number for updates
+              </li>
+              <li className="flex items-start gap-2.5">
+                <span className="text-red-500 font-bold mt-0.5 flex-shrink-0">✗</span>
+                Cash on delivery not available for guests
+              </li>
+            </ul>
+            <div className="flex flex-col gap-2 pt-2">
+              <button
+                onClick={handleContinueAsGuest}
+                className="w-full py-2.5 rounded-full bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 transition-colors"
+              >
+                Got it — continue as guest
+              </button>
+              <button
+                onClick={() => setShowGuestWarning(false)}
+                className="w-full py-2.5 rounded-full border border-blue-200/40 text-blue-800/70 text-sm font-medium hover:bg-white/20 transition-colors"
+              >
+                Sign in instead
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="max-w-md mx-auto px-4 py-16">
         <div className="glass-panel-heavy rounded-3xl p-8 border border-white/30">
           <h1 className="text-3xl font-serif text-blue-950 mb-2 text-center">
@@ -140,6 +193,24 @@ export default function LoginPage() {
               <FcGoogle className="w-5 h-5" />
             )}
             Continue with Google
+          </button>
+
+          <div className="relative my-4">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-blue-200/30" />
+            </div>
+            <div className="relative flex justify-center">
+              <span className="bg-white/20 backdrop-blur-sm px-3 text-xs text-blue-800/40">or</span>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setShowGuestWarning(true)}
+            className="w-full flex items-center justify-center gap-2 py-2.5 rounded-full border border-blue-200/30 text-blue-800/55 text-sm font-medium hover:bg-white/10 hover:text-blue-800/80 transition-colors"
+          >
+            <UserX className="w-4 h-4" />
+            Continue as Guest
           </button>
 
           <p className="text-center text-sm text-blue-800/70 mt-6">
