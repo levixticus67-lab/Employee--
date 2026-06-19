@@ -1,9 +1,9 @@
 import { useState, type FormEvent } from "react";
-import { Link, useLocation } from "wouter";
+import { Link, useLocation, useSearch } from "wouter";
 import { toast } from "sonner";
 import { Layout } from "@/components/layout";
 import { useAuth, EmailNotVerifiedError } from "@/components/auth-context";
-import { Mail, UserX } from "lucide-react";
+import { Mail, UserX, CheckCircle2 } from "lucide-react";
 import { FcGoogle } from "react-icons/fc";
 import { setGuestMode } from "@/lib/guest-mode";
 
@@ -16,6 +16,8 @@ export default function LoginPage() {
   const [googleLoading, setGoogleLoading] = useState(false);
   const [unverified, setUnverified] = useState(false);
   const [showGuestWarning, setShowGuestWarning] = useState(false);
+  const search = useSearch();
+  const emailVerified = new URLSearchParams(search).get("verified") === "1";
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
@@ -118,6 +120,15 @@ export default function LoginPage() {
           <p className="text-blue-800/70 text-center mb-8 text-sm">
             Sign in to continue your fragrance journey
           </p>
+
+          {emailVerified && (
+            <div className="flex items-start gap-3 rounded-xl bg-green-50/60 border border-green-200/60 px-4 py-3 mb-5">
+              <CheckCircle2 className="w-4 h-4 text-green-600 mt-0.5 flex-shrink-0" />
+              <p className="text-sm text-green-800">
+                Your email is verified! Sign in below to access your account.
+              </p>
+            </div>
+          )}
 
           {unverified && (
             <div className="flex items-start gap-3 rounded-xl bg-amber-50/60 border border-amber-200/60 px-4 py-3 mb-5">
