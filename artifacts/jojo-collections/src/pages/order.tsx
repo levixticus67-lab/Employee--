@@ -320,9 +320,21 @@ export default function OrderConfirmation() {
                 <p className="text-sm text-blue-800/70 mb-3">
                   You placed this order as a guest. To get updates or make changes, contact us on WhatsApp with your order number.
                 </p>
-                <p className="text-xs font-mono bg-white/30 rounded-lg px-3 py-1.5 text-blue-900 inline-block mb-3">
-                  Order #{order.id.slice(0, 8).toUpperCase()}
-                </p>
+                {whatsappNumber ? (
+                  <a
+                    href={`https://wa.me/${whatsappNumber.replace(/\D/g, "")}?text=${encodeURIComponent("Hi! I placed a guest order. My order number is " + order.id.slice(0, 8).toUpperCase() + ". I'd like an update on my delivery.")}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs font-mono bg-green-500/15 border border-green-400/30 rounded-lg px-3 py-1.5 text-green-800 inline-flex items-center gap-1.5 mb-3 hover:bg-green-500/25 active:scale-95 transition-all"
+                  >
+                    <MessageCircle className="w-3 h-3 flex-shrink-0" />
+                    Order #{order.id.slice(0, 8).toUpperCase()} · Tap to chat
+                  </a>
+                ) : (
+                  <p className="text-xs font-mono bg-white/30 rounded-lg px-3 py-1.5 text-blue-900 inline-block mb-3">
+                    Order #{order.id.slice(0, 8).toUpperCase()}
+                  </p>
+                )}
                 {whatsappNumber && (
                   <a
                     href={`https://wa.me/${whatsappNumber.replace(/\D/g, "")}?text=${encodeURIComponent("Hi! I placed a guest order. My order number is " + order.id.slice(0, 8).toUpperCase() + ". I'd like an update on my delivery.")}`}
