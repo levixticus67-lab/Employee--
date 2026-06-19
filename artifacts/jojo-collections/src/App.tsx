@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Link } from "wouter";
 import { Mail, ArrowRight } from "lucide-react";
 import NotFound from "@/pages/not-found";
+import { isGuestMode } from "@/lib/guest-mode";
 
 import Home          from "@/pages/home";
 import Shop          from "@/pages/shop";
@@ -47,8 +48,6 @@ import TermsAndConditions from "@/pages/terms-and-conditions";
 
 const queryClient = new QueryClient();
 
-// Resets scroll position to the top on every route change.
-// Wouter does not do this automatically — without it users land mid-page.
 function ScrollToTop() {
   const [location] = useLocation();
   useEffect(() => {
@@ -57,7 +56,6 @@ function ScrollToTop() {
   return null;
 }
 
-// ── Email verification gate (shown in-place, not a redirect) ─────────────────
 function VerifyEmailGate() {
   return (
     <Layout>
@@ -95,7 +93,6 @@ function VerifyEmailGate() {
   );
 }
 
-// ── Admin route guard ─────────────────────────────────────────────────────────
 function AdminRoute({ children }: { children: React.ReactNode }) {
   const { isAdmin, loading } = useAuth();
   if (loading) return <div className="min-h-screen flex items-center justify-center text-blue-800/70">Loading…</div>;
@@ -103,13 +100,14 @@ function AdminRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
-// ── Storefront route guard ────────────────────────────────────────────────────
-// Public: /  |  /login  |  /signup  |  /forgot-password  |  /admin/*
-// Protected (must be logged in AND email-verified): everything else
-function ProtectedRoute({ children }: { children: React.ReactNode }) {
+// allowGuest: if true, guests with the lenz-guest flag can access this route
+function ProtectedRoute({ children, allowGuest }: { children: React.ReactNode; allowGuest?: boolean }) {
   const { user, loading } = useAuth();
   if (loading) return <div className="min-h-screen flex items-center justify-center text-blue-800/70">Loading…</div>;
-  if (!user) return <Redirect to="/login" />;
+  if (!user) {
+    if (allowGuest && isGuestMode()) return <>{children}</>;
+    return <Redirect to="/login" />;
+  }
   if (!user.emailVerified) return <VerifyEmailGate />;
   return <>{children}</>;
 }
@@ -125,17 +123,19 @@ function Router() {
       <Route path="/privacy-policy"   component={PrivacyPolicy} />
       <Route path="/terms"              component={TermsAndConditions} />
 
-      {/* ── Protected storefront (login + verified email required) ── */}
-      <Route path="/shop">           <ProtectedRoute><Shop /></ProtectedRoute></Route>
-      <Route path="/product/:id">    <ProtectedRoute><ProductDetail /></ProtectedRoute></Route>
-      <Route path="/cart">           <ProtectedRoute><Cart /></ProtectedRoute></Route>
-      <Route path="/checkout">       <ProtectedRoute><Checkout /></ProtectedRoute></Route>
-      <Route path="/order/:id">      <ProtectedRoute><OrderConfirmation /></ProtectedRoute></Route>
-      <Route path="/wishlist">       <ProtectedRoute><WishlistPage /></ProtectedRoute></Route>
+      {/* ── Open to guests and signed-in users ── */}
+      <Route path="/shop">           <ProtectedRoute allowGuest><Shop /></ProtectedRoute></Route>
+      <Route path="/product/:id">    <ProtectedRoute allowGuest><ProductDetail /></ProtectedRoute></Route>
+      <Route path="/cart">           <ProtectedRoute allowGuest><Cart /></ProtectedRoute></Route>
+      <Route path="/checkout">       <ProtectedRoute allowGuest><Checkout /></ProtectedRoute></Route>
+      <Route path="/order/:id">      <ProtectedRoute allowGuest><OrderConfirmation /></ProtectedRoute></Route>
+      <Route path="/wishlist">       <ProtectedRoute allowGuest><WishlistPage /></ProtectedRoute></Route>
+      <Route path="/blog">           <ProtectedRoute allowGuest><BlogPage /></ProtectedRoute></Route>
+      <Route path="/blog/:id">       <ProtectedRoute allowGuest><BlogPostPage /></ProtectedRoute></Route>
+      <Route path="/bundles">        <ProtectedRoute allowGuest><BundlesPage /></ProtectedRoute></Route>
+
+      {/* ── Signed-in only ── */}
       <Route path="/my-orders">      <ProtectedRoute><MyOrders /></ProtectedRoute></Route>
-      <Route path="/blog">           <ProtectedRoute><BlogPage /></ProtectedRoute></Route>
-      <Route path="/blog/:id">       <ProtectedRoute><BlogPostPage /></ProtectedRoute></Route>
-      <Route path="/bundles">        <ProtectedRoute><BundlesPage /></ProtectedRoute></Route>
 
       {/* ── Admin ── */}
       <Route path="/admin/login" component={AdminLoginPage} />
