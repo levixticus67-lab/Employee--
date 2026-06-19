@@ -6,8 +6,10 @@ import { useCurrency } from "@/components/currency-context";
 import { Button } from "@/components/ui/button";
 import {
   CheckCircle2, Package, MapPin, CreditCard, Clock, Truck, PackageCheck,
-  XCircle, Tag, Smartphone, Loader2, ShieldCheck, ExternalLink,
+  XCircle, Tag, Smartphone, Loader2, ShieldCheck, ExternalLink, MessageCircle,
 } from "lucide-react";
+import { isGuestMode } from "@/lib/guest-mode";
+import { useEffect, useState } from "react";
 import { CldImg } from "@/components/cld-img";
 
 const STATUS_CONFIG: Record<string, { label: string; icon: typeof Clock; color: string }> = {
@@ -31,6 +33,16 @@ export default function OrderConfirmation() {
   const orderId = params?.id || "";
   const { format } = useCurrency();
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [whatsappNumber, setWhatsappNumber] = useState("");
+
+  useEffect(() => {
+    if (!isGuestMode()) return;
+    import("@/lib/api").then(({ apiFetch }) => {
+      apiFetch("/settings/public").then((s: any) => {
+        if (s?.whatsappNumber) setWhatsappNumber(s.whatsappNumber);
+      }).catch(() => {});
+    });
+  }, []);
 
   const { data: order, isLoading, refetch } = useGetOrder(orderId, {
     query: { enabled: !!orderId } as any,
@@ -267,6 +279,36 @@ export default function OrderConfirmation() {
             ))}
           </div>
         </div>
+
+        {isGuestMode() && (
+          <div className="glass-panel-heavy rounded-2xl p-6 border-white/40 text-left mb-8 bg-green-500/5 border-green-300/30">
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 rounded-full bg-green-500/20 flex items-center justify-center flex-shrink-0">
+                <MessageCircle className="w-5 h-5 text-green-600" />
+              </div>
+              <div className="flex-1">
+                <h3 className="font-medium text-blue-950 mb-1">Track your order on WhatsApp</h3>
+                <p className="text-sm text-blue-800/70 mb-3">
+                  You placed this order as a guest. To get updates or make changes, contact us on WhatsApp with your order number.
+                </p>
+                <p className="text-xs font-mono bg-white/30 rounded-lg px-3 py-1.5 text-blue-900 inline-block mb-3">
+                  Order #{order.id.slice(0, 8).toUpperCase()}
+                </p>
+                {whatsappNumber && (
+                  <a
+                    href={`https://wa.me/${whatsappNumber.replace(/\D/g, "")}?text=${encodeURIComponent("Hi! I placed a guest order. My order number is " + order.id.slice(0, 8).toUpperCase() + ". I'd like an update on my delivery.")}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2 w-full py-2.5 rounded-xl bg-green-500/90 hover:bg-green-600 text-white text-sm font-medium transition-colors justify-center"
+                  >
+                    <MessageCircle className="w-4 h-4" />
+                    Message us on WhatsApp
+                  </a>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
 
         <Link href="/shop">
           <Button className="rounded-full glass-card hover:bg-white/20 text-foreground border-white/30 px-8">
