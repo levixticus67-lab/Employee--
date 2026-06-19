@@ -361,6 +361,12 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
     setLocation("/login");
   }
 
+  function handleExitGuest() {
+    setGuestMode(false);
+    toast.success("Guest session ended");
+    setLocation("/");
+  }
+
   const whatsappUrl = settings.whatsappNumber
     ? `https://wa.me/${settings.whatsappNumber.replace(/\D/g, "")}?text=${encodeURIComponent(settings.whatsappMessage)}`
     : null;
@@ -472,10 +478,13 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
                   </button>
                 </div>
               ) : isGuestMode() ? (
-                <div className="flex items-center gap-2 border-l border-sky-400/10 pl-2">
-                  <span className="text-xs text-sky-400/60 font-medium">Guest</span>
+                <div className="flex items-center gap-1.5 border-l border-sky-400/10 pl-2">
+                  <span className="text-xs text-sky-400/50 font-medium">Guest</span>
                   <span className="text-sky-400/20">·</span>
-                  <button type="button" onClick={handleGuestSignIn} className="text-xs font-medium text-sky-300/80 hover:text-sky-50 px-2 py-1.5 underline underline-offset-2">Sign in</button>
+                  <button type="button" onClick={handleGuestSignIn} className="text-xs font-medium text-sky-300/80 hover:text-sky-50 px-1.5 py-1 underline underline-offset-2 transition-colors">Sign in</button>
+                  <button type="button" onClick={handleExitGuest} title="Exit guest mode" className="p-1 text-sky-400/40 hover:text-red-400 hover:bg-red-500/10 transition-colors rounded-md">
+                    <X className="w-3 h-3" />
+                  </button>
                 </div>
               ) : (
                 <div className="flex items-center gap-2 border-l border-sky-400/10 pl-2">
@@ -571,6 +580,11 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
                     className="block px-3 py-2.5 text-sm font-medium text-white bg-blue-500 hover:bg-blue-400 rounded-xl text-center">
                     Create Account
                   </Link>
+                  <button type="button"
+                    onClick={() => { setIsMobileMenuOpen(false); handleExitGuest(); }}
+                    className="flex items-center gap-2 w-full text-left px-3 py-2.5 text-sm font-medium text-sky-400/60 hover:text-red-400 hover:bg-red-500/10 rounded-xl transition-colors">
+                    <X className="w-4 h-4" /> Exit Guest Mode
+                  </button>
                 </div>
               ) : (
                 <div className="flex flex-col gap-2 border-t border-white/10 mt-1 pt-3">
