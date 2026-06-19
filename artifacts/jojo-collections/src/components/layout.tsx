@@ -356,6 +356,11 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
     catch { toast.error("Could not sign out"); }
   }
 
+  function handleGuestSignIn() {
+    setGuestMode(false);
+    setLocation("/login");
+  }
+
   const whatsappUrl = settings.whatsappNumber
     ? `https://wa.me/${settings.whatsappNumber.replace(/\D/g, "")}?text=${encodeURIComponent(settings.whatsappMessage)}`
     : null;
@@ -470,7 +475,7 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
                 <div className="flex items-center gap-2 border-l border-sky-400/10 pl-2">
                   <span className="text-xs text-sky-400/60 font-medium">Guest</span>
                   <span className="text-sky-400/20">·</span>
-                  <Link href="/login" className="text-xs font-medium text-sky-300/80 hover:text-sky-50 px-2 py-1.5 underline underline-offset-2">Sign in</Link>
+                  <button type="button" onClick={handleGuestSignIn} className="text-xs font-medium text-sky-300/80 hover:text-sky-50 px-2 py-1.5 underline underline-offset-2">Sign in</button>
                 </div>
               ) : (
                 <div className="flex items-center gap-2 border-l border-sky-400/10 pl-2">
@@ -557,8 +562,15 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
               ) : isGuestMode() ? (
                 <div className="flex flex-col gap-1 border-t border-white/10 mt-1 pt-3">
                   <p className="px-3 py-1 text-xs text-sky-400/60 uppercase tracking-wide">Browsing as Guest</p>
-                  <Link href="/login" onClick={() => setIsMobileMenuOpen(false)}
-                    className="block px-3 py-2.5 text-sm font-medium text-sky-200 hover:bg-white/8 rounded-xl">Sign In for Full Access</Link>
+                  <button type="button"
+                    onClick={() => { setIsMobileMenuOpen(false); handleGuestSignIn(); }}
+                    className="block w-full text-left px-3 py-2.5 text-sm font-medium text-sky-200 hover:bg-white/8 rounded-xl">
+                    Sign In to Your Account
+                  </button>
+                  <Link href="/signup" onClick={() => { setIsMobileMenuOpen(false); setGuestMode(false); }}
+                    className="block px-3 py-2.5 text-sm font-medium text-white bg-blue-500 hover:bg-blue-400 rounded-xl text-center">
+                    Create Account
+                  </Link>
                 </div>
               ) : (
                 <div className="flex flex-col gap-2 border-t border-white/10 mt-1 pt-3">
