@@ -9,6 +9,7 @@ import { ShoppingBag, User, LogOut, Heart, MessageCircle, Package, X } from "luc
 import { useState, useEffect, useRef } from "react";
 import { toast } from "sonner";
 import { apiFetch } from "@/lib/api";
+import { isGuestMode, setGuestMode } from "@/lib/guest-mode";
 import { CldImg } from "@/components/cld-img";
 
 type BannerMediaType = "none" | "image" | "video";
@@ -351,7 +352,7 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
   const currencies: Currency[] = ["USD", "UGX", "EUR", "GBP"];
 
   async function handleLogout() {
-    try { await logout(); toast.success("Signed out"); setLocation("/"); }
+    try { await logout(); setGuestMode(false); toast.success("Signed out"); setLocation("/"); }
     catch { toast.error("Could not sign out"); }
   }
 
@@ -465,6 +466,12 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
                     <LogOut className="w-3.5 h-3.5" />
                   </button>
                 </div>
+              ) : isGuestMode() ? (
+                <div className="flex items-center gap-2 border-l border-sky-400/10 pl-2">
+                  <span className="text-xs text-sky-400/60 font-medium">Guest</span>
+                  <span className="text-sky-400/20">·</span>
+                  <Link href="/login" className="text-xs font-medium text-sky-300/80 hover:text-sky-50 px-2 py-1.5 underline underline-offset-2">Sign in</Link>
+                </div>
               ) : (
                 <div className="flex items-center gap-2 border-l border-sky-400/10 pl-2">
                   <Link href="/login" className="text-xs font-medium text-sky-300/70 hover:text-sky-50 px-2 py-1.5">Sign In</Link>
@@ -547,6 +554,12 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
                     <LogOut className="w-4 h-4" /> Sign out
                   </button>
                 </>
+              ) : isGuestMode() ? (
+                <div className="flex flex-col gap-1 border-t border-white/10 mt-1 pt-3">
+                  <p className="px-3 py-1 text-xs text-sky-400/60 uppercase tracking-wide">Browsing as Guest</p>
+                  <Link href="/login" onClick={() => setIsMobileMenuOpen(false)}
+                    className="block px-3 py-2.5 text-sm font-medium text-sky-200 hover:bg-white/8 rounded-xl">Sign In for Full Access</Link>
+                </div>
               ) : (
                 <div className="flex flex-col gap-2 border-t border-white/10 mt-1 pt-3">
                   <Link href="/login" onClick={() => setIsMobileMenuOpen(false)}
