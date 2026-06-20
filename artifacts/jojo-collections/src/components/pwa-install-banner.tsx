@@ -9,12 +9,20 @@ interface BeforeInstallPromptEvent extends Event {
 const DISMISS_KEY = "lenz-pwa-dismissed";
 const DISMISS_TTL = 7 * 24 * 60 * 60 * 1000;
 
+function isMobileDevice(): boolean {
+  return /android|iphone|ipad|ipod|mobile|blackberry|iemobile|opera mini/i.test(
+    navigator.userAgent
+  );
+}
+
 export function PwaInstallBanner() {
   const [prompt, setPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [ios, setIos] = useState(false);
   const [gone, setGone] = useState(false);
 
   useEffect(() => {
+    if (!isMobileDevice()) return;
+
     try {
       if (Number(localStorage.getItem(DISMISS_KEY) ?? 0) > Date.now() - DISMISS_TTL) return;
     } catch {}
@@ -47,17 +55,18 @@ export function PwaInstallBanner() {
   if (gone || (!prompt && !ios)) return null;
 
   return (
-    <div className="fixed left-0 right-0 z-[80] md:left-auto md:right-5"
+    <div className="fixed left-0 right-0 z-[80]"
       style={{ bottom: "env(safe-area-inset-bottom, 0px)" }}>
-      <div className="m-3 md:m-0 md:mb-5 md:max-w-[340px] rounded-2xl border border-white/25 shadow-2xl p-4"
+      <div className="m-3 rounded-2xl border border-white/25 shadow-2xl p-4"
         style={{ background:"rgba(10,20,58,0.96)", backdropFilter:"blur(20px)", WebkitBackdropFilter:"blur(20px)" }}>
         <div className="flex items-start gap-3">
-          <div className="w-11 h-11 rounded-xl flex-shrink-0 flex items-center justify-center font-bold text-white text-lg"
-            style={{ background:"linear-gradient(135deg,#3b82f6,#1d4ed8)", fontFamily:"Georgia,serif", letterSpacing:1 }}>
-            L
-          </div>
+          <img
+            src="/icons/apple-touch-icon.png"
+            alt="LENZ"
+            className="w-11 h-11 rounded-xl flex-shrink-0 object-cover"
+          />
           <div className="flex-1 min-w-0">
-            <p className="font-semibold text-sky-50 text-sm leading-tight">Install LENZ</p>
+            <p className="font-semibold text-sky-50 text-sm leading-tight">Install LENZ Fragrances</p>
             {ios ? (
               <p className="text-xs text-sky-300/70 mt-0.5 flex items-center gap-1 flex-wrap">
                 Tap <Share2 className="w-3 h-3 inline text-sky-400" /> then <em className="not-italic font-medium text-sky-200">"Add to Home Screen"</em>
