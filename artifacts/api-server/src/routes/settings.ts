@@ -7,6 +7,9 @@ const router: IRouter = Router();
 const SETTINGS_DOC = "settings/global";
 
 type StoreSettings = {
+  twitterUrl: string;
+  tiktokUrl: string;
+  instagramUrl: string;
   storeName: string;
   whatsappNumber: string;
   whatsappMessage: string;
@@ -30,6 +33,9 @@ type StoreSettings = {
 };
 
 const defaultSettings: StoreSettings = {
+  twitterUrl: "",
+  tiktokUrl: "",
+  instagramUrl: "",
   storeName: "",
   whatsappNumber: "",
   whatsappMessage: "Hi! I need help with my order.",
@@ -76,6 +82,9 @@ router.get("/settings/public", async (_req, res) => {
       heroImage1: data?.["heroImage1"] ?? "",
       heroImage2: data?.["heroImage2"] ?? "",
       heroImage3: data?.["heroImage3"] ?? "",
+      twitterUrl: data?.["twitterUrl"] ?? "",
+      tiktokUrl: data?.["tiktokUrl"] ?? "",
+      instagramUrl: data?.["instagramUrl"] ?? "",
     });
   } catch {
     res.json({ storeName: "", whatsappNumber: "", whatsappMessage: "Hi! I need help.", currencyDefault: "USD", mtnNumber: "", airtelNumber: "", logoUrl: "", bannerEnabled: false, heroImage1: "", heroImage2: "", heroImage3: "" });
@@ -99,6 +108,7 @@ router.put("/admin/settings", requireAdmin, async (req, res) => {
     "whatsappNumber", "whatsappMessage", "currencyDefault", "mtnNumber", "airtelNumber",
     "logoUrl", "bannerText", "bannerBgColor", "bannerMediaUrl", "bannerMediaType", "bannerCountdownEnd",
     "heroImage1", "heroImage2", "heroImage3",
+    "twitterUrl", "tiktokUrl", "instagramUrl",
   ];
   for (const k of strKeys) {
     if (body[k] !== undefined) (updates as Record<string, unknown>)[k] = body[k];
