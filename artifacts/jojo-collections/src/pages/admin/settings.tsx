@@ -8,6 +8,9 @@ import { apiFetch } from "@/lib/api";
 type BannerMediaType = "none" | "image" | "video";
 
 type SettingsData = {
+  twitterUrl: string;
+  tiktokUrl: string;
+  instagramUrl: string;
   whatsappNumber: string;
   whatsappMessage: string;
   currencyDefault: string;
@@ -30,6 +33,9 @@ type SettingsData = {
 };
 
 const defaults: SettingsData = {
+  twitterUrl: "",
+  tiktokUrl: "",
+  instagramUrl: "",
   whatsappNumber: "",
   whatsappMessage: "Hi! I need help with my order.",
   currencyDefault: "USD",
