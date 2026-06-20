@@ -1,4 +1,4 @@
-const CACHE = "lenz-v1";
+const CACHE = "lenz-v2";
 const PRE = ["/"];
 
 self.addEventListener("install", (e) => {

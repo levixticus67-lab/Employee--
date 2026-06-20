@@ -1,13 +1,15 @@
 import { useEffect, useState, useRef } from "react";
 import { AdminLayout } from "@/components/admin-layout";
 import { Button } from "@/components/ui/button";
-import { Settings, MessageCircle, DollarSign, AlertTriangle, Smartphone, Info, Truck, ImageIcon, Upload, X, Megaphone, Video, Eye, EyeOff, Timer } from "lucide-react";
+import { Settings, MessageCircle, DollarSign, AlertTriangle, Smartphone, Info, Truck, ImageIcon, Upload, X, Megaphone, Video, Eye, EyeOff, Timer, Share2 } from "lucide-react";
 import { toast } from "sonner";
 import { apiFetch } from "@/lib/api";
+import { invalidateStoreName } from "@/lib/use-store-name";
 
 type BannerMediaType = "none" | "image" | "video";
 
 type SettingsData = {
+  storeName: string;
   twitterUrl: string;
   tiktokUrl: string;
   instagramUrl: string;
@@ -33,7 +35,8 @@ type SettingsData = {
 };
 
 const defaults: SettingsData = {
-  twitterUrl: "",
+  storeName: "",
+  twitterUrl: "",  
   tiktokUrl: "",
   instagramUrl: "",
   whatsappNumber: "",
@@ -465,6 +468,35 @@ export default function AdminSettings() {
                     <CountdownPreview end={form.bannerCountdownEnd} enabled={form.bannerCountdownEnabled} />
                   </div>
                 </div>
+              </div>
+            </div>
+          </div>
+
+
+          {/* Social Media Links */}
+          <div className="glass-panel-heavy rounded-2xl p-6 border-white/50">
+            <h2 className="text-lg font-serif text-blue-950 mb-4 flex items-center gap-2">
+              <Share2 className="w-5 h-5 text-blue-600" /> Social Media Links
+            </h2>
+            <p className="text-sm text-blue-800/60 mb-4">These links appear as icons in the storefront footer. Leave blank to hide.</p>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-blue-900/80 mb-1">Instagram URL</label>
+                <input type="url" value={form.instagramUrl} onChange={(e) => setForm({ ...form, instagramUrl: e.target.value })}
+                  placeholder="https://instagram.com/yourstore"
+                  className="w-full glass-card rounded-lg px-3 py-2 text-blue-950 border-white/40 focus:ring-2 focus:ring-blue-400 focus:outline-none" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-blue-900/80 mb-1">TikTok URL</label>
+                <input type="url" value={form.tiktokUrl} onChange={(e) => setForm({ ...form, tiktokUrl: e.target.value })}
+                  placeholder="https://tiktok.com/@yourstore"
+                  className="w-full glass-card rounded-lg px-3 py-2 text-blue-950 border-white/40 focus:ring-2 focus:ring-blue-400 focus:outline-none" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-blue-900/80 mb-1">Twitter / X URL</label>
+                <input type="url" value={form.twitterUrl} onChange={(e) => setForm({ ...form, twitterUrl: e.target.value })}
+                  placeholder="https://x.com/yourstore"
+                  className="w-full glass-card rounded-lg px-3 py-2 text-blue-950 border-white/40 focus:ring-2 focus:ring-blue-400 focus:outline-none" />
               </div>
             </div>
           </div>

@@ -797,19 +797,19 @@ router.get("/admin/low-stock", async (_req, res) => {
 
 // ─── Settings ─────────────────────────────────────────────────────────────────
 router.get("/settings/public", async (_req, res) => {
-  const snap = await firestore.collection(COLLECTIONS.settings).doc("public").get();
+  const snap = await firestore.doc("settings/global").get();
   res.json(snap.exists ? snap.data() : { whatsappNumber: "", whatsappMessage: "Hi! I need help.", currencyDefault: "USD" });
 });
 
 router.get("/admin/settings", async (_req, res) => {
-  const snap = await firestore.collection(COLLECTIONS.settings).doc("public").get();
+  const snap = await firestore.doc("settings/global").get();
   res.json(snap.exists ? snap.data() : { whatsappNumber: "", whatsappMessage: "Hi! I need help.", currencyDefault: "USD" });
 });
 
 router.put("/admin/settings", async (req, res) => {
   try {
-    await firestore.collection(COLLECTIONS.settings).doc("public").set(req.body, { merge: true });
-    const fresh = await firestore.collection(COLLECTIONS.settings).doc("public").get();
+    await firestore.doc("settings/global").set(req.body, { merge: true });
+    const fresh = await firestore.doc("settings/global").get();
     res.json(fresh.data() ?? {});
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Failed to save settings";
