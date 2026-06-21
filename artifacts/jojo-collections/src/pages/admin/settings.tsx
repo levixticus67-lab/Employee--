@@ -4,9 +4,10 @@ import { Button } from "@/components/ui/button";
 import { Settings, MessageCircle, DollarSign, AlertTriangle, Smartphone, Info, Truck, ImageIcon, Upload, X, Megaphone, Video, Eye, EyeOff, Timer, Share2 } from "lucide-react";
 import { toast } from "sonner";
 import { apiFetch } from "@/lib/api";
+import { cloudinaryVideo } from "@/lib/utils";
 import { invalidateStoreName } from "@/lib/use-store-name";
 
-type BannerMediaType = "none" | "image" | "video";
+type BannerMediaType = "none" | "image" | "video" | "gif";
 
 type SettingsData = {
   storeName: string;
@@ -155,15 +156,19 @@ export default function AdminSettings() {
     const file = e.target.files?.[0];
     if (!file) return;
     const isVideo = file.type.startsWith("video/");
+    const isGif = file.type === "image/gif";
     const isImage = file.type.startsWith("image/");
-    if (!isVideo && !isImage) { toast.error("Please select an image or video file"); return; }
+    if (!isVideo && !isImage) { toast.error("Please select an image, GIF, or video file"); return; }
     setUploadingBannerMedia(true);
     try {
+      // GIFs → upload as "image" so Cloudinary preserves them, tag as "gif" type
+      // Videos → upload as "video" so Cloudinary transcodes properly
       const resourceType = isVideo ? "video" : "image";
       const url = await uploadToCloudinary(file, resourceType);
       if (!url) throw new Error("Upload failed");
-      setForm((prev) => ({ ...prev, bannerMediaUrl: url, bannerMediaType: resourceType }));
-      toast.success(`${isVideo ? "Video" : "Image"} uploaded — save settings to apply`);
+      const mediaType: BannerMediaType = isVideo ? "video" : isGif ? "gif" : "image";
+      setForm((prev) => ({ ...prev, bannerMediaUrl: url, bannerMediaType: mediaType }));
+      toast.success(`${isVideo ? "Video" : isGif ? "GIF" : "Image"} uploaded — save settings to apply`);
     } catch { toast.error("Upload failed"); } finally {
       setUploadingBannerMedia(false);
       if (bannerMediaInputRef.current) bannerMediaInputRef.current.value = "";
@@ -397,7 +402,9 @@ export default function AdminSettings() {
                   {form.bannerMediaUrl && (
                     <div className="relative rounded-xl overflow-hidden border border-white/40 flex-shrink-0" style={{ width: 140, height: 80 }}>
                       {form.bannerMediaType === "video" ? (
-                        <video src={form.bannerMediaUrl} className="w-full h-full object-cover" muted autoPlay loop playsInline />
+                        <video src={cloudinaryVideo(form.bannerMediaUrl)} className="w-full h-full object-cover" muted autoPlay loop playsInline />
+                      ) : form.bannerMediaType === "gif" ? (
+                        <img src={form.bannerMediaUrl} alt="Banner" className="w-full h-full object-cover" />
                       ) : (
                         <img src={form.bannerMediaUrl} alt="Banner" className="w-full h-full object-cover" />
                       )}
@@ -408,6 +415,8 @@ export default function AdminSettings() {
                       <div className="absolute bottom-1 left-1">
                         {form.bannerMediaType === "video"
                           ? <span className="text-[9px] bg-black/60 text-white px-1 py-0.5 rounded font-medium flex items-center gap-0.5"><Video className="w-2.5 h-2.5" /> VIDEO</span>
+                          : form.bannerMediaType === "gif"
+                          ? <span className="text-[9px] bg-black/60 text-white px-1 py-0.5 rounded font-medium">GIF</span>
                           : <span className="text-[9px] bg-black/60 text-white px-1 py-0.5 rounded font-medium">IMG</span>}
                       </div>
                     </div>
@@ -455,9 +464,9 @@ export default function AdminSettings() {
                   style={{ minHeight: bannerPreviewHeight, background: hasMedia ? undefined : form.bannerBgColor }}
                 >
                   {form.bannerMediaType === "video" && form.bannerMediaUrl && (
-                    <video src={form.bannerMediaUrl} className="absolute inset-0 w-full h-full object-cover" muted autoPlay loop playsInline />
+                    <video src={cloudinaryVideo(form.bannerMediaUrl)} className="absolute inset-0 w-full h-full object-cover" muted autoPlay loop playsInline />
                   )}
-                  {form.bannerMediaType === "image" && form.bannerMediaUrl && (
+                  {(form.bannerMediaType === "image" || form.bannerMediaType === "gif") && form.bannerMediaUrl && (
                     <img src={form.bannerMediaUrl} alt="" className="absolute inset-0 w-full h-full object-cover" />
                   )}
                   {hasMedia && <div className="absolute inset-0" style={{ background: `${form.bannerBgColor}99` }} />}

@@ -12,8 +12,9 @@ import { apiFetch } from "@/lib/api";
 import { isGuestMode, setGuestMode } from "@/lib/guest-mode";
 import { PwaInstallBanner } from "@/components/pwa-install-banner";
 import { CldImg } from "@/components/cld-img";
+import { cloudinaryVideo, cloudinaryGif } from "@/lib/utils";
 
-type BannerMediaType = "none" | "image" | "video";
+type BannerMediaType = "none" | "image" | "video" | "gif";
 
 type PublicSettings = {
   whatsappNumber: string;
@@ -408,7 +409,10 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
         <div className="relative w-full overflow-hidden flex-shrink-0 flex items-center justify-center z-10"
           style={{ minHeight: bannerMinHeight, background: hasMedia ? undefined : settings.bannerBgColor }}>
           {settings.bannerMediaType === "video" && settings.bannerMediaUrl && (
-            <video src={settings.bannerMediaUrl} className="absolute inset-0 w-full h-full object-cover" autoPlay loop muted playsInline />
+            <video src={cloudinaryVideo(settings.bannerMediaUrl)} className="absolute inset-0 w-full h-full object-cover" autoPlay loop muted playsInline />
+          )}
+          {settings.bannerMediaType === "gif" && settings.bannerMediaUrl && (
+            <img src={cloudinaryGif(settings.bannerMediaUrl)} alt="" className="absolute inset-0 w-full h-full object-cover" />
           )}
           {settings.bannerMediaType === "image" && settings.bannerMediaUrl && (
             <CldImg src={settings.bannerMediaUrl} w={1200} eager alt="" className="absolute inset-0 w-full h-full object-cover" />
