@@ -1,0 +1,10 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "app.web.lenz_fragrances.twa",
+      "sha256_cert_fingerprints": ["3C:DE:99:69:00:FD:F7:46:CB:CE:A4:A3:1C:B4:08:C1:7F:3E:FD:7F:58:65:7E:2F:D3:AD:37:B6:F3:C5:4A:B0"]
+    }
+  }
+]
