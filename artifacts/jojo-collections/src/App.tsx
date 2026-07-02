@@ -101,11 +101,12 @@ function AdminRoute({ children }: { children: React.ReactNode }) {
 }
 
 // allowGuest: if true, guests with the lenz-guest flag can access this route
-function ProtectedRoute({ children, allowGuest }: { children: React.ReactNode; allowGuest?: boolean }) {
+function ProtectedRoute({ children, allowGuest, requireGuestMode }: { children: React.ReactNode; allowGuest?: boolean; requireGuestMode?: boolean }) {
   const { user, loading } = useAuth();
   if (loading) return <div className="min-h-screen flex items-center justify-center text-blue-800/70">Loading…</div>;
   if (!user) {
-    if (allowGuest) return <>{children}</>;
+    // allowGuest + requireGuestMode: open to all but buying actions need the guest flow
+    if (allowGuest && (!requireGuestMode || isGuestMode())) return <>{children}</>;
     return <Redirect to="/login" />;
   }
   if (!user.emailVerified) return <VerifyEmailGate />;
@@ -126,10 +127,10 @@ function Router() {
       {/* ── Open to guests and signed-in users ── */}
       <Route path="/shop">           <ProtectedRoute allowGuest><Shop /></ProtectedRoute></Route>
       <Route path="/product/:id">    <ProtectedRoute allowGuest><ProductDetail /></ProtectedRoute></Route>
-      <Route path="/cart">           <ProtectedRoute allowGuest><Cart /></ProtectedRoute></Route>
-      <Route path="/checkout">       <ProtectedRoute allowGuest><Checkout /></ProtectedRoute></Route>
-      <Route path="/order/:id">      <ProtectedRoute allowGuest><OrderConfirmation /></ProtectedRoute></Route>
-      <Route path="/wishlist">       <ProtectedRoute allowGuest><WishlistPage /></ProtectedRoute></Route>
+      <Route path="/cart">           <ProtectedRoute allowGuest requireGuestMode><Cart /></ProtectedRoute></Route>
+      <Route path="/checkout">       <ProtectedRoute allowGuest requireGuestMode><Checkout /></ProtectedRoute></Route>
+      <Route path="/order/:id">      <ProtectedRoute allowGuest requireGuestMode><OrderConfirmation /></ProtectedRoute></Route>
+      <Route path="/wishlist">       <ProtectedRoute allowGuest requireGuestMode><WishlistPage /></ProtectedRoute></Route>
       <Route path="/blog">           <ProtectedRoute allowGuest><BlogPage /></ProtectedRoute></Route>
       <Route path="/blog/:id">       <ProtectedRoute allowGuest><BlogPostPage /></ProtectedRoute></Route>
       <Route path="/bundles">        <ProtectedRoute allowGuest><BundlesPage /></ProtectedRoute></Route>
