@@ -105,7 +105,7 @@ function ProtectedRoute({ children, allowGuest }: { children: React.ReactNode; a
   const { user, loading } = useAuth();
   if (loading) return <div className="min-h-screen flex items-center justify-center text-blue-800/70">Loading…</div>;
   if (!user) {
-    if (allowGuest && isGuestMode()) return <>{children}</>;
+    if (allowGuest) return <>{children}</>;
     return <Redirect to="/login" />;
   }
   if (!user.emailVerified) return <VerifyEmailGate />;
