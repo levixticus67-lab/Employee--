@@ -37,6 +37,7 @@ const PAYMENT_STATUS_COLORS: Record<string, string> = {
 
 const PAYMENT_METHOD_LABELS: Record<string, string> = {
   pesapal:          "Pesapal",
+  lenzpay:          "Lenzpay Mobile Money",
   mtn_momo:         "MTN MoMo",
   airtel_money:     "Airtel Money",
   cash_on_delivery: "Cash on Delivery",
@@ -81,10 +82,13 @@ function OrderLogDialog({ item, onClose }: { item: StorageItem; onClose: () => v
   const giftNote = s(snap, "giftNote");
   const txRef = s(snap, "txRef");
   const pesapalTrackingId = s(snap, "pesapalTrackingId");
+  const lenzpayTransactionId = s(snap, "lenzpayTransactionId");
   const items: OrderItem[] = Array.isArray(snap["items"]) ? snap["items"] as OrderItem[] : [];
   const statusHistory: StatusEntry[] = Array.isArray(snap["statusHistory"]) ? snap["statusHistory"] as StatusEntry[] : [];
 
-  const isPesapalVerified = paymentStatus === "paid" && (pesapalTrackingId || txRef);
+  const verifiedProvider = paymentStatus === "paid"
+    ? lenzpayTransactionId ? "Lenzpay" : (pesapalTrackingId || txRef) ? "Pesapal" : ""
+    : "";
 
   return (
     <Dialog open onOpenChange={(open) => !open && onClose()}>
@@ -189,9 +193,9 @@ function OrderLogDialog({ item, onClose }: { item: StorageItem; onClose: () => v
               )}
               <div className="flex items-center justify-between">
                 <span className="text-xs text-blue-800/70">Payment status</span>
-                {isPesapalVerified ? (
+                {verifiedProvider ? (
                   <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full font-medium bg-green-400/20 text-green-200 border border-green-400/30">
-                    <ShieldCheck className="w-3 h-3" /> Verified · Pesapal
+                    <ShieldCheck className="w-3 h-3" /> Verified · {verifiedProvider}
                   </span>
                 ) : (
                   <span className={`text-xs px-2 py-0.5 rounded-full font-medium capitalize ${PAYMENT_STATUS_COLORS[paymentStatus] ?? "bg-white/10 text-slate-300"}`}>
@@ -217,11 +221,14 @@ function OrderLogDialog({ item, onClose }: { item: StorageItem; onClose: () => v
                   </div>
                 </>
               )}
-              {(pesapalTrackingId || txRef) && (
+              {(pesapalTrackingId || txRef || lenzpayTransactionId) && (
                 <div className="pt-2 border-t border-white/20">
                   <p className="text-[10px] font-medium text-blue-700 uppercase tracking-wider mb-1 flex items-center gap-1">
-                    <ShieldCheck className="w-3 h-3" /> Pesapal Verification
+                    <ShieldCheck className="w-3 h-3" /> {lenzpayTransactionId ? "Lenzpay Verification" : "Pesapal Verification"}
                   </p>
+                  {lenzpayTransactionId && (
+                    <p className="text-[10px] text-blue-800/60 font-mono break-all">Transaction ID: {lenzpayTransactionId}</p>
+                  )}
                   {pesapalTrackingId && (
                     <p className="text-[10px] text-blue-800/60 font-mono break-all">Tracking ID: {pesapalTrackingId}</p>
                   )}

@@ -35,6 +35,7 @@ const PAYMENT_STATUS_COLORS: Record<string, string> = {
 
 const PAYMENT_METHOD_LABELS: Record<string, string> = {
   pesapal:          "Pesapal",
+  lenzpay:          "Lenzpay Mobile Money",
   mtn_momo:         "MTN MoMo",
   airtel_money:     "Airtel Money",
   cash_on_delivery: "Cash on Delivery",
@@ -42,6 +43,13 @@ const PAYMENT_METHOD_LABELS: Record<string, string> = {
 };
 
 function PaymentBadge({ order }: { order: any }) {
+  if (order.paymentStatus === "paid" && order.lenzpayTransactionId) {
+    return (
+      <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full font-medium bg-green-400/20 text-green-200 border border-green-400/30">
+        <ShieldCheck className="w-3 h-3" /> Verified · Lenzpay
+      </span>
+    );
+  }
   if (order.paymentStatus === "paid" && (order.pesapalTrackingId || order.txRef)) {
     return (
       <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full font-medium bg-green-400/20 text-green-200 border border-green-400/30">
@@ -52,7 +60,7 @@ function PaymentBadge({ order }: { order: any }) {
   if (order.paymentStatus === "pending") {
     return (
       <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full font-medium bg-blue-400/20 text-sky-200 border border-blue-400/30 animate-pulse">
-        <Loader2 className="w-3 h-3 animate-spin" /> Awaiting Pesapal
+        <Loader2 className="w-3 h-3 animate-spin" /> Awaiting {order.paymentMethod === "lenzpay" ? "Lenzpay" : "Pesapal"}
       </span>
     );
   }
@@ -367,12 +375,17 @@ export default function AdminOrders() {
                       <span>Amount paid</span><span className="text-emerald-300 font-medium">{format(selectedOrder.amountPaid)}</span>
                     </div>
                   )}
-                  {/* Pesapal reference IDs */}
-                  {(selectedOrder.pesapalTrackingId || selectedOrder.txRef) && (
+                  {/* Online provider reference IDs */}
+                  {(selectedOrder.pesapalTrackingId || selectedOrder.txRef || selectedOrder.lenzpayTransactionId) && (
                     <div className="pt-2 border-t border-white/20">
                       <p className="text-[10px] font-medium text-blue-700 uppercase tracking-wider mb-1 flex items-center gap-1">
-                        <ShieldCheck className="w-3 h-3" /> Pesapal Verification
+                        <ShieldCheck className="w-3 h-3" /> {selectedOrder.lenzpayTransactionId ? "Lenzpay Verification" : "Pesapal Verification"}
                       </p>
+                      {selectedOrder.lenzpayTransactionId && (
+                        <p className="text-[10px] text-blue-800/60 font-mono break-all">
+                          Transaction ID: {selectedOrder.lenzpayTransactionId}
+                        </p>
+                      )}
                       {selectedOrder.pesapalTrackingId && (
                         <p className="text-[10px] text-blue-800/60 font-mono break-all">
                           Tracking ID: {selectedOrder.pesapalTrackingId}

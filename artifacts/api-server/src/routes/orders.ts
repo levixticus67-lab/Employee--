@@ -45,6 +45,7 @@ export type OrderDto = {
   shippingConfirmed: boolean; freeDelivery: boolean;
   statusHistory: { status: string; timestamp: string }[]; createdAt: string;
   archived: boolean; txRef: string | null; pesapalTrackingId: string | null;
+  lenzpayTransactionId: string | null; lenzpayProvider: "MTN" | "AIRTEL" | null;
   giftWrapping: boolean; giftNote: string | null;
 };
 
@@ -64,6 +65,10 @@ function docToDto(id: string, d: OrderDoc): OrderDto {
     createdAt: tsToIso(d.createdAt), archived: d.archived ?? false,
     txRef: (raw["txRef"] as string | null) ?? null,
     pesapalTrackingId: (raw["pesapalTrackingId"] as string | null) ?? null,
+    lenzpayTransactionId: (raw["lenzpayTransactionId"] as string | null) ?? null,
+    lenzpayProvider: raw["lenzpayProvider"] === "MTN" || raw["lenzpayProvider"] === "AIRTEL"
+      ? raw["lenzpayProvider"] as "MTN" | "AIRTEL"
+      : null,
     giftWrapping: Boolean(raw["giftWrapping"] ?? false),
     giftNote: (raw["giftNote"] as string | null) ?? null,
   };
@@ -225,7 +230,10 @@ router.post("/orders", async (req, res) => {
         shippingConfirmed: qualifyFree, freeDelivery: qualifyFree,
         status: "pending",
         statusHistory: [{ status: "pending", timestamp: new Date().toISOString() }],
-        archived: false, txRef: null, pesapalTrackingId: null, createdAt: Timestamp.now(),
+        archived: false, txRef: null, pesapalTrackingId: null,
+        lenzpayTransactionId: null, lenzpayProvider: null,
+        lenzpayAmountUGX: null, lenzpayExchangeRate: null, lenzpayLastAttemptAt: null,
+        createdAt: Timestamp.now(),
       };
       tx.set(newOrderRef, order);
       for (let i = 0; i < productSnaps.length; i++) {

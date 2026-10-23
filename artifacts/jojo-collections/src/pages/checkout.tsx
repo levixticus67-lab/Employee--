@@ -15,7 +15,8 @@ import { useStoreName } from "@/lib/use-store-name";
   import { isGuestMode } from "@/lib/guest-mode";
 
   type CouponResult = { id: string; code: string; type: string; value: number; discount: number };
-  type PaymentMethod = "pesapal" | "cash_on_delivery";
+  type PaymentMethod = "pesapal" | "lenzpay" | "cash_on_delivery";
+  type LenzpayProvider = "MTN" | "AIRTEL";
 
   // Deposit presets shown under the Pesapal option
   const DEPOSIT_PRESETS = [0.3, 0.5, 0.7] as const;
@@ -32,6 +33,7 @@ import { useStoreName } from "@/lib/use-store-name";
       customerName: "", customerEmail: "", shippingAddress: "", buyerPhone: "",
     });
     const [paymentMethod, setPaymentMethod]   = useState<PaymentMethod>("pesapal");
+    const [lenzpayProvider, setLenzpayProvider] = useState<LenzpayProvider>("MTN");
     const [paymentNumber, setPaymentNumber]   = useState("");
     const [couponCode, setCouponCode]         = useState("");
     const [couponResult, setCouponResult]     = useState<CouponResult | null>(null);
@@ -76,7 +78,8 @@ import { useStoreName } from "@/lib/use-store-name";
 
     const discount = couponResult?.discount ?? 0;
     const total    = Math.max(0, subtotal - discount);
-    const isOnline = paymentMethod === "pesapal";
+    const isOnline = paymentMethod !== "cash_on_delivery";
+    const supportsPartialPayment = paymentMethod === "pesapal";
 
     // When total changes (e.g. coupon applied), reset partial to full
     useEffect(() => { setPartialAmount(total); }, [total]);
@@ -160,7 +163,7 @@ import { useStoreName } from "@/lib/use-store-name";
       if (items.length === 0 && bundles.length === 0) return;
       setSubmitting(true);
       try {
-        const amountToPay = isOnline && isPartialPayment && partialAmount < total && partialAmount > 0
+        const amountToPay = supportsPartialPayment && isPartialPayment && partialAmount < total && partialAmount > 0
           ? partialAmount
           : undefined;
 
@@ -189,6 +192,7 @@ import { useStoreName } from "@/lib/use-store-name";
             giftNote:      giftWrapping && giftNote.trim() ? giftNote.trim() : undefined,
             paymentMethod,
             paymentNumber: isOnline && paymentNumber.trim() ? paymentNumber : undefined,
+            lenzpayProvider: paymentMethod === "lenzpay" ? lenzpayProvider : undefined,
             amountToPay,
           }),
         });
@@ -222,6 +226,23 @@ import { useStoreName } from "@/lib/use-store-name";
           // empty-cart guard which calls setLocation("/cart") and returns null (blank screen)
           setLocation(`/order/${orderId}`);
           clearCart();
+        } else if (paymentMethod === "lenzpay") {
+          const orderId = (data["id"] as string | undefined) ?? "";
+          if (data["paymentStatus"] === "failed") {
+            toast.error("Mobile money payment was not completed", {
+              description: "You can try checkout again with a different number or payment method.",
+              duration: 8000,
+            });
+          } else if (data["paymentStatus"] === "paid") {
+            toast.success("Lenzpay payment confirmed");
+          } else {
+            toast.success("Mobile money prompt sent", {
+              description: "Approve the request on your phone. This page will update when Lenzpay confirms payment.",
+              duration: 8000,
+            });
+          }
+          setLocation(`/order/${orderId}`);
+          clearCart();
         } else {
           if (!data["redirectUrl"]) {
             toast.error("Could not get payment link. Please try again.");
@@ -239,7 +260,7 @@ import { useStoreName } from "@/lib/use-store-name";
 
     if (items.length === 0 && bundles.length === 0) { setLocation("/cart"); return null; }
 
-    const payingNow    = isOnline && isPartialPayment && partialAmount < total ? partialAmount : total;
+    const payingNow    = supportsPartialPayment && isPartialPayment && partialAmount < total ? partialAmount : total;
     const balanceDue   = total - payingNow;
 
     return (
@@ -415,7 +436,7 @@ import { useStoreName } from "@/lib/use-store-name";
               <div>
                 <h2 className="text-lg font-serif text-blue-950 mb-1">Payment Method</h2>
                 <p className="text-xs text-blue-800/50 mb-3">
-                  Online payments are processed by Pesapal — MTN Mobile Money, Airtel Money, Visa &amp; Mastercard.
+                  Choose Pesapal for mobile money or card, or Lenzpay for direct MTN/Airtel mobile money.
                 </p>
                 <div className="space-y-3">
 
@@ -498,6 +519,49 @@ import { useStoreName } from "@/lib/use-store-name";
                     </div>
                   </label>
 
+                  {/* Lenzpay (direct mobile money) */}
+                  <div className={`flex items-start gap-3 glass-card rounded-xl px-4 py-4 border-2 transition-all ${paymentMethod === "lenzpay" ? "border-blue-400 bg-blue-50/20" : "border-white/30 hover:border-blue-200"}`}>
+                    <input type="radio" name="paymentMethod" value="lenzpay"
+                      id="payment-method-lenzpay"
+                      checked={paymentMethod === "lenzpay"}
+                      onChange={() => setPaymentMethod("lenzpay")}
+                      className="accent-blue-600 mt-0.5" />
+                    <div className="flex-1">
+                      <label htmlFor="payment-method-lenzpay" className="flex items-center gap-2 cursor-pointer">
+                        <Smartphone className="w-4 h-4 text-blue-600" />
+                        <p className="text-sm font-medium text-blue-950">Pay by Mobile Money via Lenzpay</p>
+                      </label>
+                      <p className="text-xs text-blue-800/60 mt-0.5">MTN Mobile Money · Airtel Money</p>
+                      {paymentMethod === "lenzpay" && (
+                        <div className="mt-3 space-y-3">
+                          <p className="text-xs text-blue-800/70">
+                            Choose your network and number. Approve the payment prompt on your phone to complete checkout.
+                          </p>
+                          <div>
+                            <label htmlFor="lenzpay-provider" className="block text-xs font-medium text-blue-900/70 mb-1">
+                              Mobile money network
+                            </label>
+                            <select id="lenzpay-provider" value={lenzpayProvider}
+                              onChange={(e) => setLenzpayProvider(e.target.value as LenzpayProvider)}
+                              className="w-full glass-card rounded-xl px-4 py-2 text-blue-950 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 border-white/40">
+                              <option value="MTN">MTN Mobile Money</option>
+                              <option value="AIRTEL">Airtel Money</option>
+                            </select>
+                          </div>
+                          <div>
+                            <label htmlFor="lenzpay-payment-number" className="block text-xs font-medium text-blue-900/70 mb-1">
+                              Mobile money number
+                            </label>
+                            <input id="lenzpay-payment-number" type="tel" value={paymentNumber}
+                              onChange={(e) => setPaymentNumber(e.target.value)}
+                              placeholder="+256 700 000 000" required={paymentMethod === "lenzpay"}
+                              className="w-full glass-card rounded-xl px-4 py-2 text-blue-950 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 border-white/40" />
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
                   {!guest && (<>
                   {/* Cash on delivery */}
                   <label className={`flex items-start gap-3 glass-card rounded-xl px-4 py-3.5 border-2 cursor-pointer transition-all ${paymentMethod === "cash_on_delivery" ? "border-blue-400 bg-blue-50/20" : "border-white/30 hover:border-blue-200"}`}>
@@ -557,6 +621,11 @@ import { useStoreName } from "@/lib/use-store-name";
                       ? `Pay ${format(payingNow)} deposit via Pesapal`
                       : `Pay ${format(total)} via Pesapal`}
                   </span>
+                ) : paymentMethod === "lenzpay" ? (
+                  <span className="flex items-center justify-center gap-2">
+                    <Smartphone className="w-5 h-5" />
+                    Pay {format(total)} via Lenzpay
+                  </span>
                 ) : (
                   <span className="flex items-center justify-center gap-2">
                     <Truck className="w-5 h-5" /> Place Order — Pay on Delivery
@@ -566,7 +635,7 @@ import { useStoreName } from "@/lib/use-store-name";
 
               <div className="flex items-center justify-center gap-1.5 text-xs text-blue-800/40">
                 <ShieldCheck className="w-3.5 h-3.5" />
-                <span>Payments secured by Pesapal · SSL encrypted</span>
+                <span>{paymentMethod === "lenzpay" ? "Mobile money processed by Lenzpay" : paymentMethod === "pesapal" ? "Payments secured by Pesapal · SSL encrypted" : "Secure checkout"}</span>
               </div>
             </div>
 

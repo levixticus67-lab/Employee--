@@ -1,16 +1,16 @@
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRoute, Link } from "wouter";
 import { useGetOrder } from "@workspace/api-client-react";
 import { Layout } from "@/components/layout";
 import { useCurrency } from "@/components/currency-context";
 import { Button } from "@/components/ui/button";
+import { apiFetch } from "@/lib/api";
 import {
   CheckCircle2, Package, MapPin, CreditCard, Clock, Truck, PackageCheck,
   XCircle, Tag, Smartphone, Loader2, ShieldCheck, ExternalLink, MessageCircle, UserPlus,
 } from "lucide-react";
 import { isGuestMode, setGuestMode } from "@/lib/guest-mode";
 import { useAuth, EmailVerificationSentError } from "@/components/auth-context";
-import { useEffect, useState } from "react";
 import { CldImg } from "@/components/cld-img";
 
 const STATUS_CONFIG: Record<string, { label: string; icon: typeof Clock; color: string }> = {
@@ -23,6 +23,7 @@ const STATUS_CONFIG: Record<string, { label: string; icon: typeof Clock; color: 
 
 const PAYMENT_LABELS: Record<string, string> = {
   pesapal:          "Pesapal (Mobile Money / Card)",
+  lenzpay:          "Lenzpay (Mobile Money)",
   mtn_momo:         "MTN Mobile Money",
   airtel_money:     "Airtel Money",
   cash_on_delivery: "Cash on Delivery",
@@ -58,16 +59,27 @@ export default function OrderConfirmation() {
   const o = order as any;
   const paymentPending = o?.paymentStatus === "pending";
   const paymentFailed  = o?.paymentStatus === "failed";
+  const paymentPartial = o?.paymentStatus === "partial";
+  const isLenzpay = o?.paymentMethod === "lenzpay";
 
-  // Poll every 4 s while payment confirmation is pending (Pesapal IPN may arrive shortly)
+  const refreshPaymentStatus = useCallback(async () => {
+    try {
+      await apiFetch(`/api/payments/status/${encodeURIComponent(orderId)}`);
+    } catch {
+      // Keep showing the pending state; the next poll can retry the provider lookup.
+    }
+    await refetch();
+  }, [orderId, refetch]);
+
+  // Poll the authenticated server-side provider check while online payment is pending.
   useEffect(() => {
     if (!paymentPending) {
       if (pollRef.current) clearInterval(pollRef.current);
       return;
     }
-    pollRef.current = setInterval(() => refetch(), 4000);
+    pollRef.current = setInterval(() => { void refreshPaymentStatus(); }, 4000);
     return () => { if (pollRef.current) clearInterval(pollRef.current); };
-  }, [paymentPending, refetch]);
+  }, [paymentPending, refreshPaymentStatus]);
 
   async function handleCreateAccount(e: FormEvent) {
     e.preventDefault();
@@ -130,17 +142,21 @@ export default function OrderConfirmation() {
                 Order #{order.id.slice(0, 8).toUpperCase()}
               </p>
               <p className="text-blue-800/60 text-sm leading-relaxed mt-3">
-                We're waiting for Pesapal to confirm your payment. If you completed the transaction, this page will update automatically in a few moments.
+                {isLenzpay
+                  ? "We're waiting for Lenzpay to verify your mobile money payment. Approve the request on your phone and this page will update automatically."
+                  : "We're waiting for Pesapal to confirm your payment. If you completed the transaction, this page will update automatically in a few moments."}
               </p>
             </div>
             <div className="glass-card rounded-xl px-4 py-3 bg-amber-50/30 border-amber-200/50 text-left space-y-1">
-              <p className="text-xs font-medium text-amber-900">If you paid via mobile money:</p>
-              <p className="text-xs text-amber-800">Make sure you entered your PIN when prompted on your phone.</p>
+              <p className="text-xs font-medium text-amber-900">For mobile money:</p>
+              <p className="text-xs text-amber-800">
+                {isLenzpay ? "Approve the payment prompt on the phone number you entered." : "Make sure you entered your PIN when prompted on your phone."}
+              </p>
             </div>
             <div className="flex items-center gap-2 text-xs text-blue-800/50 justify-center">
-              <ShieldCheck className="w-3.5 h-3.5" /> Secured by Pesapal
+              <ShieldCheck className="w-3.5 h-3.5" /> Secured by {isLenzpay ? "Lenzpay" : "Pesapal"}
             </div>
-            <button onClick={() => refetch()} className="text-xs text-blue-600 underline hover:no-underline">
+            <button onClick={() => { void refreshPaymentStatus(); }} className="text-xs text-blue-600 underline hover:no-underline">
               Refresh status
             </button>
           </div>
@@ -161,7 +177,7 @@ export default function OrderConfirmation() {
             <div>
               <h2 className="text-2xl font-serif text-blue-950 mb-3">Payment Not Completed</h2>
               <p className="text-blue-800/70 text-sm leading-relaxed">
-                Your Pesapal payment was not completed. This could be due to an incorrect PIN, insufficient balance, or the session expiring.
+                Your {isLenzpay ? "Lenzpay mobile money" : "Pesapal"} payment was not completed. This could be due to an incorrect PIN, insufficient balance, or the session expiring.
               </p>
             </div>
             <div className="flex flex-col gap-3">
@@ -192,7 +208,9 @@ export default function OrderConfirmation() {
           </div>
           <h1 className="text-4xl font-serif text-blue-950 mb-4">Thank you for your order!</h1>
           <p className="text-lg text-blue-900/70">
-            Order #{order.id.slice(0, 8).toUpperCase()} is confirmed and being processed.
+            {paymentPartial
+              ? `Order #${order.id.slice(0, 8).toUpperCase()} has a deposit of ${format(o.amountPaid ?? 0)} recorded; the remaining balance is due at delivery.`
+              : `Order #${order.id.slice(0, 8).toUpperCase()} is confirmed and being processed.`}
           </p>
         </div>
 
@@ -260,6 +278,11 @@ export default function OrderConfirmation() {
               {o.pesapalTrackingId && (
                 <p className="text-[10px] text-blue-800/40 font-mono break-all mt-1">
                   Pesapal ref: {o.pesapalTrackingId}
+                </p>
+              )}
+              {o.lenzpayTransactionId && (
+                <p className="text-[10px] text-blue-800/40 font-mono break-all mt-1">
+                  Lenzpay ref: {o.lenzpayTransactionId}
                 </p>
               )}
               <p className="text-sm text-blue-900/80 mb-1">Subtotal: {format(order.subtotal)}</p>

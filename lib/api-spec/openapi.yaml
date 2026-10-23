@@ -633,6 +633,11 @@ components:
           type: string
           enum: [pending, processing, shipped, delivered, cancelled]
         createdAt: { type: string, format: date-time }
+        lenzpayTransactionId: { type: string, nullable: true }
+        lenzpayProvider:
+          type: string
+          enum: [MTN, AIRTEL]
+          nullable: true
       required: [id, customerName, customerEmail, shippingAddress, items, subtotal, shipping, total, status, createdAt]
 
     CreateOrderItemBody:

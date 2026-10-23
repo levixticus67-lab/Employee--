@@ -30,6 +30,12 @@ services:
           sync: false
         - key: PESAPAL_ENV
           value: production
+        - key: LENZPAY_API_BASE_URL
+          sync: false
+        - key: LENZPAY_CLIENT_ID
+          sync: false
+        - key: LENZPAY_CLIENT_SECRET
+          sync: false
         - key: FRONTEND_URL
           sync: false
   

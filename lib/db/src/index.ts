@@ -93,15 +93,25 @@ export type OrderDoc = {
   buyerPhone: string | null; items: OrderItemDoc[]; subtotal: number;
   shipping: number; shippingConfirmed: boolean; freeDelivery: boolean;
   total: number; amountPaid: number;
-  /** unpaid | partial | paid | pending (awaiting Pesapal) | failed (Pesapal declined) */
+  /** unpaid | partial | paid | pending (awaiting online payment) | failed (payment declined) */
   paymentStatus: "unpaid" | "partial" | "paid" | "pending" | "failed";
   status: OrderStatus; statusHistory: OrderStatusHistoryEntry[];
   paymentMethod: string; paymentNumber: string | null;
+  /** Canonical signed-in identity, retained for online coupon redemption records */
+  userId?: string | null;
   couponCode: string | null; discount: number; archived: boolean;
   /** Our merchant reference sent to Pesapal (format: lenz_{orderId}) */
   txRef: string | null;
   /** Pesapal's order_tracking_id from SubmitOrderRequest response */
   pesapalTrackingId: string | null;
+  /** Lenzpay transaction ID, kept separate from the Pesapal reference */
+  lenzpayTransactionId?: string | null;
+  /** Lenzpay mobile-money provider and amount conversion captured at checkout */
+  lenzpayProvider?: "MTN" | "AIRTEL" | null;
+  lenzpayAmountUGX?: number | null;
+  lenzpayExchangeRate?: number | null;
+  /** Last Lenzpay checkout/status attempt, used to pace safe idempotent recovery */
+  lenzpayLastAttemptAt?: Timestamp | null;
   /** Customer requested gift wrapping */
   giftWrapping?: boolean;
   /** Personal message for gift orders */

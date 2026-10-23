@@ -42,7 +42,7 @@ const STATUS_COLORS: Record<string, string> = {
   cancelled:  "text-red-200 bg-red-500/20 border border-red-400/40",
   received:   "text-emerald-200 bg-emerald-500/20 border border-emerald-400/40",
 };
-const PAYMENT_LABELS: Record<string, string> = { online: "Credit/Debit Card", mtn_momo: "MTN Mobile Money", airtel_money: "Airtel Money" };
+const PAYMENT_LABELS: Record<string, string> = { online: "Credit/Debit Card", pesapal: "Pesapal", lenzpay: "Lenzpay Mobile Money", mtn_momo: "MTN Mobile Money", airtel_money: "Airtel Money" };
 
 // ─── Receipt Card ─────────────────────────────────────────────────────────────
 function ReceiptCard({ receipt, onDelete }: { receipt: ReceiptData; onDelete?: () => void }) {

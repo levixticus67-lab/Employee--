@@ -1,87 +1,166 @@
 import express, { Router, type IRouter } from "express";
-  import {
-    firestore, COLLECTIONS, Timestamp,
-    type OrderDoc, type OrderItemDoc, type ProductDoc,
-    type CouponDoc, type CouponUsageDoc, type UserDoc,
-    type PaymentTransactionDoc,
-  } from "@workspace/db";
-  import { CreateOrderBody } from "@workspace/api-zod";
-  import { loadOrderById } from "./orders";
+import type { DocumentReference } from "firebase-admin/firestore";
+import {
+  firestore, COLLECTIONS, Timestamp,
+  type OrderDoc, type OrderItemDoc, type ProductDoc,
+  type CouponDoc, type CouponUsageDoc, type UserDoc,
+  type PaymentTransactionDoc,
+} from "@workspace/db";
+import { CreateOrderBody } from "@workspace/api-zod";
+import { loadOrderById } from "./orders";
 import { getUsdToUgxRate } from "../lib/exchangeRate";
+import {
+  getLenzpayPayment, initiateLenzpayPayment, isLenzpayConfigured,
+  LenzpayRequestError, type LenzpayProvider, type LenzpayTransaction,
+} from "../lib/lenzpay";
 
-  const router: IRouter = Router();
+const router: IRouter = Router();
 
-  const PESAPAL_ENV  = process.env["PESAPAL_ENV"] ?? "production";
-  const PESAPAL_BASE = PESAPAL_ENV === "sandbox"
-    ? "https://cybqa.pesapal.com/pesapalv3"
-    : "https://pay.pesapal.com/v3";
-  const CONSUMER_KEY    = process.env["PESAPAL_CONSUMER_KEY"]    ?? "";
-  const CONSUMER_SECRET = process.env["PESAPAL_CONSUMER_SECRET"] ?? "";
-  const STORED_IPN_ID   = process.env["PESAPAL_IPN_ID"]          ?? "";
-  const FRONTEND_URL    = (process.env["FRONTEND_URL"]            ?? "").replace(/\/$/, "");
-  const BACKEND_URL     = (process.env["RENDER_EXTERNAL_URL"] ?? process.env["BACKEND_URL"] ?? "").replace(/\/$/, "");
+const PESAPAL_ENV  = process.env["PESAPAL_ENV"] ?? "production";
+const PESAPAL_BASE = PESAPAL_ENV === "sandbox"
+  ? "https://cybqa.pesapal.com/pesapalv3"
+  : "https://pay.pesapal.com/v3";
+const CONSUMER_KEY    = process.env["PESAPAL_CONSUMER_KEY"]    ?? "";
+const CONSUMER_SECRET = process.env["PESAPAL_CONSUMER_SECRET"] ?? "";
+const STORED_IPN_ID   = process.env["PESAPAL_IPN_ID"]          ?? "";
+const FRONTEND_URL    = (process.env["FRONTEND_URL"]            ?? "").replace(/\/$/, "");
+const BACKEND_URL     = (process.env["RENDER_EXTERNAL_URL"] ?? process.env["BACKEND_URL"] ?? "").replace(/\/$/, "");
 
-  // Currency: DB prices are stored in USD. Pesapal transacts in UGX.
-  // Exchange rate is fetched live from open.er-api.com (1h cache) via getUsdToUgxRate().
-  // Set PESAPAL_CURRENCY if you ever switch currency (default UGX).
-  const PESAPAL_CURRENCY = process.env["PESAPAL_CURRENCY"] ?? "UGX";
+// Currency: DB prices are stored in USD. Pesapal and Lenzpay transact in UGX.
+// Exchange rates are fetched live from open.er-api.com (1h cache).
+const PESAPAL_CURRENCY = process.env["PESAPAL_CURRENCY"] ?? "UGX";
 
-  interface TokenCache { value: string; expiresAt: number }
-  let tokenCache: TokenCache | null = null;
+interface TokenCache { value: string; expiresAt: number }
+let tokenCache: TokenCache | null = null;
 
-  async function getPesapalToken(): Promise<string> {
-    if (tokenCache && Date.now() < tokenCache.expiresAt - 60_000) return tokenCache.value;
-    const res  = await fetch(`${PESAPAL_BASE}/api/Auth/RequestToken`, {
-      method: "POST", headers: { "Content-Type": "application/json", Accept: "application/json" },
-      body: JSON.stringify({ consumer_key: CONSUMER_KEY, consumer_secret: CONSUMER_SECRET }),
-    });
-    const data = (await res.json()) as { token?: string; expiryDate?: string; error?: unknown };
-    if (!data.token) throw new Error(`Pesapal auth failed: ${JSON.stringify(data.error ?? data)}`);
-    tokenCache = { value: data.token, expiresAt: new Date(data.expiryDate!).getTime() };
-    return data.token;
+async function getPesapalToken(): Promise<string> {
+  if (tokenCache && Date.now() < tokenCache.expiresAt - 60_000) return tokenCache.value;
+  const res  = await fetch(`${PESAPAL_BASE}/api/Auth/RequestToken`, {
+    method: "POST", headers: { "Content-Type": "application/json", Accept: "application/json" },
+    body: JSON.stringify({ consumer_key: CONSUMER_KEY, consumer_secret: CONSUMER_SECRET }),
+  });
+  const data = (await res.json()) as { token?: string; expiryDate?: string; error?: unknown };
+  if (!data.token) throw new Error(`Pesapal auth failed: ${JSON.stringify(data.error ?? data)}`);
+  tokenCache = { value: data.token, expiresAt: new Date(data.expiryDate!).getTime() };
+  return data.token;
+}
+
+let cachedIpnId: string | null = STORED_IPN_ID || null;
+async function getOrRegisterIpnId(token: string): Promise<string> {
+  if (cachedIpnId) return cachedIpnId;
+  const ipnUrl = `${BACKEND_URL}/api/payments/ipn`;
+  const res = await fetch(`${PESAPAL_BASE}/api/URLSetup/RegisterIPN`, {
+    method: "POST", headers: { "Content-Type": "application/json", Accept: "application/json", Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ url: ipnUrl, ipn_notification_type: "POST" }),
+  });
+  const data = (await res.json()) as { ipn_id?: string; error?: unknown };
+  if (!data.ipn_id) throw new Error(`Pesapal IPN registration failed: ${JSON.stringify(data.error ?? data)}`);
+  cachedIpnId = data.ipn_id;
+  return cachedIpnId;
+}
+
+interface PesapalStatusResponse {
+  payment_method: string; amount: number; created_date: string; confirmation_code: string;
+  merchant_reference: string; payment_status_description: string; message: string;
+  payment_account: string; status_code: number; payment_status_code: string;
+  currency: string; error: unknown; status: string;
+}
+
+async function queryTransactionStatus(token: string, orderTrackingId: string): Promise<PesapalStatusResponse> {
+  const res = await fetch(
+    `${PESAPAL_BASE}/api/Transactions/GetTransactionStatus?orderTrackingId=${encodeURIComponent(orderTrackingId)}`,
+    { headers: { Authorization: `Bearer ${token}`, Accept: "application/json" } },
+  );
+  return res.json() as Promise<PesapalStatusResponse>;
+}
+
+async function rollbackOrder(orderId: string, items: Array<{ productId: string; quantity: number }>): Promise<void> {
+  try {
+    const batch = firestore.batch();
+    batch.delete(firestore.collection(COLLECTIONS.orders).doc(orderId));
+    for (const item of items) {
+      const ref  = firestore.collection(COLLECTIONS.products).doc(item.productId);
+      const snap = await ref.get();
+      if (snap.exists) batch.update(ref, { stock: ((snap.data() as ProductDoc).stock ?? 0) + item.quantity });
+    }
+    await batch.commit();
+  } catch { /* best-effort */ }
+}
+
+async function applyLenzpayTransaction(
+  orderRef: DocumentReference,
+  orderId: string,
+  order: OrderDoc,
+  transaction: LenzpayTransaction,
+): Promise<void> {
+  const expectedAmount = Number(order.lenzpayAmountUGX);
+  const exchangeRate = Number(order.lenzpayExchangeRate);
+  if (
+    transaction.orderId !== orderId ||
+    transaction.provider !== order.lenzpayProvider ||
+    !Number.isSafeInteger(expectedAmount) ||
+    Number(transaction.amount) !== expectedAmount
+  ) {
+    return;
   }
 
-  let cachedIpnId: string | null = STORED_IPN_ID || null;
-  async function getOrRegisterIpnId(token: string): Promise<string> {
-    if (cachedIpnId) return cachedIpnId;
-    const ipnUrl = `${BACKEND_URL}/api/payments/ipn`;
-    const res = await fetch(`${PESAPAL_BASE}/api/URLSetup/RegisterIPN`, {
-      method: "POST", headers: { "Content-Type": "application/json", Accept: "application/json", Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ url: ipnUrl, ipn_notification_type: "POST" }),
-    });
-    const data = (await res.json()) as { ipn_id?: string; error?: unknown };
-    if (!data.ipn_id) throw new Error(`Pesapal IPN registration failed: ${JSON.stringify(data.error ?? data)}`);
-    cachedIpnId = data.ipn_id;
-    return cachedIpnId;
-  }
+  const couponQuery = order.couponCode
+    ? await firestore.collection(COLLECTIONS.coupons).where("code", "==", order.couponCode).limit(1).get()
+    : null;
+  const couponDoc = couponQuery && !couponQuery.empty ? couponQuery.docs[0]! : null;
+  const couponUsageRef = couponDoc
+    ? firestore.collection(COLLECTIONS.couponUsages).doc(`lenzpay_${orderId}`)
+    : null;
 
-  interface PesapalStatusResponse {
-    payment_method: string; amount: number; created_date: string; confirmation_code: string;
-    merchant_reference: string; payment_status_description: string; message: string;
-    payment_account: string; status_code: number; payment_status_code: string;
-    currency: string; error: unknown; status: string;
-  }
+  await firestore.runTransaction(async (tx) => {
+    const freshSnap = await tx.get(orderRef);
+    if (!freshSnap.exists) return;
+    const fresh = freshSnap.data() as OrderDoc;
+    if (fresh.paymentStatus !== "pending") return;
 
-  async function queryTransactionStatus(token: string, orderTrackingId: string): Promise<PesapalStatusResponse> {
-    const res = await fetch(
-      `${PESAPAL_BASE}/api/Transactions/GetTransactionStatus?orderTrackingId=${encodeURIComponent(orderTrackingId)}`,
-      { headers: { Authorization: `Bearer ${token}`, Accept: "application/json" } },
+    const usageSnap = couponUsageRef ? await tx.get(couponUsageRef) : null;
+    const couponSnap = couponDoc ? await tx.get(couponDoc.ref) : null;
+
+    if (transaction.status === "FAILED") {
+      tx.update(orderRef, {
+        paymentStatus: "failed",
+        lenzpayTransactionId: transaction.transactionId,
+      });
+      return;
+    }
+    if (transaction.status !== "SUCCESSFUL" || !Number.isFinite(exchangeRate) || exchangeRate <= 0) return;
+
+    const confirmedUSD = Math.min(
+      fresh.total,
+      Math.round((expectedAmount / exchangeRate) * 100) / 100,
     );
-    return res.json() as Promise<PesapalStatusResponse>;
-  }
+    const paidInFull = confirmedUSD >= fresh.total - 0.01;
+    const newPaymentStatus = paidInFull ? "paid" : "partial";
+    tx.update(orderRef, {
+      paymentStatus: newPaymentStatus,
+      amountPaid: confirmedUSD,
+      lenzpayTransactionId: transaction.transactionId,
+      ...(paidInFull ? {
+        status: "processing",
+        statusHistory: [
+          ...(fresh.statusHistory ?? []),
+          { status: "processing", timestamp: new Date().toISOString() },
+        ],
+      } : {}),
+    });
 
-  async function rollbackOrder(orderId: string, items: Array<{ productId: string; quantity: number }>): Promise<void> {
-    try {
-      const batch = firestore.batch();
-      batch.delete(firestore.collection(COLLECTIONS.orders).doc(orderId));
-      for (const item of items) {
-        const ref  = firestore.collection(COLLECTIONS.products).doc(item.productId);
-        const snap = await ref.get();
-        if (snap.exists) batch.update(ref, { stock: ((snap.data() as ProductDoc).stock ?? 0) + item.quantity });
-      }
-      await batch.commit();
-    } catch { /* best-effort */ }
-  }
+    if (paidInFull && couponDoc && couponUsageRef && couponSnap?.exists && !usageSnap?.exists) {
+      const coupon = couponSnap.data() as CouponDoc;
+      tx.update(couponDoc.ref, { uses: (coupon.uses ?? 0) + 1 });
+      tx.set(couponUsageRef, {
+        couponId: couponDoc.id,
+        userId: order.userId ?? "",
+        payerPhoneNumber: order.paymentNumber ?? "",
+        createdAt: Timestamp.now(),
+      } satisfies CouponUsageDoc);
+    }
+  });
+}
 
   // ── POST /api/payments/initiate ───────────────────────────────────────────────
   router.post("/payments/initiate", async (req, res) => {
@@ -91,26 +170,43 @@ import { getUsdToUgxRate } from "../lib/exchangeRate";
     const rawBody = req.body as Record<string, unknown>;
 
     const paymentMethod = (rawBody["paymentMethod"] as string) || "pesapal";
-    const paymentNumber = (rawBody["paymentNumber"] as string) || null;
+    const paymentNumberRaw = rawBody["paymentNumber"];
+    const paymentNumber = typeof paymentNumberRaw === "string" && paymentNumberRaw.trim()
+      ? paymentNumberRaw.trim()
+      : null;
+    const lenzpayProviderRaw = rawBody["lenzpayProvider"];
     const buyerPhone    = (rawBody["buyerPhone"]    as string) || null;
     const couponInput   = rawBody["couponCode"] as string | undefined;
-    // Partial payment: amount (USD) the customer wants to pay now via Pesapal.
+    // Partial payment: amount (USD) the customer wants to pay now.
     // Must be > 0 and <= order total. Defaults to full total if not provided.
     const partialAmountInput = rawBody["amountToPay"] as number | undefined;
     const giftWrapping = Boolean(rawBody["giftWrapping"] ?? false);
     const giftNote     = (rawBody["giftNote"] as string | undefined) ?? null;
-    const isOnline = paymentMethod !== "cash_on_delivery";
+    if (!["pesapal", "lenzpay", "cash_on_delivery"].includes(paymentMethod)) {
+      res.status(400).json({ error: "Unsupported payment method." }); return;
+    }
+    const lenzpayProvider = lenzpayProviderRaw === "MTN" || lenzpayProviderRaw === "AIRTEL"
+      ? lenzpayProviderRaw as LenzpayProvider
+      : null;
+    if (paymentMethod === "lenzpay" && (!lenzpayProvider || !paymentNumber?.trim())) {
+      res.status(400).json({ error: "Select MTN or Airtel and enter a mobile money number for Lenzpay." }); return;
+    }
+    const isOnline = paymentMethod === "pesapal" || paymentMethod === "lenzpay";
 
     const userId       = req.session?.userId      ?? null;
     const firebaseUid  = req.session?.firebaseUid  ?? null;
     const canonicalUid = firebaseUid ?? userId ?? "";
 
-    if (isOnline && (!CONSUMER_KEY || !CONSUMER_SECRET)) {
-      res.status(503).json({ error: "Online payment gateway not configured. Please contact the store." }); return;
+    if (paymentMethod === "pesapal" && (!CONSUMER_KEY || !CONSUMER_SECRET)) {
+      res.status(503).json({ error: "Pesapal is not configured. Please contact the store." }); return;
     }
 
-    if (isOnline && !BACKEND_URL && !STORED_IPN_ID) {
+    if (paymentMethod === "pesapal" && !BACKEND_URL && !STORED_IPN_ID) {
       res.status(503).json({ error: "Payment gateway misconfigured: PESAPAL_IPN_ID or BACKEND_URL must be set on the server. Contact the store." }); return;
+    }
+
+    if (paymentMethod === "lenzpay" && !isLenzpayConfigured()) {
+      res.status(503).json({ error: "Lenzpay is not configured. Please contact the store." }); return;
     }
 
     if (userId && paymentNumber) {
@@ -142,7 +238,7 @@ import { getUsdToUgxRate } from "../lib/exchangeRate";
     const productRefs   = body.items.map((i) => firestore.collection(COLLECTIONS.products).doc(i.productId));
     const newOrderRef   = firestore.collection(COLLECTIONS.orders).doc();
     const orderId = newOrderRef.id;
-    const txRef   = `lenz_${orderId}`;
+    const txRef   = paymentMethod === "pesapal" ? `lenz_${orderId}` : null;
     let finalTotal = 0;
     let discount   = 0;
     let couponCode: string | null = null;
@@ -193,10 +289,15 @@ import { getUsdToUgxRate } from "../lib/exchangeRate";
           shippingAddress: body.shippingAddress, buyerPhone, items,
           subtotal, shipping: 0, total, shippingConfirmed: qualifyFree, freeDelivery: qualifyFree,
           amountPaid: 0, paymentStatus: isOnline ? "pending" : "unpaid",
-          discount, couponCode, paymentMethod, paymentNumber,
+          discount, couponCode, paymentMethod, paymentNumber, userId: canonicalUid || null,
           status: "pending",
           statusHistory: [{ status: "pending", timestamp: new Date().toISOString() }],
-          archived: false, txRef: isOnline ? txRef : null, pesapalTrackingId: null,
+          archived: false, txRef, pesapalTrackingId: null,
+          lenzpayTransactionId: null,
+          lenzpayProvider: paymentMethod === "lenzpay" ? lenzpayProvider : null,
+          lenzpayAmountUGX: null,
+          lenzpayExchangeRate: null,
+          lenzpayLastAttemptAt: null,
           giftWrapping, giftNote,
           createdAt: Timestamp.now(),
         };
@@ -223,6 +324,61 @@ import { getUsdToUgxRate } from "../lib/exchangeRate";
     }
 
     if (!isOnline) { res.status(201).json(await loadOrderById(orderId)); return; }
+
+    if (paymentMethod === "lenzpay") {
+      const lenzpayRate = await getUsdToUgxRate();
+      // Lenzpay checkout currently collects the full order total; deposits remain a Pesapal option.
+      const chargeUSD = finalTotal;
+      const amountUGX = Math.round(chargeUSD * lenzpayRate);
+      if (!Number.isSafeInteger(amountUGX) || amountUGX <= 0) {
+        await rollbackOrder(orderId, body.items);
+        res.status(400).json({ error: "The payment amount must be greater than zero." }); return;
+      }
+
+      const orderRef = firestore.collection(COLLECTIONS.orders).doc(orderId);
+      const lastAttemptAt = Timestamp.now();
+      await orderRef.update({
+        lenzpayAmountUGX: amountUGX,
+        lenzpayExchangeRate: lenzpayRate,
+        lenzpayLastAttemptAt: lastAttemptAt,
+      });
+
+      try {
+        const transaction = await initiateLenzpayPayment({
+          amount: amountUGX,
+          payerPhone: paymentNumber!,
+          provider: lenzpayProvider!,
+          orderId,
+        });
+        await orderRef.update({ lenzpayTransactionId: transaction.transactionId });
+        const orderSnap = await orderRef.get();
+        if (orderSnap.exists) {
+          await applyLenzpayTransaction(orderRef, orderId, orderSnap.data() as OrderDoc, transaction);
+        }
+        res.status(201).json(await loadOrderById(orderId));
+      } catch (err) {
+        if (err instanceof LenzpayRequestError && err.definitive) {
+          if (err.transaction) {
+            await orderRef.update({ lenzpayTransactionId: err.transaction.transactionId });
+            const orderSnap = await orderRef.get();
+            if (orderSnap.exists) {
+              await applyLenzpayTransaction(orderRef, orderId, orderSnap.data() as OrderDoc, err.transaction);
+            }
+            res.status(201).json(await loadOrderById(orderId));
+            return;
+          }
+          await rollbackOrder(orderId, body.items);
+          res.status(502).json({ error: err.message }); return;
+        }
+
+        // The request may have reached Lenzpay even if its response was lost.
+        // Keep the order reserved and let the authenticated status route retry
+        // with the same idempotent Lenzpay orderId after a short delay.
+        req.log.warn({ orderId }, "Lenzpay checkout response was inconclusive");
+        res.status(201).json(await loadOrderById(orderId));
+      }
+      return;
+    }
 
     try {
       const token = await getPesapalToken();
@@ -404,7 +560,47 @@ import { getUsdToUgxRate } from "../lib/exchangeRate";
     }
     const order = orderSnap.data() as OrderDoc;
     const raw   = order as Record<string, unknown>;
-    if (order.paymentStatus !== "pending" || !raw["pesapalTrackingId"]) {
+    if (order.paymentStatus !== "pending") {
+      res.json(await loadOrderById(req.params.orderId)); return;
+    }
+
+    if (order.paymentMethod === "lenzpay" && order.lenzpayProvider && order.lenzpayAmountUGX) {
+      try {
+        let transaction: LenzpayTransaction | null = null;
+        if (order.lenzpayTransactionId) {
+          transaction = await getLenzpayPayment(order.lenzpayTransactionId);
+        } else {
+          const lastAttemptMs = order.lenzpayLastAttemptAt?.toMillis() ?? 0;
+          if (Date.now() - lastAttemptMs >= 15_000) {
+            await orderRef.update({ lenzpayLastAttemptAt: Timestamp.now() });
+            try {
+              transaction = await initiateLenzpayPayment({
+                amount: order.lenzpayAmountUGX,
+                payerPhone: order.paymentNumber ?? "",
+                provider: order.lenzpayProvider,
+                orderId: req.params.orderId,
+              });
+            } catch (err) {
+              if (err instanceof LenzpayRequestError && err.transaction) {
+                transaction = err.transaction;
+              } else {
+                throw err;
+              }
+            }
+            if (transaction) await orderRef.update({ lenzpayTransactionId: transaction.transactionId });
+          }
+        }
+
+        if (transaction) {
+          await applyLenzpayTransaction(orderRef, req.params.orderId, order, transaction);
+        }
+      } catch {
+        // Lenzpay is queried again on the next customer status refresh.
+      }
+      res.json(await loadOrderById(req.params.orderId)); return;
+    }
+
+    if (!raw["pesapalTrackingId"]) {
       res.json(await loadOrderById(req.params.orderId)); return;
     }
     try {

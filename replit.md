@@ -57,6 +57,7 @@ Simplified to three fields: full name, email, shipping address (free-form textar
 - `SESSION_SECRET` — random string used by express-session
 - `ADMIN_PASSWORD` — admin dashboard password
 - `DEFAULT_OBJECT_STORAGE_BUCKET_ID`, `PRIVATE_OBJECT_DIR`, `PUBLIC_OBJECT_SEARCH_PATHS` — for product image uploads
+- `LENZPAY_API_BASE_URL`, `LENZPAY_CLIENT_ID`, `LENZPAY_CLIENT_SECRET` — server-only credentials for the optional Lenzpay MTN/Airtel checkout. Never expose the client secret to browser code.
 
 ## Key Commands
 
